@@ -1,0 +1,23 @@
+{
+  "chat_room_top_bar": "Chat Room List",
+  "select_chatroom": "Please Select a chat room, Or?",
+  "none_chat_room": "No chat room currently",
+  "system_sender": "System",
+  "no_chat_room_message": "There is no chat record. Let's start your chat!",
+  "no_chatroom": "No chat room",
+  "new_chatroom": "You have received a new chat",
+  "picture_upload_not_allow": "The picture upload is not allowed",
+  "please_input_message": "Please input message",
+  "send_message": "Send",
+  "item_info_title": "Trade Information",
+  "navigator_to_sell": "Sell something?",
+  "navigator_to_buy": "Buy something?",
+  "no_classrooms_available":"There are no classrooms available",
+  "item_name": "Trade name: ",
+  "item_price": "Trade price: ",
+  "item_picture": "Item picture: ",
+  "nth_picture": "Picture ",
+  "end_of_room_list_1": "That's all.",
+  "end_of_room_list_2": "Need to buy or sell something new?",
+  "clear_message": "Clear"
+}

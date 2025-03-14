@@ -1,0 +1,16 @@
+{
+  "officeHour": "office hour",
+  "classAppointment": "classroom appointment",
+  "unLogin": "un login",
+  "language-switch":"English/简体中文",
+  "/user": "personal",
+  "/contant": "contant us",
+  "/index/officehour":"home",
+  "/list/officehour": "appointment list",
+  "/list/officehour/appointment": "appoint",
+  "/index/classroom": "home",
+  "/list/classroom": "appointment list",
+  "/list/classroom/appointment": "appoint",
+  "name": "name",
+  "language": "language"
+}

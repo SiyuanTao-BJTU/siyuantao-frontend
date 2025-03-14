@@ -1,0 +1,5 @@
+{
+  "token_expiration": "Token expired or invalid, please log in again",
+  "request_failed": "Request failed with unknown error",
+  "network_exception": "Network exception, Please check the network connection"
+}

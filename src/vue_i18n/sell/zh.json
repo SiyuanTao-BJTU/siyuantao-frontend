@@ -1,0 +1,23 @@
+{
+  "no_item_hint": "暂无出售中物品",
+  "api_failure": "获取出售的物品失败",
+  "sell_item_top_bar": "出售中的物品",
+  "add_item": "添加/更新物品信息",
+  "form_item_name": "物品名称",
+  "form_item_description": "物品描述",
+  "form_item_price": "物品价格",
+  "form_item_count": "物品数量",
+  "form_item_img": "图片",
+  "form_item_name_placeholder": "请输入物品名称",
+  "form_item_description_placeholder": "请输入物品描述",
+  "api_failure_upload_fail": "上传物品失败",
+  "api_success_upload_success": "上传物品成功",
+  "upload": "提交",
+  "cancel": "取消",
+  "select_item_hint": "请选择需要查看的商品",
+  "upload_error_no_img": "请至少上传一张图片",
+  "upload_error_no_name": "请输入物品名称",
+  "upload_error_no_description": "请输入物品描述",
+  "upload_error_no_price": "请输入物品价格",
+  "upload_error_no_count": "请输入物品数量"
+}

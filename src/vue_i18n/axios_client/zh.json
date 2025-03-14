@@ -1,0 +1,5 @@
+{
+  "token_expiration": "Token过期或失效，请重新登录",
+  "request_failed": "请求因未知原因失败",
+  "network_exception": "网络异常，请检查您的网络连接"
+}

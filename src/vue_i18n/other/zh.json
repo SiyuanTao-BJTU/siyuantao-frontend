@@ -1,0 +1,16 @@
+{
+  "officeHour": "教师预约",
+  "classAppointment": "教室预约",
+  "unLogin": "未登录",
+  "language-switch":"English/简体中文",
+  "/user": "个人信息",
+  "/contant": "联系我们",
+  "/index/officehour":"首页",
+  "/list/officehour": "预约列表",
+  "/list/officehour/appointment": "发起预约",
+  "/index/classroom": "首页",
+  "/list/classroom": "预约列表",
+  "/list/classroom/appointment": "发起预约",
+  "name": "姓名",
+  "language": "语言"
+}

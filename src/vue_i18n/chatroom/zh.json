@@ -1,0 +1,23 @@
+{
+  "chat_room_top_bar": "聊天室列表",
+  "select_chatroom": "请选择一个聊天室，或者？",
+  "none_chat_room": "当前没有聊天室",
+  "system_sender": "系统",
+  "no_chat_room_message": "暂无聊天记录，开始你们的聊天吧！",
+  "no_chatroom": "暂无聊天室",
+  "new_chatroom": "您收到了一个新聊天",
+  "picture_upload_not_allow": "图片上传功能暂未开放",
+  "please_input_message": "请输入消息",
+  "send_message": "发送",
+  "item_info_title": "交易信息",
+  "navigator_to_sell": "卖些东西？",
+  "navigator_to_buy": "买些东西？",
+  "no_classrooms_available":"当前暂无可选教室",
+  "item_name": "交易物品名: ",
+  "item_price": "交易物品价格: ",
+  "item_picture": "交易物品图片: ",
+  "nth_picture": "图片 ",
+  "end_of_room_list_1": "到底啦！",
+  "end_of_room_list_2": "需要买卖点新东西吗？",
+  "clear_message": "清除"
+}

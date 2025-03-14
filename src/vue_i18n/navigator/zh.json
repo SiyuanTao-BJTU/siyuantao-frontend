@@ -1,0 +1,17 @@
+{
+  "home_page":"首页",
+  "sell_page":"我要出售",
+  "chat_page":"我的消息",
+  "personal_page": "个人中心",
+  "change_language": "英语",
+  "logout": "退出登录",
+  "personal_info": "个人信息",
+  "username_error": "头像信息获取失败",
+  "download_desktop_app": "桌面端应用",
+  "contact_us": "hongyu.yan@163.com",
+  "email_address_1": "邮箱地址已复制至粘贴板。",
+  "email_address_2": "如果邮箱客户端未自动打开，请手动粘贴至收件人。",
+  "email_address_fail": "复制邮箱地址失败",
+  "delete_success": "成功删除物品",
+  "delete_failure": "删除物品失败"
+}

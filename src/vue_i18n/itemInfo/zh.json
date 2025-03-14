@@ -1,0 +1,21 @@
+{
+  "item_info_get_failure": "获取物品信息失败",
+  "picture_load_failed": "图片加载失败",
+  "picture_on_loading": "图片加载中",
+  "owner": "卖方: ",
+  "email": "邮箱: ",
+  "count": "剩余数量: ",
+  "price": "价格: ",
+  "delete": "删除物品",
+  "edit": "编辑物品",
+  "want": "我想要！",
+  "buy": "购买物品",
+  "delete_success": "成功删除物品",
+  "delete_failure": "删除物品失败",
+  "want_success": "添加成功并创建聊天室",
+  "want_failure": "添加失败",
+  "comment_failure": "评论失败",
+  "comment_success": "评论成功",
+  "detail_info_title": "物品详细信息",
+  "back": "返回上一页"
+}
