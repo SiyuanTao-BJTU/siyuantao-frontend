@@ -1,6 +1,6 @@
 <script setup>
 import {ref, onMounted, computed} from 'vue';
-import axios from '../../axios_client/index.js';
+import api from '@/API_PRO.js';
 import {ElMessage} from "element-plus";
 import {Back, ChatLineRound, Delete, EditPen, Loading, Message, Picture, ShoppingCart} from "@element-plus/icons-vue";
 import { useI18n } from "vue-i18n";
@@ -69,49 +69,44 @@ const handleEdit = () => {
 }
 
 const handleDelete = () => {
-  axios.delete('/item/', {
-    params: {
-      id: itemInfo.value.id
-    }
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        ElMessage.success(t("itemInfo.delete_success"));
-        window.location.reload();
+  api.deleteProduct(itemInfo.value.id)
+    .then(() => {
+      ElMessage.success(t("itemInfo.delete_success"));
+      if (props.isItemInfoPage) {
+        router.back();
       } else {
-        ElMessage.error(t("itemInfo.delete_failure"));
+        window.location.reload();
       }
-    } else {
+    })
+    .catch(error => {
+      console.error("Delete item failure:", error);
       ElMessage.error(t("itemInfo.delete_failure"));
-    }
-  }).catch(err => {
-    ElMessage.error(t("itemInfo.delete_failure"));
-  })
+    });
   componentKey.value += 1;
 }
 
 const getItemInfo = () => {
-  if (props.itemID === "") {
-    console.log("itemID is empty for once");
+  if (!props.itemID) {
+    console.log("itemID is empty for getItemInfo");
+    ElMessage.error(t("itemInfo.item_id_missing"));
     return;
   }
-  axios.get('/item/', {
-    params: {
-      id: props.itemID
-    }
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        itemInfo.value = res.data.data;
+  api.getProductDetail(props.itemID)
+    .then(data => {
+      itemInfo.value = data;
+      if (data.images) {
+        itemInfo.value.img = data.images;
+      } else if (data.img) {
+        itemInfo.value.img = data.img;
       } else {
-        ElMessage.error(t("itemInfo.item_info_get_failure"));
+        itemInfo.value.img = [];
       }
-    } else {
+    })
+    .catch(error => {
+      console.error("Get item info failure:", error);
       ElMessage.error(t("itemInfo.item_info_get_failure"));
-    }
-  }).catch(err => {
-    ElMessage.error(t("itemInfo.item_info_get_failure"));
-  })
+      itemInfo.value = { ...init_item_info };
+    });
   componentKey.value += 1;
 }
 
@@ -124,22 +119,21 @@ const updateSuccessGetItemInfo = (responseData) => {
 }
 
 const handleWant = () => {
-  axios.post('/trade/new', {
-    item_id: itemInfo.value.id
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        ElMessage.success(t("itemInfo.want_success"));
-        WebSocketService.sendNotice(itemInfo.value.user.id)
-      } else {
-        ElMessage.error(t("itemInfo.want_failure"));
+  const transactionData = {
+    product: itemInfo.value.id,
+    quantity: 1
+  };
+  api.createTransaction(transactionData)
+    .then(() => {
+      ElMessage.success(t("itemInfo.want_success"));
+      if (itemInfo.value.user && itemInfo.value.user.id) {
+        WebSocketService.sendNotice(itemInfo.value.user.id);
       }
-    } else {
+    })
+    .catch(error => {
+      console.error("Create transaction (want) failure:", error);
       ElMessage.error(t("itemInfo.want_failure"));
-    }
-  }).catch(err => {
-    ElMessage.error(t("itemInfo.want_failure"));
-  })
+    });
 }
 
 const handleWantResponse = (data) => {

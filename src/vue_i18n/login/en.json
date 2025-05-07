@@ -23,8 +23,9 @@
   "password_only_number_error": "A password cannot be made up of numbers alone",
   "password_only_letter_error": "Passwords cannot consist of only letters",
   "password_illegal_error": "The password can only contain numbers and letters",
-  "username_length_error": "The username must be between 6 and 20 characters in length",
-  "username_illegal_error": "The user name can contain only numbers, letters, underscores (_), and minus (-).",
+  "username_length_error": "Username length must be between 6 and 20 characters",
+  "username_illegal_error": "Username contains illegal characters",
   "login_first": "Please log in first",
-  "user_id_fetch_failed": "Failed to get user ID"
+  "user_id_fetch_failed": "Failed to get user ID",
+  "username_length_error_new": "Username length must be between 1 and 150 characters"
 }

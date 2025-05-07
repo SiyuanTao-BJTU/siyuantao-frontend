@@ -1,8 +1,8 @@
 <script setup>
-import {ref, defineProps, onMounted, reactive} from "vue";
+import {ref, defineProps, onMounted, reactive, computed} from "vue";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
-import axios from "@/axios_client/index.js";
+import api from '@/API_PRO.js';
 import FormatObject from "@/utils/format.js";
 import StateIcon from "@/components/profile/StateIcon.vue";
 import { Picture, Loading } from "@element-plus/icons-vue";
@@ -26,6 +26,77 @@ const commentForm = reactive({
   rating: 0,
 })
 
+const currentUserId = ref(null);
+
+// Helper function to determine frontend state based on API status and user role
+const getFrontendNumericState = (apiTransaction, localCurrentUserId, isSellViewProp) => {
+  const apiStatus = apiTransaction.status;
+  console.log("getFrontendNumericState - INPUTS - api_status:", apiStatus, "localCurrentUserId:", localCurrentUserId, "isSellViewProp:", isSellViewProp);
+  const isCurrentUserSeller = isSellViewProp;
+  const isCurrentUserBuyer = !isSellViewProp;
+
+  if (apiStatus === "PendingConfirmation") {
+    if (isCurrentUserSeller) return 2; 
+    if (isCurrentUserBuyer) return 1;
+  }
+  if (apiStatus === "PendingDelivery") {
+    if (isCurrentUserSeller) return 3; 
+    if (isCurrentUserBuyer) return 3;
+  }
+  if (apiStatus === "PendingReceipt") {
+    if (isCurrentUserSeller) return 6;
+    if (isCurrentUserBuyer) return 6;   
+  }
+  if (apiStatus === "Completed") {
+    return 5;
+  }
+  if (apiStatus === "Cancelled") {
+    return 4;
+  }
+  if (apiStatus === "Dispute") {
+    return 7;
+  }
+  console.log("getFrontendNumericState - OUTPUT - Returning -1 for unmapped status:", apiStatus);
+  return -1;
+};
+
+// Function to convert raw API record to the format needed by the table
+const convertApiRecordToTableRecord = (apiRecord, localCurrentUserId, isSellViewProp) => {
+  console.log("convertApiRecordToTableRecord - INPUT - apiRecord:", JSON.parse(JSON.stringify(apiRecord)));
+  const numericState = getFrontendNumericState(apiRecord, localCurrentUserId, isSellViewProp);
+  console.log("convertApiRecordToTableRecord - calculated numericState:", numericState);
+
+  let mainImage = null;
+  let allImages = [];
+
+  if (apiRecord.product && apiRecord.product.images && apiRecord.product.images.length > 0) {
+    const primaryImageObject = apiRecord.product.images.find(img => img.is_primary);
+    if (primaryImageObject) {
+      mainImage = primaryImageObject.image_path;
+    } else {
+      mainImage = apiRecord.product.images[0].image_path; // Fallback to the first image if no primary is set
+    }
+    allImages = apiRecord.product.images.map(img => img.image_path);
+  }
+
+  const recordForTable = {
+    id: apiRecord.id,
+    name: apiRecord.product ? apiRecord.product.name : 'N/A',
+    picture: mainImage,
+    price: apiRecord.product ? apiRecord.product.price : 'N/A',
+    buyer: apiRecord.buyer ? apiRecord.buyer.username : 'N/A',
+    seller: apiRecord.seller ? apiRecord.seller.username : 'N/A',
+    state: numericState,
+    picture_list: allImages,
+    quantity: apiRecord.quantity,
+    condition: apiRecord.product ? apiRecord.product.condition : 'N/A',
+    create_time: apiRecord.create_time,
+    api_status: apiRecord.status 
+  };
+  console.log("convertApiRecordToTableRecord - OUTPUT - recordForTable:", JSON.parse(JSON.stringify(recordForTable)));
+  return recordForTable;
+};
+
 // 组件全局函数定义
 const handleGoSell = () => {
   router.push('/sell')
@@ -36,39 +107,63 @@ const handleGoBuy = () => {
 }
 
 function sellInfoAxios() {
-  axios.get('/user/record/sell').then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        backend_tableData.value = res.data.data
-        tableData.value = FormatObject.formattedTransactionRecord(backend_tableData.value)
+  api.getUserSoldRecords()
+    .then(response => {
+      console.log("sellInfoAxios - API Response:", JSON.parse(JSON.stringify(response)));
+      if (response && response.data && response.code === 0) {
+        backend_tableData.value = response.data;
+        console.log("sellInfoAxios - backend_tableData (raw from format.js):", JSON.parse(JSON.stringify(backend_tableData.value)));
+        if (backend_tableData.value.length > 0) {
+            console.log("sellInfoAxios - First raw record for conversion:", JSON.parse(JSON.stringify(backend_tableData.value[0])));
+            console.log("sellInfoAxios - currentUserId for conversion:", currentUserId.value);
+        }
+        tableData.value = backend_tableData.value.map(record =>
+          convertApiRecordToTableRecord(record, currentUserId.value, true)
+        );
+        console.log("sellInfoAxios - final tableData:", JSON.parse(JSON.stringify(tableData.value)));
       } else {
-        console.warn('获取销售记录失败')
+        backend_tableData.value = [];
+        tableData.value = [];
+        console.warn('获取销售记录API响应格式不正确或code不为0 TableInfo:', response);
+        ElMessage.error(t("saleInfo.fetch_records_failed_format"));
       }
-    } else {
-      console.warn('获取销售记录失败')
-    }
-  }).catch(res => {
-    console.warn('获取销售记录失败')
-    console.warn(res)
-  })
+    })
+    .catch(error => {
+      backend_tableData.value = [];
+      tableData.value = [];
+      console.warn('获取销售记录失败 TableInfo:', error);
+      ElMessage.error(t("saleInfo.fetch_records_failed"));
+    });
 }
 
 function purchaseInfoAxios() {
-  axios.get('/user/record/buy').then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        backend_tableData.value = res.data.data
-        tableData.value = FormatObject.formattedTransactionRecord(backend_tableData.value)
+  api.getUserBoughtRecords()
+    .then(response => {
+      console.log("purchaseInfoAxios - API Response:", JSON.parse(JSON.stringify(response)));
+      if (response && response.data && response.code === 0) {
+        backend_tableData.value = response.data;
+        console.log("purchaseInfoAxios - backend_tableData (raw from format.js):", JSON.parse(JSON.stringify(backend_tableData.value)));
+         if (backend_tableData.value.length > 0) {
+            console.log("purchaseInfoAxios - First raw record for conversion:", JSON.parse(JSON.stringify(backend_tableData.value[0])));
+            console.log("purchaseInfoAxios - currentUserId for conversion:", currentUserId.value);
+        }
+        tableData.value = backend_tableData.value.map(record =>
+          convertApiRecordToTableRecord(record, currentUserId.value, false)
+        );
+        console.log("purchaseInfoAxios - final tableData:", JSON.parse(JSON.stringify(tableData.value)));
       } else {
-        console.warn('获取购买记录失败')
+        backend_tableData.value = [];
+        tableData.value = [];
+        console.warn('获取购买记录API响应格式不正确或code不为0 TableInfo:', response);
+        ElMessage.error(t("saleInfo.fetch_records_failed_format"));
       }
-    } else {
-      console.warn('获取购买记录失败')
-    }
-  }).catch(res => {
-    console.warn('获取购买记录失败')
-    console.warn(res)
-  })
+    })
+    .catch(error => {
+      backend_tableData.value = [];
+      tableData.value = [];
+      console.warn('获取购买记录失败 TableInfo:', error);
+      ElMessage.error(t("saleInfo.fetch_records_failed"));
+    });
 }
 
 function tableInfoRefresh() {
@@ -81,161 +176,88 @@ function tableInfoRefresh() {
 }
 
 const event_change_reject = (trade_id) => {
-  console.log('reject')
-  axios.put("/trade/update", {
-    trade_id: trade_id,
-    state: 4
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        console.log('拒绝交易成功')
-        tableInfoRefresh()
-      } else {
-        console.warn('拒绝交易失败')
-      }
-    } else {
-      console.warn('拒绝交易失败')
-    }
-  }).catch(res => {
-    console.warn('拒绝交易失败')
-    console.warn(res)
-  })
+  api.updateTransactionStatus(trade_id, { status: "Cancelled" })
+    .then(() => {
+        ElMessage.success(t("saleInfo.transaction_rejected_success")); 
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        console.warn('拒绝交易失败', error);
+        ElMessage.error(t("saleInfo.transaction_rejected_fail")); 
+    });
 }
 
 const event_change_purchase = (trade_id) => {
-  console.log('purchase')
-  axios.put("/trade/update", {
-    trade_id: trade_id,
-    state: 2
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        console.log('购买请求成功')
-        tableInfoRefresh()
-      }
-      else if (res.data.code === 101) {
-        ElMessage.error(t("saleInfo.purchase_already_buy"))
-      }
-      else {
-        console.warn('购买请求失败')
-      }
-    } else {
-      console.warn('购买请求失败')
-    }
-  }).catch(res => {
-    console.warn('购买请求失败')
-    console.warn(res)
-  })
+  console.log('Attempting to withdraw/cancel (formerly purchase) for trade_id:', trade_id);
+  api.updateTransactionStatus(trade_id, { status: "Cancelled" })
+    .then(() => {
+        ElMessage.success(t("saleInfo.transaction_withdrawn_success"));
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        console.warn('撤销购买(原购买按钮)失败', error);
+        ElMessage.error(t("saleInfo.transaction_withdrawn_fail"));
+    });
 }
 
 const event_change_withdrawn = (trade_id) => {
-  console.log('withdrawn')
-  axios.put("/trade/update", {
-    trade_id: trade_id,
-    state: 0
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        console.log('撤销交易成功')
-        tableInfoRefresh()
-      } else {
-        console.warn('撤销交易失败')
-      }
-    } else {
-      console.warn('撤销交易失败')
-    }
-  }).catch(res => {
-    console.warn('撤销交易失败')
-    console.warn(res)
-  })
+  api.updateTransactionStatus(trade_id, { status: "Cancelled" })
+    .then(() => {
+        ElMessage.success(t("saleInfo.transaction_withdrawn_success"));
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        console.warn('撤销交易失败', error);
+        ElMessage.error(t("saleInfo.transaction_withdrawn_fail"));
+    });
 }
 
 const event_change_shipped = (trade_id) => {
-  console.log('shipped')
-  axios.put("/trade/update", {
-    trade_id: trade_id,
-    state: 6
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        console.log('确认发货成功')
-        tableInfoRefresh()
-      } else {
-        console.warn('确认发货失败')
-      }
-    } else {
-      console.warn('确认发货失败')
-    }
-  }).catch(res => {
-    console.warn('确认发货失败')
-    console.warn(res)
-  })
+  api.updateTransactionStatus(trade_id, { status: "PendingReceipt" })
+    .then(() => {
+        ElMessage.success(t("saleInfo.transaction_shipped_success"));
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        console.warn('确认发货失败', error);
+        ElMessage.error(t("saleInfo.transaction_shipped_fail"));
+    });
 }
 
 const event_change_agree = (trade_id) => {
-  console.log('agreed')
-  axios.put("/trade/update", {
-    trade_id: trade_id,
-    state: 3
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        console.log('同意交易成功')
-        tableInfoRefresh()
-      } else {
-        console.warn('同意交易失败')
-      }
-    } else {
-      console.warn('同意交易失败')
-    }
-  }).catch(res => {
-    console.warn('同意交易失败')
-    console.warn(res)
-  })
+  api.updateTransactionStatus(trade_id, { status: "PendingDelivery" })
+    .then(() => {
+        ElMessage.success(t("saleInfo.transaction_agreed_success"));
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        console.warn('同意交易失败', error);
+        ElMessage.error(t("saleInfo.transaction_agreed_fail"));
+    });
 }
 
 const event_change_not_received = (trade_id) => {
-  console.log('not_received')
-  axios.put("/trade/update", {
-    trade_id: trade_id,
-    state: 3
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        console.log('确认未发货成功')
-        tableInfoRefresh()
-      } else {
-        console.warn('确认未发货失败')
-      }
-    } else {
-      console.warn('确认未发货失败')
-    }
-  }).catch(res => {
-    console.warn('确认未发货失败')
-    console.warn(res)
-  })
+  api.updateTransactionStatus(trade_id, { status: "Dispute" })
+    .then(() => {
+        ElMessage.info(t("saleInfo.transaction_not_received_reported"));
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        console.warn('报告未收到货失败', error);
+        ElMessage.error(t("saleInfo.transaction_report_failed"));
+    });
 }
 
 const event_change_completed = (trade_id) => {
-  console.log('completed')
-  axios.put("/trade/update", {
-    trade_id: trade_id,
-    state: 5
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        console.log('确认收货成功')
-        tableInfoRefresh()
-      } else {
-        console.warn('确认收货失败')
-      }
-    } else {
-      console.warn('确认收货失败')
-    }
-  }).catch(res => {
-    console.warn('确认收货失败')
-    console.warn(res)
-  })
+  api.updateTransactionStatus(trade_id, { status: "Completed" })
+    .then(() => {
+        ElMessage.success(t("saleInfo.transaction_completed_success"));
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        console.warn('确认收货失败', error);
+        ElMessage.error(t("saleInfo.transaction_completed_fail"));
+    });
 }
 
 const create_comment = (trade_id) => {
@@ -255,54 +277,66 @@ const submitComment = () => {
     ElMessage.error(t("saleInfo.empty_comment"))
     return
   }
-  axios.put("/trade/comment", {
-    trade_id: commentForm.trade_id,
-    body: commentForm.content,
-    // rating: commentForm.rating
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        ElMessage.success(t("saleInfo.comment_success"))
-        resetCommentForm()
-        tableInfoRefresh()
-      } else {
-        ElMessage.error(t("saleInfo.comment_fail"))
-      }
-    } else {
-      ElMessage.error(t("saleInfo.comment_fail"))
-    }
-  }).catch(res => {
-    ElMessage.error(t("saleInfo.comment_fail"))
-    console.warn(res)
-  })
-  commentDialogVisible.value = false
+  const commentData = {
+    content: commentForm.content,
+  };
+  if (commentForm.rating > 0) {
+    commentData.rating = commentForm.rating;
+  }
+
+  api.addTransactionComment(commentForm.trade_id, commentData)
+    .then(() => {
+        ElMessage.success(t("saleInfo.comment_success"));
+        resetCommentForm();
+        tableInfoRefresh();
+    })
+    .catch(error => {
+        ElMessage.error(t("saleInfo.comment_fail"));
+        console.warn('Comment submission failed', error);
+    });
 }
+
 const imageViewerVisible = (data_index) => {
-  picture_list_data.value = tableData.value[data_index].picture_list
-  viewerVisible.value = true
+  picture_list_data.value = tableData.value[data_index].picture_list;
+  viewerVisible.value = true;
 }
 
 onMounted(() => {
-  tableInfoRefresh()
+  const storedUserId = localStorage.getItem("userId");
+  console.log("TableInfo onMounted - storedUserId from localStorage:", storedUserId);
+  if (storedUserId) {
+    currentUserId.value = parseInt(storedUserId, 10);
+  }
+  console.log("TableInfo onMounted - currentUserId.value:", currentUserId.value);
+  tableInfoRefresh();
 })
+
+// Placeholder for date formatting, replace with your preferred method (e.g., date-fns, dayjs, or a simple custom one)
+const formatDisplayTime = (dateTimeString) => {
+  if (!dateTimeString) return '';
+  try {
+    return new Date(dateTimeString).toLocaleString();
+  } catch (e) {
+    return dateTimeString; // Fallback to original string if parsing fails
+  }
+};
 </script>
 
 <template>
   <div class="tableInfo-pictureViewer">
     <el-scrollbar height="650">
-      <el-table :data="tableData" stripe border style="width: 95%" scrollbar-always-on>
-        <el-table-column fixed prop="name" :label="t('saleInfo.name_col_table')" width="100" sortable/>
-        <el-table-column prop="picture" :label="t('saleInfo.picture_col_table')" width="200" sortable>
+      <el-table :data="tableData" stripe border style="width: 100%;" scrollbar-always-on empty-text="暂无记录">
+        <el-table-column fixed prop="name" :label="t('saleInfo.name_col_table')" min-width="120" sortable />
+        <el-table-column prop="picture" :label="t('saleInfo.picture_col_table')" width="120" >
           <template #default="scope">
-            <div class="image-preview">
+            <div class="image-preview" v-if="scope.row.picture">
               <el-image
                   style="width: 150px; height: 100px"
-                  :src="FormatObject.formattedImgUrl(scope.row.picture)"
-                  :zoom-rate="1.2"
-                  :max-scale="7"
-                  :min-scale="0.2"
+                  :src="scope.row.picture" 
+                  :preview-src-list="scope.row.picture_list || [scope.row.picture]" 
+                  :initial-index="0"
                   fit="cover"
-                  @click="imageViewerVisible(scope.$index)"
+                  :preview-teleported="true"
               >
                 <template #error>
                   <div class="image-slot">
@@ -318,59 +352,78 @@ onMounted(() => {
                 </template>
               </el-image>
             </div>
+            <div v-else class="image-slot">
+              <el-icon><Picture /></el-icon>
+              <div>{{t("saleInfo.no_picture_available")}}</div>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="price" :label="t('saleInfo.price_col_table')" width="100" sortable/>
-        <el-table-column prop="buyer" :label="t('saleInfo.buyer_col_table')" width="100" sortable/>
-        <el-table-column prop="seller" :label="t('saleInfo.seller_col_table')" width="100" sortable/>
-        <el-table-column prop="id" :label="t('saleInfo.id_col_table')" width="100" sortable/>
-        <el-table-column fixed="right" prop="state" :label="t('saleInfo.state_col_table')" width="150" sortable>
+        <el-table-column v-if="!props.isSell" prop="seller" :label="t('saleInfo.seller_col_table')" width="120" sortable/>
+        <el-table-column v-if="props.isSell" prop="buyer" :label="t('saleInfo.buyer_col_table')" width="120" sortable/>
+        <el-table-column prop="condition" :label="t('saleInfo.condition_col_table')" width="100" sortable />
+        <el-table-column prop="quantity" :label="t('saleInfo.quantity_col_table')" width="80" sortable />
+        <el-table-column prop="create_time" :label="t('saleInfo.create_time_col_table')" width="170" sortable >
+           <template #default="scope">
+            {{ formatDisplayTime(scope.row.create_time) }} 
+          </template>
+        </el-table-column>
+        <el-table-column prop="id" :label="t('saleInfo.id_col_table')" width="120" sortable>
+            <template #default="scope">
+                {{ FormatObject.formattedUUID(scope.row.id) }}
+            </template>
+        </el-table-column>
+        <el-table-column fixed="right" prop="state" :label="t('saleInfo.state_col_table')" width="100" >
           <template #default="scope">
             <StateIcon :state="scope.row.state" />
           </template>
         </el-table-column>
-        <el-table-column fixed="right" prop="operation" :label="t('saleInfo.operation_col_table')" width="300" sortable>
-          <template #default="scope">
-            <template v-if="scope.row.state === 0">
-              <div>{{t("saleInfo.event_operation_None")}}</div>
+        <el-table-column fixed="right" prop="operation" :label="t('saleInfo.operation_col_table')" min-width="100" >
+          <!-- Operations buttons here, their v-if conditions will use scope.row.state -->
+          <!-- This part remains the same as your existing logic for buttons -->
+            <template #default="scope">
+                <template v-if="scope.row.state === 0"> <!-- Initial/Withdrawn -->
+                    <div>{{t("saleInfo.event_operation_None")}}</div>
+                </template>
+                <template v-if="(scope.row.state === 1) && (!props.isSell)"> <!-- Buyer, PendingConfirmation -->
+                    <el-button @click="event_change_withdrawn(scope.row.id)" type="warning" size="small">{{t("saleInfo.event_operation_withdraw_purchase")}}</el-button>
+                </template>
+                <template v-if="(scope.row.state === 2) && (props.isSell)"> <!-- Seller, PendingConfirmation -->
+                    <el-button @click="event_change_agree(scope.row.id)" type="success" size="small">{{t("saleInfo.event_operation_agree")}}</el-button>
+                    <el-button @click="event_change_reject(scope.row.id)" type="danger" size="small">{{t("saleInfo.event_operation_reject")}}</el-button>
+                </template>
+                 <template v-if="(scope.row.state === 2) && (!props.isSell)"> <!-- Buyer, PendingConfirmation (Seller is processing) -->
+                    <el-button @click="event_change_withdrawn(scope.row.id)" type="warning" size="small">{{t("saleInfo.event_operation_withdraw_purchase")}}</el-button>
+                </template>
+                <template v-if="(scope.row.state === 3) && (props.isSell)"> <!-- Seller, PendingDelivery -->
+                    <el-button @click="event_change_shipped(scope.row.id)" type="primary" size="small">{{t("saleInfo.event_operation_shipped")}}</el-button>
+                </template>
+                <template v-if="(scope.row.state === 3) && (!props.isSell)"> <!-- Buyer, PendingDelivery -->
+                     <div>{{t("saleInfo.status_pending_delivery_buyer") }}</div> <!-- e.g., 等待卖家发货 -->
+                </template>
+                <template v-if="scope.row.state === 4"> <!-- Cancelled -->
+                    <div>{{t("saleInfo.status_cancelled") }}</div> <!-- e.g., 交易已取消 -->
+                </template>
+                <template v-if="(scope.row.state === 5) && (!props.isSell)"> <!-- Buyer, Completed -->
+                    <el-button @click="create_comment(scope.row.id)" type="success" size="small">{{t("saleInfo.transaction_evaluation")}}</el-button>
+                </template>
+                <template v-if="(scope.row.state === 5) && (props.isSell)"> <!-- Seller, Completed -->
+                     <div>{{t("saleInfo.status_completed_seller") }}</div> <!-- e.g., 交易已完成 -->
+                </template>
+                <template v-if="(scope.row.state === 6) && (!props.isSell)"> <!-- Buyer, PendingReceipt/Delivering -->
+                    <el-button @click="event_change_completed(scope.row.id)" type="success" size="small">{{t("saleInfo.event_operation_received")}}</el-button>
+                    <el-button @click="event_change_not_received(scope.row.id)" type="danger" size="small">{{t("saleInfo.event_operation_not_received")}}</el-button>
+                </template>
+                <template v-if="(scope.row.state === 6) && (props.isSell)"> <!-- Seller, PendingReceipt/Delivering -->
+                     <div>{{t("saleInfo.status_delivering_seller") }}</div> <!-- e.g., 等待买家收货 -->
+                </template>
+                <template v-if="scope.row.state === 7"> <!-- Dispute -->
+                     <div>{{t("saleInfo.status_dispute") }}</div> <!-- e.g., 交易纠纷中 -->
+                </template>
+                 <template v-if="scope.row.state === -1"> <!-- Unknown/Unmapped -->
+                     <div>{{t("saleInfo.status_unknown_error") }}</div> <!-- e.g., 状态异常 -->
+                </template>
             </template>
-            <template v-if="(scope.row.state === 1) && (props.isSell)">
-              <el-button @click="event_change_reject(scope.row.id)" type="danger">{{t("saleInfo.event_operation_reject")}}</el-button>
-            </template>
-            <template v-if="(scope.row.state === 1) && (!props.isSell)">
-              <el-button @click="event_change_purchase(scope.row.id)" type="success">{{t("saleInfo.event_operation_purchase")}}</el-button>
-              <el-button @click="event_change_withdrawn(scope.row.id)" type="info">{{t("saleInfo.event_operation_withdrawn")}}</el-button>
-            </template>
-            <template v-if="(scope.row.state === 2) && (props.isSell)">
-              <el-button @click="event_change_reject(scope.row.id)" type="danger">{{t("saleInfo.event_operation_reject")}}</el-button>
-              <el-button @click="event_change_agree(scope.row.id)" type="success">{{t("saleInfo.event_operation_agree")}}</el-button>
-            </template>
-            <template v-if="(scope.row.state === 2) && (!props.isSell)">
-              <el-button @click="event_change_withdrawn(scope.row.id)" type="info">{{t("saleInfo.event_operation_withdrawn")}}</el-button>
-            </template>
-            <template v-if="(scope.row.state === 3) && (props.isSell)">
-              <el-button @click="event_change_shipped(scope.row.id)" type="primary">{{t("saleInfo.event_operation_shipped")}}</el-button>
-            </template>
-            <template v-if="(scope.row.state === 3) && (!props.isSell)">
-              <div>{{t("saleInfo.event_operation_None")}}</div>
-            </template>
-            <template v-if="scope.row.state === 4">
-              <div>{{t("saleInfo.event_operation_None")}}</div>
-            </template>
-            <template v-if="scope.row.state === 5 && (props.isSell)" >
-              <div>{{t("saleInfo.event_operation_None")}}</div>
-            </template>
-            <template v-if="scope.row.state === 5 && (!props.isSell)" >
-              <el-button @click="create_comment(scope.row.id)" type="success">{{t("saleInfo.transaction_evaluation")}}</el-button>
-            </template>
-            <template v-if="(scope.row.state === 6) && (props.isSell)">
-              <div>{{t("saleInfo.event_operation_None")}}</div>
-            </template>
-            <template v-if="(scope.row.state === 6) && (!props.isSell)">
-              <el-button @click="event_change_not_received(scope.row.id)" type="danger">{{t("saleInfo.event_operation_not_received")}}</el-button>
-              <el-button @click="event_change_completed(scope.row.id)" type="success">{{t("saleInfo.event_operation_received")}}</el-button>
-            </template>
-          </template>
         </el-table-column>
         <template v-slot:empty>
           <div style="text-align: center; padding: 20px; color: #999;">

@@ -1,7 +1,7 @@
 <script setup>
   import { useRoute, useRouter } from 'vue-router';
   import {computed, onMounted, ref} from "vue";
-  import axios from "@/axios_client/index.js";
+  import api from '@/API_PRO.js'; // 导入新的 API 服务
   import { useI18n } from "vue-i18n";
   import {Sell, ShoppingTrolley, User, Lock, Setting, Refresh, Download, Delete} from "@element-plus/icons-vue";
   import PersonalData from "@/components/profile/PersonalData.vue";
@@ -45,35 +45,36 @@
 
     if (host_username.value === search_username.value) {
       router.push('/profile');
+      return; // Return early if redirecting
     }
 
-    axios.get("/user/info", {
-      params: {
-        username: search_username.value
-      }
-    }).then(res => {
-      if(res.status === 200){
-        if (res.data.code === 0) {
-          database_id.value = res.data.data.id;
-          username.value = res.data.data.username;
-          email.value = res.data.data.email;
-          student_id.value = res.data.data.profile.student_id;
-          contact.value = res.data.data.profile.contact;
-          facauty.value = res.data.data.profile.facauty;
-          dormitory.value = res.data.data.profile.dormitory;
+    api.getUserProfile(search_username.value)
+      .then(data => {
+        database_id.value = data.id;
+        username.value = data.username;
+        email.value = data.email;
+        if (data.profile) {
+          student_id.value = data.profile.student_id;
+          contact.value = data.profile.contact;
+          facauty.value = data.profile.facauty;
+          dormitory.value = data.profile.dormitory;
+        } else {
+          // Handle case where profile might be null or undefined
+          student_id.value = "";
+          contact.value = "";
+          facauty.value = "";
+          dormitory.value = "";
         }
-        else{
-          console.warn("获取用户信息失败")
-        }
-      }
-      else{
-        console.warn("获取用户信息失败")
-      }
-      componentKey.value += 1;
-    }).catch(res => {
-      console.warn("获取用户信息失败")
-      console.warn(res)
-    })
+      })
+      .catch(error => {
+        console.warn("获取用户信息失败 ProfileSearch:", error);
+        ElMessage.error(t('profile.fetch_user_info_failed')); // Add to i18n
+        // Redirect to a safe page or show a user not found message
+        router.push('/home'); 
+      })
+      .finally(() => {
+        componentKey.value += 1;
+      });
   });
 
   const handleSelect = (key) => {

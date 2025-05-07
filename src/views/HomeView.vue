@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {Refresh, Search} from "@element-plus/icons-vue";
-import axios from '../axios_client/index.js';
+import api from '@/API_PRO.js'; // 导入新的 API 服务
 import {ElMessage} from "element-plus";
 import PurchaseGoodsCard from "@/components/home/PurchaseGoodsCard.vue";
 
@@ -66,48 +66,45 @@ const handleSearch = () => {
     ElMessage.warning(t('home.search_empty'));
     return;
   }
-  axios.post("/search", {
-    key: searchQuery.value
-  }).then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        cardList.value = res.data.data;
-      }
-      else if (res.data.code === 103) {
+  api.getProductList({ search: searchQuery.value })
+    .then(data => {
+      cardList.value = data;
+      if (!data || data.length === 0) {
         ElMessage.info(t('home.search_get_none'));
         cardList.value = [];
       }
-      else {
-        ElMessage.error(t('home.search_api_failure'));
-      }
-    }
-    else {
+    })
+    .catch(error => {
+      console.error("Search API failure:", error);
       ElMessage.error(t('home.search_api_failure'));
-    }
-  })
+      cardList.value = [];
+    });
   componentKey.value += 1;
 };
 
 const recommendCall = () => {
-  axios.get('/recommend').then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        cardList.value = res.data.data;
+  api.getProductList()
+    .then(data => {
+      cardList.value = data;
+      if (data && data.length >= 3) {
+        top_item_1.value = data[0];
+        top_item_2.value = data[1];
+        top_item_3.value = data[2];
+      } else {
+        top_item_1.value = {}; 
+        top_item_2.value = {};
+        top_item_3.value = {};
       }
-      else {
-        ElMessage.error(t('home.recommend_api_failure'));
-        cardList.value = [];
-      }
-    }
-    else {
+    })
+    .catch(error => {
+      console.error("Recommend API failure:", error);
       ElMessage.error(t('home.recommend_api_failure'));
       cardList.value = [];
-    }
-  })
+      top_item_1.value = {};
+      top_item_2.value = {};
+      top_item_3.value = {};
+    });
   componentKey.value += 1;
-  top_item_1.value = cardList.value[0];
-  top_item_2.value = cardList.value[1];
-  top_item_3.value = cardList.value[2];
   searchQuery.value = "";
 };
 

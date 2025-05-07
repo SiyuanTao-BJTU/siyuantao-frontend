@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import {ChatLineRound, Download, House, Phone, Sell, Switch, User} from "@element-plus/icons-vue";
 import {ElMessage} from "element-plus";
-import axios from '../axios_client/index.js';
+import api from '@/API_PRO.js';
 import WebSocketService from "@/socket_client/socket.js";
 
 // 组件全局变量定义
@@ -13,36 +13,39 @@ const router = useRouter();
 const route = useRoute();
 const MODE = process.env.NODE_ENV;
 let username = ref('');
-let avatar_char = computed(() => username.value.slice(0, 2).toUpperCase());
+let avatar_char = computed(() => {
+  // Ensure username.value is a string and not null/undefined before calling slice
+  return (username.value && typeof username.value === 'string') ? username.value.slice(0, 2).toUpperCase() : '??';
+});
 
 // 获取用户名的函数
 const fetchUsernameAndId = async () => {
   try {
-    axios.get('/user/info').then((res) => {
-      if (res.status === 200) {
-        if (res.data.code === 0){
-          username.value = res.data.data.username;
-          localStorage.setItem('username', res.data.data.username);
-          localStorage.setItem('userId', res.data.data.id);
-        }
-        else{
-          console.warn(res.data);
+    api.getUserProfile()
+      .then(response => { // Changed data to response
+        if (response && response.data && response.code === 0) {
+          const userInfo = response.data; // Actual user data is in response.data
+          username.value = userInfo.username;
+          localStorage.setItem('username', userInfo.username);
+          localStorage.setItem('userId', userInfo.id);
+           // Re-initialize WebSocket if userId is now available and was undefined before
+          if (userInfo.id && WebSocketService.userId === 'undefined') { 
+            WebSocketService.init(userInfo.id);
+          }
+        } else {
+          console.warn("TopNav: 获取用户信息API响应格式不正确或code不为0:", response);
           ElMessage.error(t('navigator.username_error'));
           username.value = '??';
         }
-      } else {
-        console.warn(res.data);
+      })
+      .catch(error => {
+        console.error("获取用户信息失败 TopNav:", error);
         ElMessage.error(t('navigator.username_error'));
         username.value = '??';
-      }
-    }).catch((error) => {
-      console.error(error);
-      ElMessage.error(t('navigator.username_error'));
-      username.value = '??';
-    });
+      });
   }
   catch (error) {
-    console.error(error);
+    console.error("Outer catch in fetchUsernameAndId:", error);
     ElMessage.error(t('navigator.username_error'));
     username.value = '??';
   }
@@ -101,7 +104,7 @@ const handleSelect = (key, keyPath) => {
     }
   }
   else if (key[0] === "8") {
-    const emailURL = "hongyu.yan@163.com";
+    const emailURL = "xkpu7496@gmail.com";
     window.location.href = `mailto:${emailURL}`;
   }
 };
@@ -172,7 +175,7 @@ watch(
     </el-menu-item>
     <el-menu-item index="8">
       <el-icon><Phone /></el-icon>
-      <span>hongyu.yan@163.com</span>
+      <span>@xkpu7496@gmail.com</span>
     </el-menu-item>
     <el-menu-item index="7" v-if="MODE !== 'desktop'">
       <el-icon><Download /></el-icon>

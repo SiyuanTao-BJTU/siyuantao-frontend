@@ -2,7 +2,7 @@
 import {ref, onMounted, computed} from 'vue';
 import router from "@/router/index.js";
 import { useI18n } from "vue-i18n";
-import axios from '../axios_client/index.js';
+import api from '@/API_PRO.js';
 import {ElMessage} from "element-plus";
 import {RefreshRight} from "@element-plus/icons-vue";
 import AddItemDialog from "@/components/sell/AddItemDialog.vue";
@@ -47,22 +47,25 @@ const dialogOpen = () => {
 }
 
 const fetch_room_list = () => {
-  axios.get('/item/list').then(res => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        itemList.value = res.data.data;
-      } else if (res.data.code === 101){
-        console.log("商品列表为空");
-        itemList.value = [];
+  const userId = localStorage.getItem('userId');
+  if (!userId) {
+    ElMessage.error(t('sell.user_id_not_found'));
+    itemList.value = [];
+    componentKey.value += 1;
+    return;
+  }
+  api.getProductList({ owner_id: userId })
+    .then(data => {
+      itemList.value = data;
+      if (!data || data.length === 0) {
+        console.log("当前用户发布的商品列表为空");
       }
-    } else {
+    })
+    .catch(error => {
+      console.error("Fetch item list failure:", error);
       ElMessage.error(t('sell.api_failure'));
       itemList.value = [];
-    }
-  }).catch(err => {
-    ElMessage.error(t('sell.api_failure'));
-    itemList.value = [];
-  })
+    });
   componentKey.value += 1;
 }
 

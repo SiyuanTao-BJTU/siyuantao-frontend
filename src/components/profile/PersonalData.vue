@@ -1,23 +1,25 @@
 <script setup>
   import {onMounted, ref, reactive, computed} from "vue";
   import { useI18n } from "vue-i18n";
-  import {Back, EditPen} from "@element-plus/icons-vue";
-  import axios from "@/axios_client/index.js";
-  import { ElMessage } from "element-plus";
+  import {Back, EditPen, Plus} from "@element-plus/icons-vue";
+  import api from '@/API_PRO.js'; // 导入新的 API 服务
+  import { ElMessage, ElDescriptions, ElDescriptionsItem, ElTag, ElUpload } from "element-plus";
   import PatternCheck from "@/utils/pattern.js";
   import router from "@/router/index.js";
+  import StudentAuthDialog from './StudentAuthDialog.vue'; // Import the new dialog
 
   // 组件事件与属性定义
   const props = defineProps({
-    database_id: String,
+    database_id: [String, Number],
     username: String,
     email: String,
-    student_id: Number,
-    contact: Number,
-    facauty: String, // 院系
-    dormitory: String,
+    contact: [String, Number],
+    bio: String,
+    avatarUrl: String,
+    studentProfileData: Object,
     componentKey: Number,
-    isSearching: Boolean
+    isSearching: Boolean,
+    credit_score: [Number, null]
   });
 
   const emits = defineEmits([
@@ -29,23 +31,23 @@
   let isEdit = ref(false); // 是否进入个人信息编辑状态
   let type_radio = ref("Calendar")
   let comment_info = ref([]); // 评论信息
+  let studentAuthDialogVisible = ref(false); // Control visibility of the new dialog
 
   const origin_form = reactive({
     username: "",
     email: "",
-    student_id: null,
-    contact: null,
-    facauty: "",
-    dormitory: "",
+    contact: "",
+    bio: "",
+    avatarUrl: "",
+    credit_score: null
   })
 
   const modify_form = reactive({
     username: "",
     email: "",
-    student_id: "",
     contact: "",
-    facauty: "",
-    dormitory: "",
+    bio: "",
+    avatarUrl: ""
   })
 
   const calendar = ref("null")
@@ -53,17 +55,109 @@
     if (!calendar.value) return
     calendar.value.selectDate(val)
   }
-  let origin_avatar_char = computed(() => origin_form.username.slice(0, 2).toUpperCase());
-  let modify_avatar_char = computed(() => modify_form.username.slice(0, 2).toUpperCase());
+  let origin_avatar_char = computed(() => (origin_form.username || "").slice(0, 2).toUpperCase());
+  let modify_avatar_char = computed(() => (modify_form.username || "").slice(0, 2).toUpperCase());
+
+  // Avatar Upload related
+  const imageUrl = ref('') // For previewing uploaded image
+
+  // Computed property for el-rate v-model (0-5 scale)
+  const creditRate = computed(() => {
+    if (origin_form.credit_score === null || origin_form.credit_score === undefined) {
+      return 0;
+    }
+    // Convert 0-100 scale to 0-5 scale
+    return Math.max(0, Math.min(5, origin_form.credit_score / 20));
+  });
+
+  // Optional: Computed property for text displayed next to stars
+  const creditRateText = computed(() => {
+    const score = origin_form.credit_score;
+    if (score === null || score === undefined) return t('profile.credit_score_unavailable');
+    // You can customize these texts or use el-rate's default behavior
+    if (score >= 90) return `${t('profile.credit_status_excellent')} (${score})`; 
+    if (score >= 80) return `${t('profile.credit_status_good')} (${score})`;
+    if (score >= 70) return `${t('profile.credit_status_fair')}) (${score})`; // Added Fair for more granularity with 5 stars
+    if (score >= 60) return `${t('profile.credit_status_average')} (${score})`;
+    return `${t('profile.credit_status_low')} (${score})`;
+  });
+
+  const handleAvatarSuccess = (
+    response, // This should be the 'data' part of the backend response, i.e., the UploadedImage object
+    uploadFile
+  ) => {
+    if (response && response.url) {
+      modify_form.avatarUrl = response.url;
+      if (uploadFile.raw) { 
+        imageUrl.value = URL.createObjectURL(uploadFile.raw); 
+      }
+      ElMessage.success(t('profile.avatar_upload_success'));
+    } else {
+      // This case might be less common if customAvatarUpload handles API errors pobreza
+      ElMessage.error(t('profile.avatar_upload_fail_response')); 
+    }
+  }
+
+  const beforeAvatarUpload = (rawFile) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(rawFile.type)) {
+      ElMessage.error(t('profile.avatar_type_error')) // Add this to i18n: 'Avatar picture must be JPG/PNG/GIF format!'
+      return false
+    }
+    if (rawFile.size / 1024 / 1024 > 2) {
+      ElMessage.error(t('profile.avatar_size_error')) // Add this to i18n: 'Avatar picture size can not exceed 2MB!'
+      return false
+    }
+    return true
+  }
+
+  // Custom HTTP request for avatar upload
+  const customAvatarUpload = async (options) => {
+    const { file, onSuccess, onError } = options;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_type', 'avatar');
+
+    try {
+      const response = await api.imagesUploadCreate(formData); // Use the actual API client method
+      
+      // Assuming api.imagesUploadCreate returns a wrapped response like: 
+      // { code: 0, message: '...', data: UploadedImageObject }
+      if (response && response.data && response.data.url) { // Check for the nested data object and its url
+         if (onSuccess) {
+            onSuccess(response.data, file); // Pass the UploadedImage object (response.data) to handleAvatarSuccess
+        }
+      } else {
+        // Handle cases where response or response.data is not as expected, or no URL
+        const errorMessage = (response && response.message) ? response.message : t('profile.avatar_upload_fail_response');
+        ElMessage.error(errorMessage);
+        if (onError) onError(new Error(errorMessage));
+      }
+
+    } catch (error) {
+      console.error("Avatar upload API request failed:", error);
+      // Handle specific HTTP error codes if possible from the error object
+      // e.g., if (error.response && error.response.status === 413) { ElMessage.error(t('profile.avatar_size_error_from_server')); }
+      let errorMessage = t('profile.avatar_upload_api_error');
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message; // Use backend error message if available
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      ElMessage.error(errorMessage);
+      if (onError) {
+        onError(error); 
+      }
+    }
+  };
 
 // 组件全局函数定义
   function clearModifyInfo() {
-    modify_form.username = origin_form.username
-    modify_form.email = origin_form.email
-    modify_form.student_id = origin_form.student_id
-    modify_form.contact = origin_form.contact
-    modify_form.facauty = origin_form.facauty
-    modify_form.dormitory = origin_form.dormitory
+    modify_form.username = origin_form.username;
+    modify_form.email = origin_form.email;
+    modify_form.contact = origin_form.contact;
+    modify_form.bio = origin_form.bio;
+    modify_form.avatarUrl = origin_form.avatarUrl;
   }
 
   const handleEdit = () => {
@@ -76,54 +170,35 @@
       ElMessage.error(t(username_res.error))
       return;
     }
-    axios.put("/user/update", {
+
+    const payload = {
       username: modify_form.username,
-      email: modify_form.email,
-      profile: {
-        student_id: modify_form.student_id,
-        contact: modify_form.contact,
-        facauty: modify_form.facauty,
-        dormitory: modify_form.dormitory
-      }
-    }).then(res => {
-      if(res.status === 200){
-        if (res.data.code === 0) {
-          origin_form.username = res.data.data.username
-          origin_form.email = res.data.data.email
-          origin_form.student_id = res.data.data.profile.student_id
-          origin_form.contact = res.data.data.profile.contact
-          origin_form.facauty = res.data.data.profile.facauty
-          origin_form.dormitory = res.data.data.profile.dormitory
-          localStorage.setItem("username", res.data.data.username)
-          emits("updateSuccess", {
-            username: origin_form.username,
-            email: origin_form.email,
-            student_id: origin_form.student_id,
-            contact: origin_form.contact,
-            facauty: origin_form.facauty,
-            dormitory: origin_form.dormitory,
-          })
-          ElMessage.success(t("profile.info_updated_success"))
-          clearModifyInfo()
-        }
-        else{
-          console.warn("更新用户信息失败")
-          ElMessage.error(t("profile.info_updated_fail"))
-          clearModifyInfo()
-        }
-      }
-      else{
-        console.warn("更新用户信息失败")
-        ElMessage.error(t("profile.info_updated_fail"))
-        clearModifyInfo()
-      }
-    }).catch(res => {
-      console.warn("更新用户信息失败")
-      ElMessage.error(t("profile.info_updated_fail"))
-      console.warn(res)
-      clearModifyInfo()
-    })
-    isEdit.value = false
+      email: modify_form.email || null,
+      contact_info: modify_form.contact || null,
+      bio: modify_form.bio || null,
+      avatar_url: modify_form.avatarUrl || null,
+    };
+
+    api.updateUserProfile(payload)
+      .then(updatedUserResponse => {
+        const user = updatedUserResponse.data || updatedUserResponse;
+          origin_form.username = user.username;
+          origin_form.email = user.email || "";
+          origin_form.contact = user.contact_info || "";
+          origin_form.bio = user.bio || "";
+          origin_form.avatarUrl = user.avatar_url || "";
+          origin_form.credit_score = user.credit_score !== undefined ? user.credit_score : null;
+
+          localStorage.setItem("username", user.username);
+          emits("updateSuccess", user); 
+          ElMessage.success(t("profile.update_success"));
+          isEdit.value = false;
+          clearModifyInfo();
+      })
+      .catch(error => {
+        console.warn("更新用户信息失败 PersonalData:", error);
+        ElMessage.error(t("profile.update_fail"));
+      });
   }
 
   const handleCancel = () => {
@@ -149,42 +224,73 @@
     window.history.back();
   }
 
+  function getAuthStatusType(statusValueFromBackend) {
+    if (!statusValueFromBackend) return 'info';
+    const lowerStatus = String(statusValueFromBackend).toLowerCase();
+
+    if (lowerStatus.includes('pending')) return 'warning';
+    if (lowerStatus.includes('verified')) return 'success';
+    if (lowerStatus.includes('rejected')) return 'danger';
+    return 'info'; // Default for unsubmitted or unknown
+  }
+
+  function formatAuthStatus(statusValueFromBackend) {
+    if (!statusValueFromBackend) return t('profile.auth_status_unsubmitted');
+    
+    const lowerStatus = String(statusValueFromBackend).toLowerCase();
+    let i18nKeySuffix = 'unknown';
+
+    if (lowerStatus.includes('pending')) {
+      i18nKeySuffix = 'pending';
+    } else if (lowerStatus.includes('verified')) {
+      i18nKeySuffix = 'verified';
+    } else if (lowerStatus.includes('rejected')) {
+      i18nKeySuffix = 'rejected';
+    } else if (lowerStatus.includes('unsubmitted')) {
+      i18nKeySuffix = 'unsubmitted';
+    }
+    // Ensure 'unknown' is also a valid key in your i18n files or handle default
+    return t(`profile.auth_status_${i18nKeySuffix}`);
+  }
+
+  const handleApplyForAuth = () => {
+    studentAuthDialogVisible.value = true;
+  };
+
+  const handleAuthSubmitted = () => {
+    ElMessage.info(t('profile.auth_data_refresh_notice'));
+    emits('updateSuccess'); 
+  };
+  
+  const showApplyAuthButton = computed(() => {
+    if (props.isSearching) return false;
+    if (!props.studentProfileData || !props.studentProfileData.student_auth_status) return true; // No data or no status
+    return ['REJECTED', 'UNSUBMITTED'].includes(props.studentProfileData.student_auth_status);
+  });
+
   onMounted(() => {
-    origin_form.username = props.username
-    origin_form.email = props.email
-    origin_form.student_id = props.student_id
-    origin_form.contact = props.contact
-    origin_form.facauty = props.facauty
-    origin_form.dormitory = props.dormitory
+    console.log("PersonalData onMounted - props received:", JSON.parse(JSON.stringify(props)));
 
-    modify_form.username = props.username
-    modify_form.email = props.email
-    modify_form.student_id = props.student_id
-    modify_form.contact = props.contact
-    modify_form.facauty = props.facauty
-    modify_form.dormitory = props.dormitory
+    origin_form.username = props.username || "";
+    origin_form.email = props.email || "";
+    origin_form.contact = props.contact || "";
+    origin_form.bio = props.bio || "";
+    origin_form.avatarUrl = props.avatarUrl || "";
+    origin_form.credit_score = props.credit_score !== undefined ? props.credit_score : null;
 
-    if (props.database_id){
-      axios.get("/user/comment", {
-        params: {
-          id: props.database_id
-        }
-      }).then((res) => {
-        if (res.status === 200) {
-          if (res.data.code === 0) {
-            comment_info.value = res.data.data;
-          }
-          else {
-            console.warn("获取评论失败")
-          }
-        }
-        else {
-          console.warn("获取评论失败")
-        }
-      }).catch((res) => {
-        console.warn("获取评论失败")
-        console.warn(res)
-      })
+    console.log("PersonalData onMounted - origin_form initialized:", JSON.parse(JSON.stringify(origin_form)));
+
+    clearModifyInfo();
+    console.log("PersonalData onMounted - modify_form after clearModifyInfo:", JSON.parse(JSON.stringify(modify_form)));
+
+    if (props.database_id && props.database_id !== 'null' && props.database_id !== null && !props.isSearching){
+      api.getUserTradeComments(props.database_id)
+        .then(data => {
+          comment_info.value = data.data || data;
+        })
+        .catch(error => {
+          console.warn("获取评论失败 PersonalData:", error);
+        });
     }
   })
 </script>
@@ -192,8 +298,9 @@
 <template>
   <div class="personal-data-container">
     <div class="personal-data-title">
-      <h2 v-if="!isSearching">{{ t("profile.personal_data_title") }}</h2>
-      <h2 v-else>{{t("profile.personal_data_title_searching")}}</h2>
+      <el-button v-if="isSearching" @click="handleBack" class="back-button" :icon="Back" circle></el-button>
+      <h2 v-if="!isSearching">{{ t("profile.title") }}</h2>
+      <h2 v-else>{{t("profile.personal_data_title_searching")}}{{ username ? ` - ${username}` : ''}}</h2>
     </div>
     <div class="profile-data-functional-block">
       <div v-if="isEdit">
@@ -205,248 +312,326 @@
           <el-icon><EditPen /></el-icon>
            {{ t("profile.edit_button") }}
         </el-button>
-        <el-button @click="handleBack" v-else>
-          <el-icon><Back /></el-icon>
-          {{t("itemInfo.back")}}
-        </el-button>
       </div>
     </div>
-    <div class="above-container">
-      <div class="profile-detail-block">
-        <div v-if="isEdit" class="edit-selector">
-          <div class="avatar-container">
-            <el-avatar :size="100" shape="square" class="avatar">{{modify_avatar_char}}</el-avatar>
-            <h3>{{username}}</h3>
+
+    <el-form
+        v-if="isEdit"
+        label-position="top"
+        class="profile-form"
+    >
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item :label="t('profile.username')">
+            <el-input v-model="modify_form.username" :placeholder="t('profile.username_prompt')"/>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item :label="t('profile.email')">
+            <el-input v-model="modify_form.email" :placeholder="t('profile.email_prompt')"/>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item :label="t('profile.contact')">
+            <el-input v-model="modify_form.contact" :placeholder="t('profile.contact_prompt')"/>
+          </el-form-item>
+        </el-col>
+         <el-col :span="12">
+            <el-form-item :label="t('profile.avatar_url')">
+              <el-upload
+                class="avatar-uploader"
+                action="#" 
+                :show-file-list="false"
+                :on-success="handleAvatarSuccess"
+                :before-upload="beforeAvatarUpload"
+                :http-request="customAvatarUpload" 
+              >
+                <img v-if="modify_form.avatarUrl" :src="modify_form.avatarUrl" class="avatar-preview" />
+                <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+              </el-upload>
+              <el-input v-model="modify_form.avatarUrl" :placeholder="t('profile.avatar_url_fallback_prompt')" style="margin-top: 10px;"/> 
+              <!-- Fallback input for URL, maybe hide if uploader is preferred -->
+            </el-form-item>
+        </el-col>
+      </el-row>
+      <el-form-item :label="t('profile.bio')">
+        <el-input type="textarea" v-model="modify_form.bio" :rows="3" :placeholder="t('profile.bio_prompt')"/>
+      </el-form-item>
+    </el-form>
+
+    <el-descriptions v-else :column="2" border class="profile-descriptions">
+        <template #title>
+            <div style="display: flex; align-items: center;">
+                 <el-avatar v-if="!origin_form.avatarUrl" :size="50" class="profile-avatar-desc">{{origin_avatar_char}}</el-avatar>
+                 <el-avatar v-else :src="origin_form.avatarUrl" :size="50" class="profile-avatar-desc"/>
+                 <span style="margin-left: 10px; font-size: 1.2em;">{{ origin_form.username }}</span>
+            </div>
+        </template>
+
+        <el-descriptions-item :label="t('profile.username')">{{ origin_form.username || t('profile.detail_none_shown') }}</el-descriptions-item>
+        <el-descriptions-item :label="t('profile.email')">{{ origin_form.email || t('profile.detail_none_shown') }}</el-descriptions-item>
+        <el-descriptions-item :label="t('profile.contact')">{{ origin_form.contact || t('profile.detail_none_shown') }}</el-descriptions-item>
+        <el-descriptions-item :label="t('profile.credit_score')" :span="origin_form.bio ? 1 : 2">
+          <div style="display: flex; align-items: center; margin-top: 5px;">
+            <el-rate
+              v-model="creditRate"
+              disabled
+              show-score
+              score-template="{value} 星" 
+              :texts="[t('profile.credit_status_low'), t('profile.credit_status_average'), t('profile.credit_status_fair'), t('profile.credit_status_good'), t('profile.credit_status_excellent')]"
+              disabled-void-color="#CACACA"
+            />
+            <span v-if="origin_form.credit_score !== null" style="margin-left: 10px; font-size: 0.9em; color: #606266;">({{ origin_form.credit_score }} / 100)</span>
           </div>
-          <el-form :model="modify_form" label-position="top">
-            <el-form-item :label="t('profile.username')" >
-              <el-input v-model="modify_form.username"/>
-            </el-form-item>
-            <el-form-item :label="t('profile.email')">
-              <el-input v-model="modify_form.email"/>
-            </el-form-item>
-            <el-form-item :label="t('profile.student_id')">
-              <el-input v-model="modify_form.student_id"/>
-            </el-form-item>
-            <el-form-item :label="t('profile.contact')">
-              <el-input v-model="modify_form.contact"/>
-            </el-form-item>
-            <el-form-item :label="t('profile.facauty')">
-              <el-input v-model="modify_form.facauty"/>
-            </el-form-item>
-            <el-form-item :label="t('profile.dormitory')">
-              <el-input v-model="modify_form.dormitory"/>
-            </el-form-item>
-          </el-form>
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('profile.bio')" :span="2" v-if="origin_form.bio">{{ origin_form.bio || t('profile.detail_none_shown') }}</el-descriptions-item>
+    </el-descriptions>
+    
+    <!-- Student Authentication Section -->
+    <div v-if="!isSearching" class="student-auth-section">
+        <el-divider />
+        <h3>{{ t('profile.student_auth_section_title') }}</h3>
+        <el-descriptions v-if="studentProfileData && studentProfileData.student_auth_status && studentProfileData.student_auth_status !== 'UNSUBMITTED'" :column="1" border class="student-auth-descriptions">
+            <el-descriptions-item :label="t('profile.verified_name')">{{ studentProfileData.verified_real_name || t('profile.detail_none_shown') }}</el-descriptions-item>
+            <el-descriptions-item :label="t('profile.verified_student_id')">{{ studentProfileData.student_id || t('profile.detail_none_shown') }}</el-descriptions-item>
+            <el-descriptions-item :label="t('profile.verified_department')">{{ studentProfileData.verified_department || t('profile.detail_none_shown') }}</el-descriptions-item>
+            <el-descriptions-item :label="t('profile.verified_dormitory')">{{ studentProfileData.verified_dormitory || t('profile.detail_none_shown') }}</el-descriptions-item>
+            <el-descriptions-item :label="t('profile.student_auth_status')">
+              <el-tag :type="getAuthStatusType(studentProfileData.student_auth_status)">
+                {{ formatAuthStatus(studentProfileData.student_auth_status) }}
+              </el-tag>
+            </el-descriptions-item>
+        </el-descriptions>
+        <div v-else-if="!studentProfileData || !studentProfileData.student_auth_status || studentProfileData.student_auth_status === 'UNSUBMITTED'" class="no-auth-data">
+             <p>{{ t('profile.auth_status_unsubmitted') }}.</p>
         </div>
-        <div v-else class="edit-selector">
-          <div class="avatar-container">
-            <el-avatar :size="100" shape="square" class="avatar">{{origin_avatar_char}}</el-avatar>
-            <h3>{{username}}</h3>
-          </div>
-          <el-form :model="origin_form" label-position="top">
-            <el-form-item :label="t('profile.username')" >
-              <el-input v-model="origin_form.username" disabled/>
-            </el-form-item>
-            <el-form-item :label="t('profile.email')">
-              <el-input v-model="origin_form.email" disabled/>
-            </el-form-item>
-            <el-form-item :label="t('profile.student_id')">
-              <el-input v-model="origin_form.student_id" disabled/>
-            </el-form-item>
-            <el-form-item :label="t('profile.contact')">
-              <el-input v-model="origin_form.contact" disabled/>
-            </el-form-item>
-            <el-form-item :label="t('profile.facauty')">
-              <el-input v-model="origin_form.facauty" disabled/>
-            </el-form-item>
-            <el-form-item :label="t('profile.dormitory')">
-              <el-input v-model="origin_form.dormitory" disabled/>
-            </el-form-item>
-          </el-form>
+
+        <div v-if="showApplyAuthButton" class="apply-auth-button-container">
+            <el-button type="success" @click="handleApplyForAuth">
+              {{ t('profile.apply_for_auth_button') }}
+            </el-button>
         </div>
+    </div>
+
+    <StudentAuthDialog
+        :is-visible="studentAuthDialogVisible"
+        :existing-auth-data="studentProfileData"
+        @close="studentAuthDialogVisible = false"
+        @authSubmitted="handleAuthSubmitted"
+    />
+
+    <div class="comments-calendar-section">
+      <el-radio-group v-model="type_radio" size="default" class="radio-group">
+        <el-radio-button label="Calendar" />
+        <el-radio-button label="Comments" />
+      </el-radio-group>
+
+      <div v-if="type_radio === 'Calendar'" class="calendar-area">
+        <h3>{{t("profile.calendar_area")}}</h3>
+        <el-calendar ref="calendar" />
       </div>
-      <div class="other-info-block">
-        <div class="other-type-radio">
-          <el-radio-group v-model="type_radio" size="large" class="radio-group">
-            <el-radio-button :label="t('profile.calendar_area')" value="Calendar" />
-            <el-radio-button :label="t('profile.comments_area')" value="Comments Area" />
-          </el-radio-group>
+
+      <div v-if="type_radio === 'Comments'" class="comments-area">
+        <h3>{{t("profile.comments_area")}}</h3>
+        <div v-if="comment_info.length > 0" class="comment-list">
+          <div v-for="comment in comment_info" :key="comment.id" class="comment-item">
+            <div class="comment-header">
+              <el-avatar class="comment-avatar" :size="25" @click="handleOtherAvatarClick(comment.commenter_username)">
+                {{ getAvatar(comment.commenter_username) }}
+              </el-avatar>
+              <span class="comment-username" @click="handleOtherAvatarClick(comment.commenter_username)">{{ comment.commenter_username }}</span>
+              <span class="comment-time">{{ formatTime(comment.created_at) }}</span>
+            </div>
+            <div class="comment-body">
+              <p>{{ comment.content }}</p>
+            </div>
+          </div>
         </div>
-        <div v-if="type_radio === 'Calendar'" class="calendar-block">
-          <el-calendar ref="calendar">
-            <template #header="{ date }">
-              <span class="date-string">{{ date }}</span>
-            </template>
-          </el-calendar>
-        </div>
-        <div v-else class="comment-block">
-          <el-scrollbar height="550" v-if="comment_info.length !== 0">
-            <el-card
-                v-for="item in comment_info"
-                :key="item.id"
-                class="comment-card"
-                shadow="always"
-                style="margin-bottom: 10px; padding: 10px;"
-            >
-              <div class="comment-item">
-                <el-avatar
-                    :size="35"
-                    shape="square"
-                    class="avatar_small"
-                    @click="handleOtherAvatarClick(item.owner)">
-                  {{getAvatar(item.owner)}}
-                </el-avatar>
-                <div class="content">
-                  <div class="header">
-                    <div class="owner">{{ item.owner }}</div>
-                    <div class="time">{{ formatTime(item.time) }}</div>
-                  </div>
-                  <div class="body">{{ item.comment_body }}</div>
-                </div>
-              </div>
-            </el-card>
-          </el-scrollbar>
-          <el-scrollbar height="550" v-else>
-            <el-empty :description="t('profile.no_comment')"/>
-          </el-scrollbar>
+        <div v-else class="no-comments">
+          <p>{{t("profile.no_comment")}}</p>
         </div>
       </div>
     </div>
-    <div class="rest-container" />
   </div>
 </template>
 
 <style scoped>
-.above-container {
-  margin-top: 20px;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-}
-
-.avatar-container {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  margin-bottom: 20px;
-}
-
-.avatar {
-  font-size: 40px;
-  background-color: #79b7f8;
-  color: #ffffff;
-}
-
-
-.avatar_small {
-  font-size: 20px;
-  background-color: #79b7f8;
-  color: #ffffff;
-}
-
-.edit-selector h3 {
-  margin-left: 10px;
-  font-size: 32px;
-  font-weight: bold;
-}
-
 .personal-data-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
 }
 
 .personal-data-title {
-  width: 100%;
   display: flex;
-  justify-content: center;
-}
-
-.profile-data-functional-block {
-  display: flex;
-  justify-content: flex-end;
-  margin-right: 20px;
-}
-
-.personal-data-title h2 {
-  font-size: 28px;
-  font-weight: 800;
-  margin-top: 20px;
+  align-items: center;
   margin-bottom: 20px;
 }
 
-.profile-detail-block {
-  margin-top: 5%;
-  margin-left: 5%;
-  margin-right: 5%;
-  width: 50%;
+.personal-data-title h2 {
+  margin: 0;
+  font-size: 1.8em;
+  color: #303133;
 }
 
-.other-info-block {
-  margin-top: 5%;
-  margin-left: 5%;
-  margin-right: 5%;
-  width: 40%;
-  border-left: 1px solid #dcdcdc;
-  padding-left: 20px;
+.back-button {
+  margin-right: 15px;
 }
 
-.edit-selector {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+.profile-data-functional-block {
+  margin-bottom: 25px;
+  text-align: right; /* Aligns edit/save/cancel buttons to the right */
 }
 
-.el-form-item {
-  margin-bottom: 30px;
+.profile-form .el-form-item {
+  margin-bottom: 18px;
 }
 
-.date-string {
-  font-size: 20px;
-  font-weight: 800;
+.profile-descriptions {
+  margin-top: 10px; /* Add some space above the descriptions */
 }
 
-.rest-container {
-  width: 90%;
-  margin-left: 5%;
-  margin-right: 5%;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: flex-start;
-  border-top: 1px solid #dcdcdc;
+.profile-avatar-desc {
+  margin-right: 10px;
+  border: 2px solid #eee;
+}
+
+.student-auth-section {
+  margin-top: 30px;
   padding-top: 20px;
+  /* border-top: 1px solid #ebeef5; */ /* Replaced by el-divider */
 }
 
-.comment-card {
-  border-radius: 10px;
+.student-auth-section h3 {
+  font-size: 1.5em;
+  color: #303133;
+  margin-bottom: 15px;
 }
 
-.comment-item {
-  display: flex;
-  align-items: flex-start;
+.student-auth-descriptions {
+  margin-bottom: 20px;
 }
 
-.content {
-  flex: 1;
+.no-auth-data p {
+    color: #909399;
+    font-style: italic;
 }
 
-.header {
-  margin-left: 5px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  font-size: 14px;
-  color: #888;
+.apply-auth-button-container {
+  margin-top: 15px;
+  text-align: left; /* Or center, depending on desired alignment */
 }
 
-.body {
-  margin-top: 5px;
-  font-size: 16px;
+.comments-calendar-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #ebeef5;
 }
 
 .radio-group {
   margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.calendar-area h3, .comments-area h3 {
+  font-size: 1.3em;
+  color: #409EFF;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.comment-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.comment-item {
+  border: 1px solid #EBEEF5;
+  border-radius: 4px;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  background-color: #FAFAFA;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.comment-avatar {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.comment-username {
+  font-weight: bold;
+  color: #303133;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.comment-time {
+  font-size: 0.85em;
+  color: #909399;
+}
+
+.comment-body p {
+  margin: 0;
+  color: #606266;
+  word-wrap: break-word;
+}
+
+.no-comments p {
+  text-align: center;
+  color: #909399;
+  padding: 20px;
+}
+
+/* Responsive adjustments for smaller screens if needed */
+@media (max-width: 768px) {
+  .el-col {
+    width: 100% !important; /* Element Plus uses !important, so we might need it too */
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  .profile-data-title h2 {
+    font-size: 1.5em;
+  }
+  .student-auth-section h3 {
+    font-size: 1.3em;
+  }
+}
+
+.avatar-uploader .el-upload {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: var(--el-transition-duration-fast);
+}
+
+.avatar-uploader .el-upload:hover {
+  border-color: var(--el-color-primary);
+}
+
+.el-icon.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 120px; /* Adjust size as needed */
+  height: 120px; /* Adjust size as needed */
+  text-align: center;
+}
+
+.avatar-preview {
+  width: 120px; /* Adjust size as needed */
+  height: 120px; /* Adjust size as needed */
+  display: block;
+  object-fit: cover; /* Ensures the image covers the area without distortion */
 }
 </style>

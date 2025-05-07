@@ -1,7 +1,7 @@
 <script setup>
 import {onMounted, ref, defineProps, defineEmits, reactive} from "vue";
 import {useI18n} from "vue-i18n";
-import axios from '../../axios_client/index.js';
+import api from '@/API_PRO.js'; // 导入新的 API 服务
 import {ElMessage} from "element-plus";
 
 // 组件事件与属性定义
@@ -63,62 +63,34 @@ const handleSubmit = () => {
   }
   fd.append("name", formData.value.name);
   fd.append("description", formData.value.description);
-  fd.append("count", formData.value.count);
+  fd.append("quantity", formData.value.count);
   fd.append("price", formData.value.price);
-  // 将文件添加到 FormData 对象
-  formData.value.img.forEach((file, index) => {
-    console.log(file.raw)
-    fd.append('img', file.raw);
+  formData.value.img.forEach((file) => {
+    fd.append('images', file.raw);
   });
+
   if (props.isPutRequest) {
-    fd.append("id", props.itemID);
-    axios.put("/item/", fd, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    }).then(res => {
-      if(res.status === 200){
-        if (res.data.code === 0) {
-          ElMessage.success(t("sell.api_success_upload_success"))
-          handlePutRequestSuccess(res.data.data)
-        }
-        else{
-          ElMessage.error(t("sell.api_failure_upload_fail"))
-        }
-      }
-      else{
-        ElMessage.error(t("sell.api_failure_upload_fail"))
-      }
-    }).catch(err => {
-      ElMessage.error(t("sell.api_failure_upload_fail"))
-      console.log("ERR", err)
-    })
+    api.updateProduct(props.itemID, fd, true)
+      .then(data => {
+        ElMessage.success(t("sell.api_success_upload_success"));
+        handlePutRequestSuccess(data);
+      })
+      .catch(err => {
+        ElMessage.error(t("sell.api_failure_upload_fail"));
+        console.log("ERR", err);
+      });
   }
   else {
-    axios.post("/item/", fd, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    }).then(res => {
-      if(res.status === 200){
-        if (res.data.code === 0) {
-          emits("updateSuccess")
-          ElMessage.success(t("sell.api_success_upload_success"))
-          emits("updateSuccess")
-        }
-        else{
-          ElMessage.error(t("sell.api_failure_upload_fail"))
-        }
-      }
-      else{
-        ElMessage.error(t("sell.api_failure_upload_fail"))
-      }
-    }).catch(err => {
-      ElMessage.error(t("sell.api_failure_upload_fail"))
-      console.log(err)
-    })
+    api.createProduct(fd, true)
+      .then(() => {
+        ElMessage.success(t("sell.api_success_upload_success"));
+        emits("updateSuccess");
+      })
+      .catch(err => {
+        ElMessage.error(t("sell.api_failure_upload_fail"));
+        console.log(err);
+      });
   }
-
 }
 </script>
 

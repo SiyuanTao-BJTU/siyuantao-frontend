@@ -1,6 +1,6 @@
 <script setup>
   import {computed, onMounted, ref} from "vue";
-  import axios from "@/axios_client/index.js";
+  import api from '@/API_PRO.js'; // 导入新的 API 服务
   import { useI18n } from "vue-i18n";
   import {
     Sell,
@@ -30,6 +30,12 @@
   let facauty = ref(""); // 院系
   let dormitory = ref("");
   let database_id = ref(null);
+  let firstName = ref("");
+  let lastName = ref("");
+  let bio = ref("");
+  let avatarUrl = ref("");
+  let studentProfileData = ref(null); // New ref for student profile
+  let userProfileResponseData = ref(null); // <-- 新增 ref 存储 API 响应的 data 部分
   let avatar_char = computed(() => username.value.slice(0, 2).toUpperCase());
   let email_shown = computed(
       () => ((email.value === "") || (email.value === null)) ? t("profile.detail_none_shown") : email.value
@@ -44,47 +50,65 @@
   let passwordDialogVisible = ref(false); // 控制修改密码对话框的显示
   let settingsDialogVisible = ref(false); // 控制设置对话框的显示
 
-  // 组件全局函数定义
+  const fetchUserProfile = () => {
+    api.getUserProfile()
+      .then(response => {
+        console.log("ProfileView fetchUserProfile - API response:", JSON.parse(JSON.stringify(response)));
+        if (response && response.data && response.code === 0) {
+          userProfileResponseData.value = response.data; // <-- 赋值给新的 ref
+          const userInfo = response.data;
+          database_id.value = userInfo.id;
+          username.value = userInfo.username;
+          email.value = userInfo.email || "";
+          contact.value = userInfo.contact_info || "";
+          firstName.value = userInfo.first_name || "";
+          lastName.value = userInfo.last_name || "";
+          bio.value = userInfo.bio || "";
+          avatarUrl.value = userInfo.avatar_url || "";
+
+          if (userInfo.student_profile) {
+            student_id.value = userInfo.student_profile.student_id || "";
+            facauty.value = userInfo.student_profile.verified_department || ""; 
+            dormitory.value = userInfo.student_profile.verified_dormitory || "";
+            studentProfileData.value = userInfo.student_profile;
+          } else {
+            student_id.value = ""; 
+            facauty.value = "";
+            dormitory.value = "";
+            studentProfileData.value = null;
+          }
+          localStorage.setItem("username", userInfo.username);
+          localStorage.setItem("userId", userInfo.id);
+          if (userInfo.id && WebSocketService.userId === 'undefined') {
+            WebSocketService.init(userInfo.id);
+          }
+        } else {
+          console.warn("获取用户信息API响应格式不正确或code不为0 ProfileView:", response);
+          ElMessage.error(t('profile.fetch_user_info_failed_format'));
+        }
+      })
+      .catch(error => {
+        console.warn("获取用户信息失败 ProfileView:", error);
+        ElMessage.error(t('profile.fetch_user_info_failed')); 
+      })
+      .finally(() => {
+        componentKey.value += 1; 
+        console.log("ProfileView fetchUserProfile - componentKey incremented:", componentKey.value);
+      });
+  };
+
   onMounted(() => {
-    axios.get("/user/info").then(res => {
-      if(res.status === 200){
-        if (res.data.code === 0) {
-          database_id.value = res.data.data.id;
-          username.value = res.data.data.username;
-          email.value = res.data.data.email;
-          student_id.value = res.data.data.profile.student_id;
-          contact.value = res.data.data.profile.contact;
-          facauty.value = res.data.data.profile.facauty;
-          dormitory.value = res.data.data.profile.dormitory;
-          localStorage.setItem("username", res.data.data.username);
-          localStorage.setItem("userId", res.data.data.id);
-        }
-        else{
-          console.warn("获取用户信息失败")
-        }
-      }
-      else{
-        console.warn("获取用户信息失败")
-      }
-      componentKey.value += 1;
-    }).catch(res => {
-      console.warn("获取用户信息失败")
-      console.warn(res)
-    })
+    fetchUserProfile(); // Call the new function on mount
   });
 
   const handleSelect = (key) => {
     activeIndex.value = key[0];
   }
 
-  const onUpdateSuccess = (updateData) => {
-    username.value = updateData.username;
-    email.value = updateData.email;
-    student_id.value = updateData.student_id;
-    contact.value = updateData.contact;
-    facauty.value = updateData.facauty;
-    dormitory.value = updateData.dormitory;
-    componentKey.value += 1;
+  // This function is now a general trigger to refresh user profile data
+  const onUpdateSuccess = () => { 
+    console.log("ProfileView onUpdateSuccess triggered, re-fetching user profile.");
+    fetchUserProfile(); // Re-fetch all user data
   }
 
   const checkFileAvailable = async (fileURL) => {
@@ -136,15 +160,19 @@
       <div class="bottom-container">
         <div class="left-container">
           <div class="avatar-info">
-            <el-avatar :size="100" shape="square" class="avatar">{{avatar_char}}</el-avatar>
+            <el-avatar v-if="!avatarUrl" :size="100" shape="square" class="avatar">{{avatar_char}}</el-avatar>
+            <el-avatar v-else :src="avatarUrl" :size="100" shape="square" class="avatar" />
             <h3>{{username}}</h3>
           </div>
           <div class="personal-info">
-            <h4>{{t("profile.personal_info_title")}}</h4>
+            <h4>{{t("profile.title")}}</h4>
             <div class="info-block">
               <div class="info-column">
                 <p><b>{{t("profile.username")}}</b>: {{username}}</p>
+                <p v-if="studentProfileData && studentProfileData.verified_real_name"><b>{{t("profile.verified_name")}}</b>: {{studentProfileData.verified_real_name}}</p>
+                <p v-else-if="firstName || lastName"><b>{{t("profile.name")}}</b>: {{firstName}} {{lastName}}</p>
                 <p><b>{{t("profile.email")}}</b>: {{email_shown}}</p>
+                <p v-if="bio"><b>{{t("profile.bio_summary")}}</b>: {{bio.substring(0, 30)}}{{bio.length > 30 ? '...' : ''}}</p>
                 <p><b>{{t("profile.dormitory")}}</b>: {{dormitory_shown}}</p>
               </div>
             </div>
@@ -182,15 +210,15 @@
               </el-menu-item>
               <el-menu-item index="2">
                 <el-icon><Delete /></el-icon>
-                <span>{{t("profile.logout")}}</span>
+                <span>{{t("navigator.logout")}}</span>
               </el-menu-item>
               <el-menu-item index="3" v-if="MODE !== 'desktop'">
                 <el-icon><Download /></el-icon>
-                <span>{{t("profile.download_desktop_app")}}</span>
+                <span>{{t("navigator.download_desktop_app")}}</span>
               </el-menu-item>
               <el-menu-item index="9">
                 <el-icon><Refresh /></el-icon>
-                <span>{{t("profile.change_language")}}</span>
+                <span>{{t("navigator.change_language")}}</span>
               </el-menu-item>
             </el-menu>
           </div>
@@ -199,13 +227,19 @@
         <div class="right-container">
           <div v-if="activeIndex === '1'" class="active-block">
             <PersonalData
-                :database_id="database_id"
+                :database_id="String(database_id)"
                 :username="username"
+                :email="email"
                 :contact="contact"
                 :student_id="student_id"
                 :facauty="facauty"
-                :email="email"
                 :dormitory="dormitory"
+                :first-name="firstName"
+                :last-name="lastName"
+                :bio="bio"
+                :avatar-url="avatarUrl"
+                :student-profile-data="studentProfileData"
+                :credit_score="userProfileResponseData ? userProfileResponseData.credit_score : null"
                 :key="componentKey"
                 :is-searching="false"
                 @updateSuccess="onUpdateSuccess"

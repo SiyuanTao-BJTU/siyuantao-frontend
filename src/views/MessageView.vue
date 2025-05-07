@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { RefreshRight } from "@element-plus/icons-vue";
 import WebSocketService from "@/socket_client/socket.js";
 import FormatObject from "@/utils/format.js";
-import axios from "@/axios_client/index.js";
+import api from '@/API_PRO.js';
 import ChatMessage from "@/components/chatroom/ChatMessage.vue";
 import InputBlock from "@/components/chatroom/InputBlock.vue";
 import ItemInfoBlock from "@/components/chatroom/ItemInfoBar.vue";
@@ -52,29 +52,17 @@ const select_contact = (room) => {
   top_title_contact_name.value = room.contact;
   selected_room_item_id.value = room.item_id;
   selected_room_id.value = room.room_id;
-  axios.get('/item', {
-    params: {
-      id: room.item_id
-    }
-  }).then((res) => {
-    if (res.status === 200) {
-      if (res.data.code === 0) {
-        item_info.value.id = res.data.data.id;
-        item_info.value.name = res.data.data.name;
-        item_info.value.price = res.data.data.price;
-        item_info.value.img = res.data.data.img;
-      }
-      else {
-        console.warn('获取购买记录失败')
-      }
-    }
-    else {
-      console.warn('获取购买记录失败')
-    }
-  }).catch(res => {
-    console.warn('获取购买记录失败')
-    console.warn(res)
-  })
+  api.getProductDetail(room.item_id)
+    .then(data => {
+      item_info.value.id = data.id;
+      item_info.value.name = data.name;
+      item_info.value.price = data.price;
+      item_info.value.img = data.images;
+    })
+    .catch(error => {
+      console.warn('获取商品详情失败', error);
+      item_info.value = { name: "", img: [], id: "", price: 0 };
+    });
   componentKey.value += 1;
 };
 

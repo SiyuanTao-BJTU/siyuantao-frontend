@@ -24,7 +24,8 @@
   "password_only_letter_error": "密码不能为纯字母",
   "password_illegal_error": "密码只能包含数字和字母",
   "username_length_error": "用户名长度必须在6到20位之间",
-  "username_illegal_error": "用户名只能包含数字、字母、下划线(_)和减号(-)",
+  "username_illegal_error": "用户名包含非法字符",
   "login_first": "请先登录",
-  "user_id_fetch_failed": "无法获取用户ID"
+  "user_id_fetch_failed": "无法获取用户ID",
+  "username_length_error_new": "用户名长度必须在1到150位之间"
 }

@@ -1,24 +1,56 @@
 const FormatObject = {
   formattedTransactionRecord: (recordList) => {
-    let formattedRecordList;
-    formattedRecordList = recordList.map(entry => ({
-      id: entry.id,
-      name: entry.item.name,
-      picture: decodeURIComponent(entry.item.img[0].image),
-      // picture: decodeURIComponent(entry.item.img[0]),
-      price: entry.item.price,
-      buyer: entry.buyer.username,
-      seller: entry.seller.username,
-      state: entry.state,
-      picture_list: entry.item.img.map((img) => decodeURIComponent(img.image))
-      // picture_list: entry.item.img.map((img) => decodeURIComponent(img))
-    }));
-    return formattedRecordList;
+    if (!Array.isArray(recordList)) {
+      console.error("formattedTransactionRecord: input is not an array", recordList);
+      return [];
+    }
+    return recordList.map(entry => {
+      const product = entry.product || {};
+      const buyer = entry.buyer || {};
+      const seller = entry.seller || {};
+      const images = Array.isArray(product.images) ? product.images : [];
+
+      let primaryImagePath = null;
+      if (images.length > 0) {
+        const primaryImageObj = images.find(img => img.is_primary === true);
+        if (primaryImageObj && primaryImageObj.image_path) {
+          primaryImagePath = primaryImageObj.image_path;
+        } else if (images.length > 0 && images[0] && images[0].image_path) {
+          primaryImagePath = images[0].image_path; // Fallback to the first image
+        }
+      }
+      const mainPicture = primaryImagePath ? FormatObject.formattedImgUrl(primaryImagePath) : null;
+
+      const pictureListFormatted = images
+        .map(img => img.image_path ? FormatObject.formattedImgUrl(img.image_path) : null)
+        .filter(url => url !== null);
+
+      // Retain original API status string and other necessary fields for TableInfo.vue to process further
+      return {
+        // Raw API data points that TableInfo might need for display or logic before numeric state conversion
+        id: entry.id,
+        api_status: entry.status, // Keep the original API status string
+        buyer_id: buyer.id,
+        seller_id: seller.id,
+        buyer_username: buyer.username,
+        seller_username: seller.username, 
+        product_name: product.name,
+        product_price: product.price,
+        product_condition: product.condition,
+        product_main_image_url: mainPicture,
+        product_all_image_urls: pictureListFormatted,
+        quantity: entry.quantity,
+        create_time: entry.create_time,
+        location: entry.location,
+        meet_time: entry.meet_time
+        // Add any other raw fields from 'entry' or 'product' that TableInfo.vue might directly use or need for its state conversion
+      };
+    });
   },
 
   formattedChatroomList: (chatroomList) => {
-    let formattedChatroomList;
-    formattedChatroomList = chatroomList.map(entry => ({
+    if (!Array.isArray(chatroomList)) return [];
+    return chatroomList.map(entry => ({
       seller: entry.seller,
       buyer: entry.buyer,
       room_id: entry.room_id,
@@ -26,19 +58,27 @@ const FormatObject = {
       item_id: entry.item_id,
       contact: entry.type === "seller" ? entry.buyer : entry.seller
     }));
-    return formattedChatroomList;
   },
 
   formattedImgUrl: (res_img_url) => {
-    return "http://8.138.167.80:6699/media" + res_img_url;
+    if (!res_img_url) return null; 
+    const baseUrl = "http://8.138.167.80:6699"; 
+    if (res_img_url.startsWith("/media/")) {
+      return baseUrl + res_img_url;
+    } else if (res_img_url.startsWith("/")) {
+      return baseUrl + "/media" + res_img_url; 
+    } else {
+      return baseUrl + "/media/" + res_img_url;
+    }
   },
 
   formattedImgUrlList: (res_img_url_list) => {
-    return res_img_url_list.map((img_url) => "http://8.138.167.80:6699/media/" + img_url);
+    if (!Array.isArray(res_img_url_list)) return [];
+    return res_img_url_list.map((img_url) => FormatObject.formattedImgUrl(img_url)).filter(url => url !== null);
   },
 
   formattedUUID: (uuid) => {
-    // 取uuid的前8位
+    if (!uuid || typeof uuid !== 'string') return '';
     return uuid.substring(0, 8);
   }
 }

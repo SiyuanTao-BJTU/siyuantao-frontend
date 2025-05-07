@@ -28,18 +28,19 @@ const PatternCheck = {
   username_check(username) {
     /**
      * 用户名格式校验
-     * 用户名长度在6-20位之间，只能包含数字、字母、下划线(_)、减号(-)
+     * 用户名长度在1-150位之间 (允许中英文及多种字符，具体规则由后端控制)
      * @param username
      * @type {RegExp}
      */
-    const reg = /^[a-zA-Z0-9_-]{6,20}$/;
+    // const reg = /^[a-zA-Z0-9_-]{6,20}$/;
 
-    if (username.length < 6 || username.length > 20) {
-      return { valid: false, error: "login.username_length_error" };
+    if (!username || username.length < 1 || username.length > 150) {
+      return { valid: false, error: "login.username_length_error_new" }; // New i18n key for 1-150 length
     }
-    if (!reg.test(username)) {
-      return { valid: false, error: "login.username_illegal_error" };
-    }
+    // Removing specific regex test to allow broader characters including Chinese, deferring to backend for specific pattern validation.
+    // if (!reg.test(username)) {
+    //   return { valid: false, error: "login.username_illegal_error" };
+    // }
 
     return { valid: true, error: null };
   }

@@ -7,7 +7,7 @@ import { useI18n } from "vue-i18n";
 import { PictureRounded, Plus } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import WebSocketService from "@/socket_client/socket.js";
-import axios from "@/axios_client/index.js";
+import api from '@/API_PRO.js'; // 导入新的 API 服务
 
 // 全局基本事件属性定义
 const props = defineProps({
@@ -98,24 +98,24 @@ const uploadMessage = () => {
     inputText.value = '';
   }
   else {
-    axios.post('/item/comment', {
-      item_id: props.item_id,
-      body: inputText.value
-    }).then(res => {
-      if (res.status === 200) {
-        if (res.data.code === 0) {
-          ElMessage.success(t("itemInfo.comment_success"));
-          inputText.value = '';
-          emits("updateSuccess");
-        } else {
-          ElMessage.error(t("itemInfo.comment_failure"));
-        }
-      } else {
+    if (!props.item_id) {
+      ElMessage.error(t("itemInfo.item_id_missing")); // Add to i18n
+      return;
+    }
+    const commentData = { content: inputText.value };
+    // If rating is also part of item comments, it needs to be added here.
+    // For example: commentData.rating = someRatingValue;
+
+    api.addProductComment(props.item_id, commentData)
+      .then(() => {
+        ElMessage.success(t("itemInfo.comment_success"));
+        inputText.value = '';
+        emits("updateSuccess");
+      })
+      .catch(error => {
+        console.error("Add product comment failure:", error);
         ElMessage.error(t("itemInfo.comment_failure"));
-      }
-    }).catch(err => {
-      ElMessage.error(t("itemInfo.comment_failure"));
-    })
+      });
   }
 }
 </script>

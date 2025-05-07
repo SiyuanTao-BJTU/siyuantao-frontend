@@ -3,7 +3,7 @@ import {onMounted, ref, defineProps, defineEmits, reactive} from "vue";
 import {useI18n} from "vue-i18n";
 import {ElMessage} from "element-plus";
 import PatternCheck from "@/utils/pattern.js";
-import axios from "@/axios_client/index.js";
+import api from '@/API_PRO.js'; // 导入新的 API 服务
 
 // 组件事件与属性定义
 const props = defineProps({
@@ -48,27 +48,28 @@ const changePassword = () => {
     return;
   }
 
-  axios.post("/user/password",{
+  const passwordData = {
     origin_password: form.origin_password,
-    password: form.password,
-    confirm_password: form.confirm_password,
-  }).then(res => {
-    if(res.status === 200){
-      if (res.data.code === 0) {
-        ElMessage.success(t("profile.change_password_success"))
-        isVisiable.value = false;
-        emits("updateSuccess")
-      }
-      else{
-        ElMessage.error(t("profile.change_password_fail"))
-      }
-    }
-    else{
-      ElMessage.error(t("profile.change_password_fail"))
-    }
-  }).catch(res => {
-    ElMessage.error(t("profile.change_password_fail"))
-  })
+    new_password: form.password, // API_PRO.js expects new_password
+    confirm_new_password: form.confirm_password // API_PRO.js expects confirm_new_password
+  };
+  api.userModifyPassword(passwordData)
+    .then(() => {
+      // Assuming a successful promise means password changed successfully
+      ElMessage.success(t("profile.change_password_success"));
+      isVisiable.value = false;
+      emits("updateSuccess");
+    })
+    .catch(error => {
+      console.error("Change password failed:", error);
+      // Handle specific errors if API_PRO throws them or they are in error.response.data
+      // For example, if backend returns error for wrong original password:
+      // if (error.response && error.response.data && error.response.data.origin_password) {
+      //   ElMessage.error(t("profile.wrong_origin_password")); // Add to i18n
+      // } else {
+      ElMessage.error(t("profile.change_password_fail"));
+      // }
+    });
 }
 
 const cancelChangePassword = () => {

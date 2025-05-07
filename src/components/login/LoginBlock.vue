@@ -4,11 +4,11 @@ import { useI18n } from "vue-i18n";
 import { ElMessage } from "element-plus";
 import { View, Hide } from '@element-plus/icons-vue';
 
-import axios from "../../axios_client/index.js";
 import router from "@/router/index.js";
 
 import PatternCheck from "@/utils/pattern.js";
 import WebSocketService from "@/socket_client/socket.js";
+import api from '@/API_PRO.js'; // 导入新的 API 服务
 
 // 组件全局变量定义
 const { t } = useI18n(); // 解构出t函数，t函数用于获取当前语言环境下的文本
@@ -43,50 +43,27 @@ const handleLoginClick = () => {
   }
 
   // 发送登录请求
-  axios.post("/user/login",{
-    username: form.username,
-    password: form.password,
-  }).then(res => {
-    if(res.status === 200){
-      // 请求成功保存返回的token数据并跳转到首页
-      ElMessage.success(t("login.login_success"))
-      localStorage.setItem("token",res.data.access)
-      localStorage.setItem("refresh",res.data.refresh)
-      try { // 请求用户id数据并保存，同时初始化WebSocket连接
-        axios.get('/user/info').then((res) => {
-          if (res.status === 200) {
-            if (res.data.code === 0){
-              localStorage.setItem('username', res.data.data.username);
-              localStorage.setItem('userId', res.data.data.id);
-              WebSocketService.init(localStorage.getItem('userId'));
-            }
-            else{
-              console.warn(res.data);
-              ElMessage.error(t('login.user_id_fetch_failed'));
-            }
-          } else {
-            console.warn(res.data);
-            ElMessage.error(t('login.user_id_fetch_failed'));
-          }
-        }).catch((error) => {
-          console.error(error);
-          ElMessage.error(t('login.user_id_fetch_failed'));
-        });
-      }
-      catch (error) {
-        console.error(error);
-        ElMessage.error(t('login.user_id_fetch_failed'));
-      }
+  api.userLogin({ username: form.username, password: form.password })
+    .then(loginData => {
+      // Assuming loginData contains access and refresh tokens
+      ElMessage.success(t("login.login_success"));
+      localStorage.setItem("token", loginData.access);
+      localStorage.setItem("refresh", loginData.refresh);
+
+      // 获取用户信息
+      return api.getUserProfile(); // Chain the promise
+    })
+    .then(userInfo => {
+      // Assuming userInfo contains id and username
+      localStorage.setItem('username', userInfo.username);
+      localStorage.setItem('userId', userInfo.id);
+      WebSocketService.init(localStorage.getItem('userId'));
       router.push("/home");
-    }
-    else{
-      // login登录API未自定义返回状态码，HTTP状态码非200时表示登录失败
-      ElMessage.error(t("login.login_failed"))
-    }
-  }).catch(res => {
-    console.log(res)
-    ElMessage.error(t("login.login_failed"))
-  })
+    })
+    .catch(error => {
+      console.error("Login or get user info failed:", error);
+      ElMessage.error(t("login.login_failed")); // Or a more specific error
+    });
 }
 
 // 切换密码可见性

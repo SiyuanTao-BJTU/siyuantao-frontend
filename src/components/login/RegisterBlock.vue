@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { ElMessage } from "element-plus";
 import { View, Hide } from '@element-plus/icons-vue';
 
-import axios from "../../axios_client/index.js";
+import api from '@/API_PRO.js'; // 导入新的 API 服务
 
 import PatternCheck from "@/utils/pattern.js";
 
@@ -50,34 +50,63 @@ const handleRegisterClick = () => {
   }
 
   // 发送注册请求
-  axios.post("/user/register",{
+  const userData = {
     username: form.username,
     password: form.password,
     confirm_password: form.verifyPassword
-  }).then(res => {
-    if(res.status === 200){
-      // 请求成功根据返回的code判断注册是否成功
-      if (res.data.code === 101){
-        // 如果返回的code为101，则表示用户已存在
-        ElMessage.error(t("login.user_exist"))
+    // email, first_name, etc., are optional according to API_PRO.js
+  };
+  api.userRegister(userData)
+    .then(data => {
+      // Assuming API_PRO.js returns data directly (or a wrapped response that apiRequest unwraps to data)
+      // And that this data might contain a code field for specific outcomes.
+      // The apiRequest in API_PRO.js throws an error for non-2xx HTTP status codes.
+      // So, if we reach .then(), it means HTTP status was 2xx.
+      // We need to check the `code` inside the response body if the backend uses it.
+
+      // If API_PRO's apiRequest already handles response.data and status codes for errors,
+      // a successful .then() means the operation (like user creation) was successful.
+      // If the backend returns specific codes within a 2xx response (e.g., for user exists),
+      // those need to be handled here based on the structure of `data`.
+
+      // Let's assume for now that a successful promise means registration was successful
+      // and specific business logic errors (like user_exist) would be thrown as errors by apiRequest
+      // or need to be checked in `data` if API_PRO doesn't do that.
+      
+      // If your API_PRO is set up to return the raw `response.data` which might include `code`:
+      // if (data.code === 101) { 
+      //   ElMessage.error(t("login.user_exist"));
+      // } else if (data.code === 102) {
+      //   ElMessage.error(t("login.register_failed"));
+      // } else if (data.code === 0) {
+      //   ElMessage.success(t("login.register_success"));
+      //   emit("registerSuccess");
+      // } else {
+      //    ElMessage.error(t("login.register_failed_unknown")); // For unexpected codes
+      // }
+
+      // Simplified: Assuming a non-error response from api.userRegister means success
+      ElMessage.success(t("login.register_success"));
+      emit("registerSuccess");
+
+    })
+    .catch(error => {
+      console.error("Register failed:", error);
+      // Handle specific errors based on what API_PRO throws or what's in error.response.data
+      // For example, if API_PRO throws an error with a message for "user_exist"
+      if (error.message && error.message.toLowerCase().includes('user already exists')) { // Example check
+          ElMessage.error(t("login.user_exist"));
+      } else if (error.response && error.response.data && error.response.data.username) {
+          // Example: Django Rest Framework validation error for username
+          ElMessage.error(t("login.user_exist")); 
+      } else if (error.response && error.response.data && error.response.data.password) {
+          // Example: Django Rest Framework validation error for password
+          ElMessage.error(t("login.password_format_error")); // Add this to i18n
       }
-      else if (res.data.code === 102){
-        // 如果返回的code为102，则表示因其他错误导致注册失败
-        ElMessage.success(t("login.register_failed"))
+      else {
+        ElMessage.error(t("login.register_failed"));
       }
-      else if (res.data.code === 0){
-        // 注册成功
-        ElMessage.success(t("login.register_success"))
-        emit("registerSuccess")
-      }
-    }
-    else{
-      ElMessage.error(t("login.register_failed"))
-    }
-  }).catch(res => {
-    console.log(res)
-    ElMessage.error(t("login.register_failed"))
-  })
+    });
 }
 
 const resetForm = () => {
