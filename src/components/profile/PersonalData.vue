@@ -225,31 +225,49 @@
   }
 
   function getAuthStatusType(statusValueFromBackend) {
-    if (!statusValueFromBackend) return 'info';
+    if (!statusValueFromBackend) return 'info'; // Covers null, undefined, empty string
     const lowerStatus = String(statusValueFromBackend).toLowerCase();
 
-    if (lowerStatus.includes('pending')) return 'warning';
-    if (lowerStatus.includes('verified')) return 'success';
-    if (lowerStatus.includes('rejected')) return 'danger';
-    return 'info'; // Default for unsubmitted or unknown
+    switch (lowerStatus) {
+      case 'pending':
+        return 'warning';
+      case 'verified':
+        return 'success';
+      case 'rejected':
+        return 'danger';
+      case 'notverified': // Explicitly handle API's "NotVerified"
+      case 'unsubmitted': // Group with unsubmitted for display purposes
+        return 'info';
+      default:
+        return 'info'; // Fallback for any other unexpected values
+    }
   }
 
   function formatAuthStatus(statusValueFromBackend) {
     if (!statusValueFromBackend) return t('profile.auth_status_unsubmitted');
     
     const lowerStatus = String(statusValueFromBackend).toLowerCase();
-    let i18nKeySuffix = 'unknown';
+    let i18nKeySuffix;
 
-    if (lowerStatus.includes('pending')) {
-      i18nKeySuffix = 'pending';
-    } else if (lowerStatus.includes('verified')) {
-      i18nKeySuffix = 'verified';
-    } else if (lowerStatus.includes('rejected')) {
-      i18nKeySuffix = 'rejected';
-    } else if (lowerStatus.includes('unsubmitted')) {
-      i18nKeySuffix = 'unsubmitted';
+    switch (lowerStatus) {
+      case 'pending':
+        i18nKeySuffix = 'pending';
+        break;
+      case 'verified':
+        i18nKeySuffix = 'verified';
+        break;
+      case 'rejected':
+        i18nKeySuffix = 'rejected';
+        break;
+      case 'notverified': // API value
+        i18nKeySuffix = 'unsubmitted'; // Display "NotVerified" as "未认证" (Unsubmitted)
+        break;
+      case 'unsubmitted':
+        i18nKeySuffix = 'unsubmitted';
+        break;
+      default:
+        i18nKeySuffix = 'unknown';
     }
-    // Ensure 'unknown' is also a valid key in your i18n files or handle default
     return t(`profile.auth_status_${i18nKeySuffix}`);
   }
 

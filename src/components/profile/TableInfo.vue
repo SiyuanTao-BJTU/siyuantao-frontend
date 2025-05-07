@@ -326,8 +326,8 @@ const formatDisplayTime = (dateTimeString) => {
   <div class="tableInfo-pictureViewer">
     <el-scrollbar height="650">
       <el-table :data="tableData" stripe border style="width: 100%;" scrollbar-always-on empty-text="暂无记录">
-        <el-table-column fixed prop="name" :label="t('saleInfo.name_col_table')" min-width="120" sortable />
-        <el-table-column prop="picture" :label="t('saleInfo.picture_col_table')" width="120" >
+        <el-table-column fixed prop="name" :label="t('saleInfo.name_col_table')" min-width="100" sortable />
+        <el-table-column prop="picture" :label="t('saleInfo.picture_col_table')" width="100" >
           <template #default="scope">
             <div class="image-preview" v-if="scope.row.picture">
               <el-image
@@ -358,17 +358,17 @@ const formatDisplayTime = (dateTimeString) => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="price" :label="t('saleInfo.price_col_table')" width="100" sortable/>
-        <el-table-column v-if="!props.isSell" prop="seller" :label="t('saleInfo.seller_col_table')" width="120" sortable/>
-        <el-table-column v-if="props.isSell" prop="buyer" :label="t('saleInfo.buyer_col_table')" width="120" sortable/>
-        <el-table-column prop="condition" :label="t('saleInfo.condition_col_table')" width="100" sortable />
+        <el-table-column prop="price" :label="t('saleInfo.price_col_table')" width="80" sortable/>
+        <el-table-column v-if="!props.isSell" prop="seller" :label="t('saleInfo.seller_col_table')" width="80" sortable/>
+        <el-table-column v-if="props.isSell" prop="buyer" :label="t('saleInfo.buyer_col_table')" width="80" sortable/>
+        <el-table-column prop="condition" :label="t('saleInfo.condition_col_table')" width="80" sortable />
         <el-table-column prop="quantity" :label="t('saleInfo.quantity_col_table')" width="80" sortable />
-        <el-table-column prop="create_time" :label="t('saleInfo.create_time_col_table')" width="170" sortable >
+        <el-table-column prop="create_time" :label="t('saleInfo.create_time_col_table')" width="105" sortable >
            <template #default="scope">
             {{ formatDisplayTime(scope.row.create_time) }} 
           </template>
         </el-table-column>
-        <el-table-column prop="id" :label="t('saleInfo.id_col_table')" width="120" sortable>
+        <el-table-column prop="id" :label="t('saleInfo.id_col_table')" width="100" sortable>
             <template #default="scope">
                 {{ FormatObject.formattedUUID(scope.row.id) }}
             </template>

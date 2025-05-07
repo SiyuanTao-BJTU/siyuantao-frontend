@@ -23,9 +23,9 @@ const authForm = reactive({
 });
 
 const formRules = reactive({
-  student_id: [{ required: true, message: () => t('navigator.profile.auth_student_id_required'), trigger: 'blur' }],
-  verified_real_name: [{ required: true, message: () => t('navigator.profile.auth_real_name_required'), trigger: 'blur' }],
-  verified_department: [{ required: true, message: () => t('navigator.profile.auth_department_required'), trigger: 'blur' }],
+  student_id: [{ required: true, message: () => t('profile.auth_student_id_required'), trigger: 'blur' }],
+  verified_real_name: [{ required: true, message: () => t('profile.auth_real_name_required'), trigger: 'blur' }],
+  verified_department: [{ required: true, message: () => t('profile.auth_department_required'), trigger: 'blur' }],
 });
 
 const formRef = ref(null);
@@ -67,15 +67,15 @@ const handleSubmit = async () => {
         
         const response = await api.submitStudentAuth(payload);
         if (response.code === 0 || response.code === 200 || response.code === 201) {
-          ElMessage.success(t('navigator.profile.auth_submit_success'));
+          ElMessage.success(t('profile.auth_submit_success'));
           emits('authSubmitted'); // Notify parent to refresh data
           handleCloseDialog();
         } else {
-          ElMessage.error(response.message || t('navigator.profile.auth_submit_failed'));
+          ElMessage.error(response.message || t('profile.auth_submit_failed'));
         }
       } catch (error) {
         console.error("Student auth submission error:", error);
-        ElMessage.error(t('navigator.profile.auth_submit_failed'));
+        ElMessage.error(t('profile.auth_submit_failed'));
       }
     }
   });
@@ -85,33 +85,33 @@ const handleSubmit = async () => {
 <template>
   <el-dialog
     v-model="formDialogVisible"
-    :title="t('navigator.profile.student_auth_dialog_title')"
+    :title="t('profile.student_auth_dialog_title')"
     width="500px"
     @close="handleCloseDialog"
     :close-on-click-modal="false"
   >
     <el-form :model="authForm" :rules="formRules" ref="formRef" label-position="top">
-      <el-form-item :label="t('navigator.profile.auth_student_id_label')" prop="student_id">
-        <el-input v-model="authForm.student_id" :placeholder="t('navigator.profile.auth_student_id_prompt')" />
+      <el-form-item :label="t('profile.auth_student_id_label')" prop="student_id">
+        <el-input v-model="authForm.student_id" :placeholder="t('profile.auth_student_id_prompt')" />
       </el-form-item>
-      <el-form-item :label="t('navigator.profile.auth_real_name_label')" prop="verified_real_name">
-        <el-input v-model="authForm.verified_real_name" :placeholder="t('navigator.profile.auth_real_name_prompt')" />
+      <el-form-item :label="t('profile.auth_real_name_label')" prop="verified_real_name">
+        <el-input v-model="authForm.verified_real_name" :placeholder="t('profile.auth_real_name_prompt')" />
       </el-form-item>
-      <el-form-item :label="t('navigator.profile.auth_department_label')" prop="verified_department">
-        <el-input v-model="authForm.verified_department" :placeholder="t('navigator.profile.auth_department_prompt')" />
+      <el-form-item :label="t('profile.auth_department_label')" prop="verified_department">
+        <el-input v-model="authForm.verified_department" :placeholder="t('profile.auth_department_prompt')" />
       </el-form-item>
-      <el-form-item :label="t('navigator.profile.auth_class_label') + ' (' + t('navigator.profile.optional_field') + ')'" prop="verified_class">
-        <el-input v-model="authForm.verified_class" :placeholder="t('navigator.profile.auth_class_prompt')" />
+      <el-form-item :label="t('profile.auth_class_label') + ' (' + t('profile.optional_field') + ')'" prop="verified_class">
+        <el-input v-model="authForm.verified_class" :placeholder="t('profile.auth_class_prompt')" />
       </el-form-item>
-      <el-form-item :label="t('navigator.profile.auth_dormitory_label') + ' (' + t('navigator.profile.optional_field') + ')'" prop="verified_dormitory">
-        <el-input v-model="authForm.verified_dormitory" :placeholder="t('navigator.profile.auth_dormitory_prompt')" />
+      <el-form-item :label="t('profile.auth_dormitory_label') + ' (' + t('profile.optional_field') + ')'" prop="verified_dormitory">
+        <el-input v-model="authForm.verified_dormitory" :placeholder="t('profile.auth_dormitory_prompt')" />
       </el-form-item>
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="handleCloseDialog">{{ t('navigator.profile.cancel_button') }}</el-button>
+        <el-button @click="handleCloseDialog">{{ t('profile.cancel_button') }}</el-button>
         <el-button type="primary" @click="handleSubmit">
-          {{ t('navigator.profile.submit_button') }}
+          {{ t('profile.submit_button') }}
         </el-button>
       </span>
     </template>

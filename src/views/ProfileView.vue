@@ -164,19 +164,6 @@
             <el-avatar v-else :src="avatarUrl" :size="100" shape="square" class="avatar" />
             <h3>{{username}}</h3>
           </div>
-          <div class="personal-info">
-            <h4>{{t("profile.title")}}</h4>
-            <div class="info-block">
-              <div class="info-column">
-                <p><b>{{t("profile.username")}}</b>: {{username}}</p>
-                <p v-if="studentProfileData && studentProfileData.verified_real_name"><b>{{t("profile.verified_name")}}</b>: {{studentProfileData.verified_real_name}}</p>
-                <p v-else-if="firstName || lastName"><b>{{t("profile.name")}}</b>: {{firstName}} {{lastName}}</p>
-                <p><b>{{t("profile.email")}}</b>: {{email_shown}}</p>
-                <p v-if="bio"><b>{{t("profile.bio_summary")}}</b>: {{bio.substring(0, 30)}}{{bio.length > 30 ? '...' : ''}}</p>
-                <p><b>{{t("profile.dormitory")}}</b>: {{dormitory_shown}}</p>
-              </div>
-            </div>
-          </div>
           <div class="selector-container">
             <h4>{{t("profile.more_info_title")}}</h4>
             <el-menu
@@ -320,20 +307,6 @@ h4 {
   margin-bottom: 20px;
   margin-top: 20px;
   margin-left: 10px;
-}
-
-.personal-info {
-  width: 100%;
-}
-
-.personal-info::after {
-  content: "";
-  display: block;
-  width: 90%;
-  height: 1px;
-  background-color: #969494;
-  margin-top: 20px;
-  margin-left: 5%;
 }
 
 .selector-container::after {
