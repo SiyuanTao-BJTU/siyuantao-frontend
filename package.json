@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node -r ./node-compat.js ./node_modules/vite/bin/vite.js",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "electron": "wait-on tcp:3301 && electron .",
@@ -26,7 +26,7 @@
     "emoji-mart-vue3": "^1.0.1",
     "vite": "4.2.0",
     "vite-plugin-html": "3.2.0",
-    "vite-plugin-static-copy": "^2.2.0",
+    "vite-plugin-static-copy": "1.0.0",
     "vue": "3.2.47",
     "vue-axios": "^3.5.2",
     "vue-i18n": "^9.14.1",
