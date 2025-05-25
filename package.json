@@ -1,6 +1,6 @@
 {
-  "name": "goodsexchangefrontend",
-  "version": "0.0.0",
+  "name": "siyuantao-front",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "node -r ./node-compat.js ./node_modules/vite/bin/vite.js",
@@ -34,14 +34,14 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "io.github.goodsexchange",
-    "productName": "Goods Exchange",
+    "appId": "ac.siyuantao",
+    "productName": "SiYuanTao",
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "./src/assets/icon_light.ico",
       "uninstallerIcon": "./src/assets/icon_deep.ico",
-      "shortcutName": "Goods Exchange"
+      "shortcutName": "SiYuanTao"
     },
     "win": {
       "icon": "./src/assets/icon_light.ico"
@@ -60,7 +60,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "file:///E:\\Projects\\GoodsExchangeFrontend\\cache"
+        "url": "file:///E:\\Projects\\SiYuanTao\\cache"
       }
     ]
   }

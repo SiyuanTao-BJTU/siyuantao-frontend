@@ -1,8 +1,8 @@
-# GoodsExchangeFrontend (校园二手物品交易平台 - 前端)
+# SiYuanTao (交大二手物品交易平台 - 前端)
 一个基于 Vue.js 构建的校园二手物品交易平台前端应用程序。
 
 ## 项目概述
-本项目是"校园二手物品交易平台"的前端部分，致力于为在校学生提供一个界面美观、操作便捷、响应迅速的在线二手市场。前端应用通过与后端 API 交互，实现了用户管理、商品展示与操作、实时在线沟通等核心功能。用户可以通过本应用方便地浏览、搜索、发布二手物品，进行学生身份认证，管理个人账户信息，并与其他用户进行即时聊天交流，从而促进校园内的资源共享与流通。
+本项目是"交大二手交易平台"的前端部分，致力于为在校学生提供一个界面美观、操作便捷、响应迅速的在线二手市场。前端应用通过与后端 API 交互，实现了用户管理、商品展示与操作、实时在线沟通等核心功能。用户可以通过本应用方便地浏览、搜索、发布二手物品，进行学生身份认证，管理个人账户信息，并与其他用户进行即时聊天交流，从而促进校园内的资源共享与流通。
 
 ## 主要功能
 - **用户模块**:
@@ -37,12 +37,12 @@
 - **HTTP客户端**: Axios (经过封装，位于 `src/axios_client` 目录，用于与后端 RESTful API 进行异步数据交互)。
 - **实时通信客户端**: 基于浏览器原生的 WebSocket API 进行封装和管理 (相关代码位于 `src/socket_client` 目录)，用于实现聊天等即时通讯功能。
 - **构建与开发工具**: Vite (下一代前端构建工具，提供极速的冷启动和热模块替换体验)。
-- **UI组件库**: (请根据实际情况填写，例如：若使用了 Element Plus, 则填写 Element Plus。若未使用特定大型组件库，而是自行编写或使用了小型/自定义组件，则可说明)。
+- **UI组件库**: (Element UI)。
 - **国际化方案**: vue-i18n (集成在项目中，用于支持多语言界面，配置文件位于 `src/vue-i18n` 目录)。
 - **桌面应用打包方案**: Electron (用于将Web应用打包成跨平台的桌面应用程序，相关配置文件和脚本位于 `electron` 和 `release` 目录，以及 `.editDist.js` 脚本)。
 
 ## 项目文件结构说明
-- `GoodsExchangeFrontend/` (项目根目录)
+- `SiYuanTao/` (项目根目录)
   - `cache/`: Electron 打包工具下载过程中产生的缓存文件目录。
   - `dist/`: Web 应用打包输出目录。执行 `npm run build` 后生成的静态文件（HTML, CSS, JavaScript）会存放在这里，用于部署到Web服务器。
   - `electron/`: Electron 桌面应用构建相关的文件存放目录（例如 Electron 主进程脚本、预加载脚本等）。
@@ -74,8 +74,8 @@
 1.  **克隆代码仓库**:
     首先，通过 Git 从 GitHub 克隆本项目的代码仓库到您的本地计算机。
     ```bash
-    git clone https://github.com/Nahjs/GoodsExchangeFrontend.git
-    cd GoodsExchangeFrontend
+    git clone https://github.com/SiyuanTao-BJTU/siyuantao-frontend.git
+    cd SiYuanTao
     ```
 
 2.  **安装项目依赖**:
@@ -154,7 +154,7 @@ const BackendConfig = {
   WebSocket_URL: 'ws://your-production-backend-domain.com/ws/chat', // 例如: 'ws://1.92.122.228/ws/chat' 或 'wss://api.yourdomain.com/ws/chat'
 
   // --- 本地开发环境配置 (如需连接本地后端，请取消注释并修改) ---
-  // BASIC_URL: 'http://127.0.0.1:8000', // 本地后端 Django 默认运行端口
+  // BASIC_URL: 'http://127.0.0.1:8000', // 本地后端默认运行端口
   // RESTFUL_API_URL: 'http://127.0.0.1:8000/api',
   // WebSocket_URL: 'ws://127.0.0.1:8000/ws/chat'
 };
@@ -195,8 +195,8 @@ npm test
 1.  **Fork 本仓库**: 点击项目 GitHub 页面右上角的 "Fork" 按钮，将本仓库复制到您自己的 GitHub 账户下。
 2.  **Clone 您的 Fork**: 将您 Fork 后的仓库 Clone 到本地：
     ```bash
-    git clone https://github.com/YOUR_USERNAME/GoodsExchangeFrontend.git
-    cd GoodsExchangeFrontend
+    git clone https://github.com/SiyuanTao-BJTU/siyuantao-frontend.git
+    cd SiYuanTao
     ```
 3.  **创建新分支**: 基于 `main` (或当前的开发主分支) 创建一个新的特性分支或修复分支：
     ```bash
