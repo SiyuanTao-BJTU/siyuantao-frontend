@@ -9,6 +9,9 @@ import { useStore } from 'vuex'; // 导入 useStore
 // Assuming API_PRO.js exists and has register method
 // import api from '@/API_PRO.js';
 
+// 获取 store 实例 - 移动到顶层
+const store = useStore(); // <-- 这一行被移动到这里
+
 // 组件全局属性事件定义
 const emits = defineEmits(['registerSuccess']) // Emit event on successful registration
 
@@ -17,13 +20,13 @@ const form = reactive({
   username: "",
   password: "",
   confirmPassword: "",
-  email: "",
-  major: ""
+  major: "",
+  phoneNumber: "", // 手机号字段
 });
 const passwordVisible = ref(false);
 const confirmPasswordVisible = ref(false);
 
-// Validation rules (basic example, integrate with your form_validation.js)
+// Validation rules
 const rules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -43,12 +46,12 @@ const rules = {
       }
     }, trigger: 'blur' }
   ],
-  email: [
-    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
-  ],
   major: [
-    { required: true, message: '请输入专业', trigger: 'blur' },
+    // 根据需求可以调整是否必填
+  ],
+  phoneNumber: [
+    { required: true, message: '请输入手机号', trigger: 'blur' }, // 手机号必填
+    // TODO: Add phone number format validation
   ]
 };
 
@@ -65,16 +68,14 @@ const handleRegisterClick = async () => {
     if (valid) {
       // Form is valid, proceed with registration
       console.log("Form is valid, attempting registration");
-      
-      const store = useStore(); // 获取 store 实例
 
       try {
         // 调用 Vuex 的 register action
         await store.dispatch('user/register', {
           username: form.username,
           password: form.password,
-          email: form.email,
-          major: form.major
+          major: form.major || null, // 确保空字符串转换为 null
+          phone_number: form.phoneNumber, // 发送手机号字段
         });
 
         // 注册成功由 store 中的 ElMessage 提示，这里只需处理成功后的逻辑
@@ -104,8 +105,8 @@ const resetForm = () => {
   form.username = "";
   form.password = "";
   form.confirmPassword = "";
-  form.email = "";
   form.major = "";
+  form.phoneNumber = ""; // 重置手机号字段
 };
 
 // 切换密码可见性
@@ -159,11 +160,11 @@ const toggleConfirmPasswordVisibility = () => {
         </template>
       </el-input>
     </el-form-item>
-    <el-form-item label="邮箱" prop="email">
-      <el-input v-model="form.email" placeholder="请输入邮箱"/>
+    <el-form-item label="手机号" prop="phoneNumber">
+      <el-input v-model="form.phoneNumber" placeholder="请输入手机号"/>
     </el-form-item>
     <el-form-item label="专业" prop="major">
-      <el-input v-model="form.major" placeholder="请输入专业"/>
+      <el-input v-model="form.major" placeholder="请输入专业 (选填)"/>
     </el-form-item>
     <el-form-item>
       <el-button type="primary" @click="handleRegisterClick" class="register-button">注册</el-button>

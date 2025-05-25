@@ -72,7 +72,8 @@ const handleRegisterSuccess = () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #CAD9F1; /* Light blue background */
+  /* background-color: #CAD9F1; Light blue background */
+  background-color: #f5f7fa; /* 使用一个更中性的浅灰色背景 */
   padding: 20px;
   box-sizing: border-box;
 }
@@ -110,12 +111,14 @@ const handleRegisterSuccess = () => {
 
 .left-panel {
   left: 0; /* Always positioned at left: 0 */
-  background: linear-gradient(to right, #4A90E2, #6FA8DC); /* Blue gradient */
+  /* background: linear-gradient(to right, #4A90E2, #6FA8DC); Blue gradient */
+  background: linear-gradient(to right, #607d8b, #90a4ae); /* 使用一个更中性的灰色渐变 */
 }
 
 .right-panel {
   right: 0; /* Always positioned at right: 0 */
-  background: linear-gradient(to left, #4A90E2, #6FA8DC); /* Blue gradient */
+  /* background: linear-gradient(to left, #4A90E2, #6FA8DC); Blue gradient */
+   background: linear-gradient(to left, #607d8b, #90a4ae); /* 使用一个更中性的灰色渐变 */
 }
 
 /* Control panel visibility based on auth-split-container class */

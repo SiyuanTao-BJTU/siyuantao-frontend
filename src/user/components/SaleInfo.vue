@@ -169,4 +169,13 @@ h2 {
   margin-top: 20px;
   margin-bottom: 20px;
 }
+
+.info-block {
+  display: flex;
+  /* background-color: #a1c9ee; */
+  background-color: #e0e0e0; /* 使用一个更中性的浅灰色背景 */
+  border-radius: 5px;
+  flex-direction: column;
+  width: 100%;
+}
 </style>

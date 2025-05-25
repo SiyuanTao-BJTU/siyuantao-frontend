@@ -162,7 +162,8 @@ onMounted(() => {
   justify-content: center;
   align-items: flex-start;
   min-height: 100vh;
-  background-color: #CAD9F1; /* Light blue background */
+  /* background-color: #CAD9F1; Light blue background */
+  background-color: #f5f7fa; /* 使用一个更中性的浅灰色背景 */
   padding: 50px 20px; /* Add padding top and bottom */
   box-sizing: border-box;
 }

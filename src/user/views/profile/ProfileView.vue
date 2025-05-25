@@ -176,10 +176,10 @@
             <span>我的消息</span>
           </el-card>
            <!-- TODO: Add Student Authentication Card -->
-           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/profile/student-auth')">
+           <!-- <el-card class="functional-card" shadow="hover" @click="handleCardClick('/profile/student-auth')">
              <el-icon><School /></el-icon>
              <span>学生认证</span>
-           </el-card>
+           </el-card> -->
         </div>
       </div>
     </div>
@@ -198,7 +198,8 @@
   justify-content: center;
   align-items: flex-start; /* Align to top */
   min-height: 100vh; /* Ensure container takes at least full viewport height */
-  background-color: #CAD9F1; /* Light blue background */
+  /* background-color: #CAD9F1; Light blue background */
+  background-color: #f5f7fa; /* 使用一个更中性的浅灰色背景 */
   padding: 50px 20px; /* Add padding top and bottom */
   box-sizing: border-box;
 }
@@ -230,6 +231,10 @@
   margin-bottom: 40px; /* Increase space below user info */
   padding-bottom: 20px; /* Add padding at the bottom */
   border-bottom: 1px solid #ebeef5; /* Add a subtle separator line */
+  background-color: #ffffff; /* 使用白色背景 */
+  border-radius: 8px; /* 添加一些圆角 */
+  padding: 20px; /* 添加一些内边距 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 添加一些阴影 */
 }
 
 .avatar {
