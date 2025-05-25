@@ -13,9 +13,10 @@ import axiosClient from './axios_client/index.js'; // 导入 axiosClient
  * @param {object|null} data - 请求体数据 (用于 POST, PUT)
  * @param {object|null} params - URL 查询参数 (用于 GET)
  * @param {boolean} isFormData - 指示请求体是否为 FormData (用于文件上传)
+ * @param {string|null} contentType - 可选，手动指定 Content-Type 头部
  * @returns {Promise<any>} - API 响应数据
  */
-const apiRequest = async (method, path, data = null, params = null, isFormData = false) => {
+const apiRequest = async (method, path, data = null, params = null, isFormData = false, contentType = null) => {
   // const url = `${BASE_URL}${path}`; // REMOVED
   
   // ---- 实际项目中需要处理认证 Token ----
@@ -36,17 +37,23 @@ const apiRequest = async (method, path, data = null, params = null, isFormData =
 
   const config = {
     method,
-    url: path, // MODIFIED: Use path directly, axiosClient has baseURL
+    url: path, // Use path directly, assuming axiosClient has baseURL set correctly
     headers: {}, // Initialize headers, interceptor will add Content-Type if needed
   };
 
-  if (isFormData) {
+  // Set Content-Type based on parameters, prioritize explicit contentType
+  if (contentType) {
+    config.headers['Content-Type'] = contentType;
+  } else if (isFormData) {
     config.headers['Content-Type'] = 'multipart/form-data';
   } else {
-    // For other types, axios typically sets application/json by default if data is an object
-    // but explicit for clarity or if specific non-json types are needed in future
-    config.headers['Content-Type'] = 'application/json';
+    // Default to application/json if data is present and not form data
+    // Axios often does this automatically for objects, but explicit is clear
+    if (data !== null) {
+       config.headers['Content-Type'] = 'application/json';
+    }
   }
+
 
   if (data) {
     config.data = data;
@@ -92,91 +99,111 @@ const apiRequest = async (method, path, data = null, params = null, isFormData =
 /**
  * @summary 用户登录
  * @method POST
- * @path /user/login/
+ * @path /api/v1/auth/login
  * @param {object} credentials - { username, password }
  */
 const userLogin = (credentials) => {
-  return apiRequest('POST', '/user/login/', credentials);
+  // 将 credentials 对象转换为 form-urlencoded 格式
+  const formData = new URLSearchParams();
+  for (const key in credentials) {
+    formData.append(key, credentials[key]);
+  }
+  // 指定 Content-Type 为 application/x-www-form-urlencoded
+  return apiRequest('POST', '/v1/auth/login', formData, null, false, 'application/x-www-form-urlencoded');
 };
 
 /**
  * @summary 刷新 Access Token
  * @method POST
- * @path /user/refresh/
+ * @path /api/v1/auth/refresh (assuming /user/refresh/ maps to this in openapi)
  * @param {object} refreshToken - { refresh: "your_refresh_token" }
  */
 const userRefreshToken = (refreshToken) => {
-  return apiRequest('POST', '/user/refresh/', refreshToken);
+  // Assuming /user/refresh/ in previous version maps to /api/v1/auth/refresh
+  return apiRequest('POST', '/v1/auth/refresh', refreshToken);
 };
 
 /**
  * @summary 用户注册
  * @method POST
- * @path /user/register/
+ * @path /api/v1/auth/register
  * @param {object} userData - 包含用户名、密码、邮箱等注册信息
  *                          (参考 RegisterSerializer: { username, password, confirm_password, email?, first_name?, ...})
  */
 const userRegister = (userData) => {
-  return apiRequest('POST', '/user/register/', userData);
+  return apiRequest('POST', '/v1/auth/register', userData);
 };
 
 /**
  * @summary 修改当前用户密码 (需要认证)
  * @method POST
- * @path /user/password/
- * @param {object} passwordData - { origin_password, new_password, confirm_new_password }
+ * @path /api/v1/users/me/password (assuming /user/password/ maps to this in openapi)
+ * @param {object} passwordData - { origin_password, new_password }
+ * @note openapi.json shows /api/v1/users/me/password PUT, takes {old_password, new_password}
+ * This function is POST in comments, and takes {origin_password, new_password, confirm_new_password}
+ * Adjusting path to PUT and data structure to match openapi.json
  */
 const userModifyPassword = (passwordData) => {
-  return apiRequest('POST', '/user/password/', passwordData);
+  // Adjusting method to PUT and data structure to match openapi.json /api/v1/users/me/password
+  // openapi expects { old_password, new_password }
+  const { origin_password, new_password } = passwordData;
+  return apiRequest('PUT', '/v1/users/me/password', { old_password: origin_password, new_password });
 };
 
 /**
  * @summary 获取用户信息 (需要认证)
  * @method GET
- * @path /user/profile/
- * @param {string} [username] - 可选，查询指定用户的用户名，不提供则获取当前登录用户信息
+ * @path /api/v1/users/me
+ * @param {string} [userId] - 可选，查询指定用户的ID（管理员接口）
+ * @note 根据 openapi.json，/api/v1/users/me 是获取当前用户。
+ * 如果需要根据ID获取用户，应使用 /api/v1/users/{user_id} (管理员接口)。
+ * 调整函数以匹配 /api/v1/users/me 获取当前用户，如果需要根据ID获取用户，可以新增函数。
  */
-const getUserProfile = (username) => {
-  const queryParams = username ? { username } : {};
-  return apiRequest('GET', '/user/profile/', null, queryParams);
+const getUserProfile = () => {
+  // Matches openapi.json /api/v1/users/me for getting current user
+  return apiRequest('GET', '/v1/users/me');
 };
 
 /**
  * @summary 修改当前用户个人信息 (需要认证)
  * @method PUT
- * @path /user/profile/
- * @param {object} profileData - 要更新的用户信息 (参考 CustomUserSerializer, 支持部分更新)
+ * @path /api/v1/users/me (assuming /user/profile/ maps to this in openapi)
+ * @param {object} profileData - 要更新的用户信息 (参考 openapi UserProfileUpdateSchema)
  */
 const updateUserProfile = (profileData) => {
-  return apiRequest('PUT', '/user/profile/', profileData);
+  return apiRequest('PUT', '/v1/users/me', profileData);
 };
 
 /**
  * @summary 获取指定用户作为卖家的交易收到的评论 (需要认证)
  * @method GET
- * @path /user/comments/
- * @param {number} userId - 目标用户的ID
+ * @path /api/v1/users/{user_id}/comments (assuming /user/comments/ maps to this in openapi)
+ * @param {string} userId - 目标用户的ID (UUID)
+ * @note openapi.json does not explicitly list this path under /api/v1/users/. It lists /api/v1/items/{item_id}/comments and /api/v1/trades/{trade_id}/comments. It's possible this path is incorrect or outdated based on openapi. If it's intended to get comments *about* a user as a seller, a different API path might be needed. Sticking to the comment's intent but adjusting path to /v1/users/{userId}/comments based on common patterns, though it's not in the provided openapi.
  */
 const getUserTradeComments = (userId) => {
-  return apiRequest('GET', '/user/comments/', null, { user_id: userId });
+  // Path adjusted to include /v1/ and use userId in path. Note: This specific path is not in provided openapi.json.
+  return apiRequest('GET', `/v1/users/${userId}/comments/`);
 };
 
 /**
  * @summary 获取当前用户的购买记录 (需要认证)
  * @method GET
- * @path /user/records/bought/
+ * @path /api/v1/users/me/bought (assuming /user/records/bought/ maps to this)
  */
 const getUserBoughtRecords = () => {
-  return apiRequest('GET', '/user/records/bought/');
+  // Path adjusted to /v1/users/me/bought based on common patterns, not explicitly in provided openapi.
+  return apiRequest('GET', '/v1/users/me/bought');
 };
 
 /**
  * @summary 获取当前用户的销售记录 (需要认证)
  * @method GET
- * @path /user/records/sold/
+ * @path /api/v1/users/me/sold (assuming /user/records/sold/ maps to this)
  */
 const getUserSoldRecords = () => {
-  return apiRequest('GET', '/user/records/sold/');
+  // Path adjusted to /v1/users/me/sold based on common patterns, not explicitly in provided openapi.
+  return apiRequest('GET', '/v1/users/me/sold');
 };
 
 
@@ -187,84 +214,93 @@ const getUserSoldRecords = () => {
 /**
  * @summary 获取商品列表
  * @method GET
- * @path /item/products/
+ * @path /api/v1/items/products (assuming /item/products/ maps to this)
  * @param {object} [filters] - 可选的过滤参数 { category_id, search, owner_id, status }
+ * @note openapi.json lists /api/v1/items/. Adjusting path.
  */
 const getProductList = (filters) => {
-  return apiRequest('GET', '/item/products/', null, filters);
+  // Path adjusted to /v1/items/ based on openapi.json /api/v1/items
+  return apiRequest('GET', '/v1/items/', null, filters);
 };
 
 /**
  * @summary 创建新商品 (需要认证)
  * @method POST
- * @path /item/products/
+ * @path /api/v1/items/ (assuming /item/products/ maps to this for POST)
  * @param {FormData|object} productData - 商品数据。
  *                                      如果包含图片上传，应为 FormData 实例。
  *                                      (参考 ProductSerializer: { name, price, quantity, category (pk), description?, condition? })
  *                                      后端会自动设置 owner。
  *                                      对于图片(images): 如果是 FormData, 应包含 image 文件；如果是 JSON，应为图片信息数组 (通常创建时直接传文件)。
  * @note 若包含图片上传，请确保 isFormData = true，并正确构造 FormData
+ * @note openapi.json lists /api/v1/items/ for POST. Adjusting path.
  */
 const createProduct = (productData, isFormData = false) => {
-  // 如果 productData 中包含文件，应该用 FormData
-  // 例如: const formData = new FormData();
-  // formData.append('name', productData.name);
-  // formData.append('images[0]image_path', fileObject); // 这种嵌套结构需要后端支持或扁平化
-  // formData.append('image_file_field_name', fileObject); // 更常见
-  return apiRequest('POST', '/item/products/', productData, null, isFormData);
+  // Path adjusted to /v1/items/ based on openapi.json /api/v1/items for POST
+  return apiRequest('POST', '/v1/items/', productData, null, isFormData);
 };
 
 /**
  * @summary 获取单个商品详情
  * @method GET
- * @path /item/products/{productId}/
+ * @path /api/v1/items/{item_id} (assuming /item/products/{productId}/ maps to this)
  * @param {string} productId - 商品的UUID
+ * @note openapi.json lists /api/v1/items/{item_id}. Adjusting path.
  */
 const getProductDetail = (productId) => {
-  return apiRequest('GET', `/item/products/${productId}/`);
+  // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
+  return apiRequest('GET', `/v1/items/${productId}`);
 };
 
 /**
  * @summary 修改商品信息 (需要认证，所有者或管理员)
  * @method PUT
- * @path /item/products/{productId}/
+ * @path /api/v1/items/{item_id} (assuming /item/products/{productId}/ maps to this)
  * @param {string} productId - 商品的UUID
  * @param {FormData|object} productData - 更新的商品数据 (参考 ProductSerializer, 支持部分更新)
  * @note 若包含图片上传/修改，请确保 isFormData = true，并正确构造 FormData
+ * @note openapi.json lists /api/v1/items/{item_id} for PUT. Adjusting path.
  */
 const updateProduct = (productId, productData, isFormData = false) => {
-  return apiRequest('PUT', `/item/products/${productId}/`, productData, null, isFormData);
+  // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
+  return apiRequest('PUT', `/v1/items/${productId}`, productData, null, isFormData);
 };
 
 /**
  * @summary 删除商品 (需要认证，所有者或管理员)
  * @method DELETE
- * @path /item/products/{productId}/
+ * @path /api/v1/items/{item_id} (assuming /item/products/{productId}/ maps to this)
  * @param {string} productId - 商品的UUID
+ * @note openapi.json lists /api/v1/items/{item_id} for DELETE. Adjusting path.
  */
 const deleteProduct = (productId) => {
-  return apiRequest('DELETE', `/item/products/${productId}/`);
+  // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
+  return apiRequest('DELETE', `/v1/items/${productId}`);
 };
 
 /**
  * @summary 为商品添加评论 (需要认证)
  * @method POST
- * @path /item/products/{productId}/comments/
+ * @path /api/v1/items/{item_id}/comments (assuming /item/products/{productId}/comments/ maps to this)
  * @param {string} productId - 商品的UUID
  * @param {object} commentData - { content, rating }
+ * @note openapi.json lists /api/v1/items/{item_id}/comments. Adjusting path.
  */
 const addProductComment = (productId, commentData) => {
-  return apiRequest('POST', `/item/products/${productId}/comments/`, commentData);
+  // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
+  return apiRequest('POST', `/v1/items/${productId}/comments`, commentData);
 };
 
 /**
  * @summary 获取某商品的所有评论
  * @method GET
- * @path /item/products/{productId}/comments/
+ * @path /api/v1/items/{item_id}/comments (assuming /item/products/{productId}/comments/ maps to this)
  * @param {string} productId - 商品的UUID
+ * @note openapi.json lists /api/v1/items/{item_id}/comments. Adjusting path.
  */
 const getProductComments = (productId) => {
-  return apiRequest('GET', `/item/products/${productId}/comments/`);
+  // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
+  return apiRequest('GET', `/v1/items/${productId}/comments`);
 };
 
 // ========================================================================
@@ -274,52 +310,62 @@ const getProductComments = (productId) => {
 /**
  * @summary 创建新交易 (需要认证)
  * @method POST
- * @path /trade/transactions/
+ * @path /api/v1/trades/ (assuming /trade/transactions/ maps to this)
  * @param {object} transactionData - { product (pk), quantity, location?, meet_time? }
+ * @note openapi.json lists /api/v1/trades/. Adjusting path.
  */
 const createTransaction = (transactionData) => {
-  return apiRequest('POST', '/trade/transactions/', transactionData);
+  // Path adjusted to /v1/trades/ based on openapi.json /api/v1/trades/
+  return apiRequest('POST', '/v1/trades/', transactionData);
 };
 
 /**
  * @summary 获取单个交易详情 (需要认证，买家或卖家)
  * @method GET
- * @path /trade/transactions/{transactionId}/
+ * @path /api/v1/trades/{trade_id} (assuming /trade/transactions/{transactionId}/ maps to this)
  * @param {string} transactionId - 交易的UUID
+ * @note openapi.json lists /api/v1/trades/{trade_id}. Adjusting path.
  */
 const getTransactionDetail = (transactionId) => {
-  return apiRequest('GET', `/trade/transactions/${transactionId}/`);
+  // Path adjusted to /v1/trades/{transactionId} based on openapi.json /api/v1/trades/{trade_id}
+  return apiRequest('GET', `/v1/trades/${transactionId}`);
 };
 
 /**
  * @summary 更新交易状态 (需要认证，买家或卖家)
  * @method PUT
- * @path /trade/transactions/{transactionId}/
+ * @path /api/v1/trades/{trade_id} (assuming /trade/transactions/{transactionId}/ maps to this)
  * @param {string} transactionId - 交易的UUID
  * @param {object} statusData - { status: "new_status_value" } (参考 TransactionUpdateSerializer 和模型状态)
+ * @note openapi.json lists /api/v1/trades/{trade_id} for PUT. Adjusting path.
  */
 const updateTransactionStatus = (transactionId, statusData) => {
-  return apiRequest('PUT', `/trade/transactions/${transactionId}/`, statusData);
+  // Path adjusted to /v1/trades/{transactionId} based on openapi.json /api/v1/trades/{trade_id}
+  return apiRequest('PUT', `/v1/trades/${transactionId}`, statusData);
 };
 
 /**
  * @summary 为交易添加评论 (需要认证，买家或卖家)
  * @method POST
- * @path /trade/transactions/{transactionId}/comments/
+ * @path /api/v1/trades/{trade_id}/comments (assuming /trade/transactions/{transactionId}/comments/ maps to this)
  * @param {string} transactionId - 交易的UUID
  * @param {object} commentData - { content, rating }
+ * @note openapi.json lists /api/v1/trades/{trade_id}/comments. Adjusting path.
  */
 const addTransactionComment = (transactionId, commentData) => {
-  return apiRequest('POST', `/trade/transactions/${transactionId}/comments/`, commentData);
+  // Path adjusted to /v1/trades/{transactionId}/comments based on openapi.json /api/v1/trades/{trade_id}/comments
+  return apiRequest('POST', `/v1/trades/${transactionId}/comments`, commentData);
 };
 
 /**
  * @summary 获取与当前用户相关的聊天室列表 (基于交易) (需要认证)
  * @method GET
- * @path /trade/chatrooms/
+ * @path /api/v1/trades/chatrooms (assuming /trade/chatrooms/ maps to this)
+ * @note openapi.json does not explicitly list /api/v1/trades/chatrooms. Sticking to previous path structure but adding /v1.
  */
 const getChatRoomList = () => {
-  return apiRequest('GET', '/trade/chatrooms/');
+  // Path adjusted to /v1/trades/chatrooms based on previous structure, not explicitly in provided openapi.
+  return apiRequest('GET', '/v1/trades/chatrooms');
 };
 
 // ========================================================================
@@ -330,22 +376,26 @@ const getChatRoomList = () => {
 /**
  * @summary 获取某交易（聊天室）的聊天记录 (需要认证，买家或卖家)
  * @method GET
- * @path /chat/transactions/{transactionId}/messages/
+ * @path /api/v1/chats/{trade_id}/messages (assuming /chat/transactions/{transactionId}/messages/ maps to this)
  * @param {string} transactionId - 交易的UUID (即聊天室ID)
+ * @note openapi.json does not explicitly list this path under /api/v1/chats/. It lists paths under /api/v1/trades/. Assuming chat messages are under trades.
  */
 const getTransactionMessages = (transactionId) => {
-  return apiRequest('GET', `/chat/transactions/${transactionId}/messages/`);
+  // Path adjusted based on common patterns /v1/trades/{transactionId}/messages. Note: This is an assumption based on trade/chat relation, not explicitly in provided openapi.json.
+  return apiRequest('GET', `/v1/trades/${transactionId}/messages`);
 };
 
 /**
  * @summary 在某交易（聊天室）中发送消息 (需要认证，买家或卖家)
  * @method POST
- * @path /chat/transactions/{transactionId}/messages/
+ * @path /api/v1/chats/{trade_id}/messages (assuming /chat/transactions/{transactionId}/messages/ maps to this)
  * @param {string} transactionId - 交易的UUID (即聊天室ID)
  * @param {object} messageData - { content }
+ * @note Similar assumption as getTransactionMessages regarding path under trades.
  */
 const sendTransactionMessage = (transactionId, messageData) => {
-  return apiRequest('post', `/chat/transactions/${transactionId}/messages/`, messageData);
+  // Path adjusted based on common patterns /v1/trades/{transactionId}/messages. Note: This is an assumption based on trade/chat relation, not explicitly in provided openapi.json.
+  return apiRequest('post', `/v1/trades/${transactionId}/messages`, messageData);
 };
 
 // ========================================================================
@@ -378,52 +428,59 @@ const getChatWebSocketUrl = (userId) => {
   
   // 使用 axiosClient 的 baseURL 来构造 WebSocket URL
   let wsBaseUrl = axiosClient.defaults.baseURL;
-  if (wsBaseUrl.startsWith('http://')) {
-    wsBaseUrl = wsBaseUrl.replace(/^http/, 'ws');
-  } else if (wsBaseUrl.startsWith('https://')) {
-    wsBaseUrl = wsBaseUrl.replace(/^https/, 'wss');
-  }
   
-  // 如果 axiosClient.defaults.baseURL 是 /api 这样的相对路径, 
-  // 我们需要一个绝对路径的基础。这里假设部署在同一域名。
-  // 如果 baseURL 是 '/api', 并且 window.location.origin 是 'http://localhost:3000'
-  // 那么 wsBaseUrl 会变成 'ws://localhost:3000' (移除了 /api)
-  if (wsBaseUrl.startsWith('/')) { // e.g., /api
-      const origin = window.location.origin.replace(/^http/, 'ws'); // ws://localhost:port
-      // 移除 baseURL 中的 /api 部分, 然后和 origin 组合
-      // 这里需要判断 baseURL 是否就是 /api，或者更复杂的路径
-      // 假设 /api 是 baseURL 的末尾
-      if (axiosClient.defaults.baseURL.endsWith('/api')) {
-          wsBaseUrl = origin; // 直接使用 origin，因为 /ws/chat... 会被追加
-      } else {
-          // 对于更复杂的相对路径，可能需要更精细的处理
-          // 为了简单起见，如果不是 /api 结尾，我们尝试直接用 origin + baseURL
-          // 但这可能不总是正确，取决于 baseURL 的具体形式
-          wsBaseUrl = origin + wsBaseUrl;
+  // If baseURL is an absolute URL like 'http://domain:port/api',
+  // we need to strip the /api part and change http(s) to ws(s).
+  // If it's a relative path like '/api', we use window.location.origin.
+  
+  if (wsBaseUrl.startsWith('http')) {
+      // Absolute URL
+      if (wsBaseUrl.endsWith('/api')) {
+          wsBaseUrl = wsBaseUrl.substring(0, wsBaseUrl.length - '/api'.length);
       }
-  } else if (wsBaseUrl.endsWith('/api')) { // 如果是绝对路径 'http://domain/api'
-      wsBaseUrl = wsBaseUrl.substring(0, wsBaseUrl.length - '/api'.length);
+      wsBaseUrl = wsBaseUrl.replace(/^http/, 'ws');
+  } else if (wsBaseUrl.startsWith('/')) {
+      // Relative path, assume same origin
+      const origin = window.location.origin.replace(/^http/, 'ws');
+       if (wsBaseUrl.endsWith('/api')) {
+          // If the relative path is just /api, use origin directly
+           wsBaseUrl = origin;
+       } else {
+           // For other relative paths, combine origin and the relative path
+           wsBaseUrl = origin + wsBaseUrl;
+       }
   }
   
-  // 最终的 ws 地址应为 ws(s)://your_domain/ws/chat/<userid>/
+  // The final ws address should be ws(s)://your_domain/ws/chat/<userid>/
+  // Note: The path /ws/chat is hardcoded here based on backend.config.js comment.
   return `${wsBaseUrl}/ws/chat/${userId}/`; 
 };
 
 // 新增：提交或更新学生认证信息
+/**
+ * @summary 提交或更新学生认证信息
+ * @method POST
+ * @path /api/v1/user/student-auth (assuming /user/student-auth/ maps to this)
+ * @param {object} authData - 包含学生认证信息
+ * @note openapi.json does not explicitly list this path. Sticking to previous path structure but adding /v1.
+ */
 const submitStudentAuth = (authData) => {
-  return apiRequest('post', '/user/student-auth/', authData);
+  // Path adjusted to /v1/user/student-auth/ based on previous structure, not explicitly in provided openapi.
+  return apiRequest('post', '/v1/user/student-auth/', authData);
 };
 
 // 新增：统一图片上传
 /**
  * @summary 统一图片上传
  * @method POST
- * @path /images/upload/
+ * @path /api/v1/images/upload (assuming /images/upload/ maps to this)
  * @param {FormData} imageData - 包含 file, upload_type, related_id (可选), is_primary (可选)
+ * @note openapi.json does not explicitly list this path. Sticking to previous path structure but adding /v1.
  */
 const imagesUploadCreate = (imageData) => {
   // apiRequest 第五个参数 isFormData 设为 true
-  return apiRequest('POST', '/images/upload/', imageData, null, true);
+  // Path adjusted to /v1/images/upload/ based on previous structure, not explicitly in provided openapi.
+  return apiRequest('POST', '/v1/images/upload/', imageData, null, true);
 };
 
 // 导出所有 API 函数

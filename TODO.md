@@ -112,13 +112,13 @@
 
 **概述:** 用户认证、账户信息管理、学生认证、系统通知。
 
-*   `[ ] TODO: (开发者 A)` 实现用户注册界面 (`frontend/src/views/auth/RegisterView.vue`)：
+*   `[ ] TODO: (开发者 A)` 实现用户注册界面 (`frontend/src/user/views/auth/RegisterView.vue`)：
     *   表单输入（用户名、密码、确认密码、邮箱、专业）。
     *   前端表单验证。
     *   调用注册 API。
     *   处理注册成功/失败提示。
     *   提示用户进行邮箱验证。
-*   `[ ] TODO: (开发者 A)` 实现用户登录界面 (`frontend/src/views/auth/LoginView.vue`)：
+*   `[ ] TODO: (开发者 A)` 实现用户登录界面 (`frontend/src/user/views/auth/LoginView.vue`)：
     *   表单输入（用户名/邮箱、密码）。
     *   前端表单验证。
     *   调用登录 API。
@@ -126,11 +126,11 @@
     *   更新 Vuex 用户登录状态。
     *   登录成功后重定向到首页或其他目标页面。
     *   处理登录失败提示。
-*   `[ ] TODO: (开发者 A)` 实现邮箱验证页面 (`frontend/src/views/auth/EmailVerificationView.vue`)：
+*   `[ ] TODO: (开发者 A)` 实现邮箱验证页面 (`frontend/src/user/views/auth/EmailVerificationView.vue`)：
     *   解析 URL 中的验证 Token。
     *   调用验证 API。
     *   显示验证结果（成功/失败）。
-*   `[ ] TODO: (开发者 A)` 实现个人中心页面 (`frontend/src/views/user/ProfileView.vue`)：
+*   `[ ] TODO: (开发者 A)` 实现个人中心页面 (`frontend/src/user/views/profile/ProfileView.vue`)：
     *   显示用户基础信息 (从 Vuex `userInfo` 获取)。
     *   显示信用分、学生认证状态。
     *   提供编辑个人信息、修改密码、我的发布、我的订单、我的收藏、我的消息等入口。
@@ -158,7 +158,7 @@
 
 ### 3.1 商品浏览、搜索与收藏 (开发者 B)
 
-*   `[ ] TODO: (开发者 B)` 实现商品列表页面 (`frontend/src/views/product/ProductListView.vue`)：
+*   `[ ] TODO: (开发者 B)` 实现商品列表页面 (`frontend/src/product/views/ProductListView.vue`)：
     *   布局：商品卡片展示、侧边/顶部筛选区域、搜索框。
     *   商品卡片组件 (`frontend/src/components/product/ProductCard.vue`)：显示商品图片、标题、价格、发布者、简要描述。
     *   调用 API 获取商品列表。
@@ -166,7 +166,7 @@
     *   实现筛选功能 (按分类、价格区间、新旧程度等)。
     *   实现分页或无限滚动加载。
     *   实现加载状态和空状态展示。
-*   `[ ] TODO: (开发者 B)` 实现商品详情页面 (`frontend/src/views/product/ProductDetailView.vue`)：
+*   `[ ] TODO: (开发者 B)` 实现商品详情页面 (`frontend/src/product/views/ProductDetailView.vue`)：
     *   商品图片轮播组件。
     *   显示详细商品信息（标题、描述、价格、数量、分类、新旧程度）。
     *   显示发布者信息。
@@ -174,20 +174,20 @@
     *   "立即购买"按钮（根据商品状态和用户身份判断是否可点击，点击跳转到订单确认或聊天）。
     *   "联系卖家"按钮（点击跳转到聊天页面）。
     *   显示加载状态和错误状态。
-*   `[ ] TODO: (开发者 B)` 实现用户收藏夹页面 (`frontend/src/views/user/UserFavoritesView.vue`)：
+*   `[ ] TODO: (开发者 B)` 实现用户收藏夹页面 (`frontend/src/user/views/profile/UserFavoritesView.vue`)：
     *   显示用户收藏的商品列表（可复用商品卡片组件）。
     *   提供取消收藏功能。
     *   调用 API 获取收藏列表。
 
 ### 3.2 商品发布与管理 (开发者 B)
 
-*   `[ ] TODO: (开发者 B)` 实现商品发布/编辑页面 (`frontend/src/views/product/ProductPostView.vue`)：
+*   `[ ] TODO: (开发者 B)` 实现商品发布/编辑页面 (`frontend/src/product/views/ProductPostView.vue`)：
     *   表单输入（标题、描述、分类、新旧程度、数量、价格）。
     *   图片上传组件：支持多图上传、预览、删除、数量限制、调用后端文件上传 API。
     *   前端表单验证。
     *   调用发布 API 或编辑 API。
     *   处理成功/失败提示和页面跳转。
-*   `[ ] TODO: (开发者 B)` 实现用户发布的商品列表页面 (`frontend/src/views/user/UserProductsView.vue`)：
+*   `[ ] TODO: (开发者 B)` 实现用户发布的商品列表页面 (`frontend/src/user/views/profile/UserProductsView.vue`)：
     *   显示当前用户发布的商品列表。
     *   提供编辑、删除、上架/下架操作按钮。
     *   调用 API 获取列表。
@@ -201,23 +201,23 @@
 
 ### 4.1 订单管理 (开发者 C)
 
-*   `[ ] TODO: (开发者 C)` 实现订单确认页面 (`frontend/src/views/order/OrderConfirmationView.vue`)：
+*   `[ ] TODO: (开发者 C)` 实现订单确认页面 (`frontend/src/order/views/OrderConfirmationView.vue`)：
     *   展示待创建订单的商品信息、数量、总价。
     *   确认按钮，调用 API 创建订单。
     *   处理库存不足等错误。
-*   `[ ] TODO: (开发者 C)` 实现买家订单列表页面 (`frontend/src/views/user/BuyerOrderListView.vue`)：
+*   `[ ] TODO: (开发者 C)` 实现买家订单列表页面 (`frontend/src/user/views/profile/BuyerOrderListView.vue`)：
     *   显示作为买家的订单列表。
     *   支持按订单状态筛选 (待付款、待发货、待收货、已完成、已取消、退货中)。
     *   显示每个订单的关键信息（商品、数量、总价、卖家、状态）。
     *   提供查看详情、取消订单、确认收货、发起退货等操作入口。
     *   调用 API 获取列表。
-*   `[ ] TODO: (开发者 C)` 实现卖家订单列表页面 (`frontend/src/views/user/SellerOrderListView.vue`)：
+*   `[ ] TODO: (开发者 C)` 实现卖家订单列表页面 (`frontend/src/user/views/profile/SellerOrderListView.vue`)：
     *   显示作为卖家的订单列表。
     *   支持按订单状态筛选。
     *   显示每个订单的关键信息（商品、数量、总价、买家、状态）。
     *   提供查看详情、确认发货、联系买家、处理退货等操作入口。
     *   调用 API 获取列表。
-*   `[ ] TODO: (开发者 C)` 实现订单详情页面 (`frontend/src/views/order/OrderDetailView.vue`)：
+*   `[ ] TODO: (开发者 C)` 实现订单详情页面 (`frontend/src/order/views/OrderDetailView.vue`)：
     *   显示订单所有详细信息。
     *   根据当前用户身份 (买家/卖家) 和订单状态，动态显示相关操作按钮 (如确认收货、取消订单、确认发货、联系对方、发起/处理退货、查看/提交评价)。
     *   调用 API 获取订单详情。
@@ -225,13 +225,13 @@
 
 ### 4.2 交易评价 (开发者 C)
 
-*   `[ ] TODO: (开发者 C)` 评价表单组件 (`frontend/src/components/evaluation/EvaluationForm.vue`)：
+*   `[ ] TODO: (开发者 C)` 评价表单组件 (`frontend/src/evaluation/components/EvaluationForm.vue`)：
     *   通常集成在订单详情或完成页面。
     *   星级评分输入。
     *   评价内容文本域。
     *   调用 API 提交评价。
     *   处理提交成功/失败。
-*   `[ ] TODO: (开发者 C)` 评价列表展示组件 (`frontend/src/components/evaluation/EvaluationList.vue`)：
+*   `[ ] TODO: (开发者 C)` 评价列表展示组件 (`frontend/src/evaluation/components/EvaluationList.vue`)：
     *   通常集成在商品详情页或用户主页。
     *   显示评价内容、评分、评价者信息、时间。
     *   支持分页或无限滚动加载。
@@ -245,12 +245,12 @@
 
 ### 5.1 站内信聊天 (开发者 D)
 
-*   `[ ] TODO: (开发者 D)` 实现聊天会话列表页面 (`frontend/src/views/chat/ChatListView.vue`)：
+*   `[ ] TODO: (开发者 D)` 实现聊天会话列表页面 (`frontend/src/chat/views/ChatListView.vue`)：
     *   显示用户的所有聊天会话列表，按商品分组。
     *   显示每个会话的最新消息和未读数量。
     *   点击会话跳转到聊天室页面。
     *   调用 API 获取会话列表。
-*   `[ ] TODO: (开发者 D)` 实现聊天室页面 (`frontend/src/views/chat/ChatRoomView.vue`)：
+*   `[ ] TODO: (开发者 D)` 实现聊天室页面 (`frontend/src/chat/views/ChatRoomView.vue`)：
     *   显示指定会话的聊天消息记录。
     *   消息气泡展示 (区分发送者和接收者)。
     *   消息输入框和发送按钮。
@@ -263,21 +263,21 @@
 
 ### 5.2 退货管理 (开发者 D)
 
-*   `[ ] TODO: (开发者 D)` 发起退货请求表单 (`frontend/src/components/return/ReturnRequestForm.vue`)：
+*   `[ ] TODO: (开发者 D)` 发起退货请求表单 (`frontend/src/return/components/ReturnRequestForm.vue`)：
     *   通常集成在订单详情页面。
     *   选择退货原因。
     *   提交退货申请，调用 API。
-*   `[ ] TODO: (开发者 D)` 实现买家退货申请列表页面 (`frontend/src/views/user/BuyerReturnListView.vue`)：
+*   `[ ] TODO: (开发者 D)` 实现买家退货申请列表页面 (`frontend/src/user/views/profile/BuyerReturnListView.vue`)：
     *   显示作为买家发起的退货请求列表。
     *   显示退货状态。
     *   提供查看详情、申请管理员介入等操作入口。
     *   调用 API 获取列表。
-*   `[ ] TODO: (开发者 D)` 实现卖家待处理退货列表页面 (`frontend/src/views/user/SellerReturnListView.vue`)：
+*   `[ ] TODO: (开发者 D)` 实现卖家待处理退货列表页面 (`frontend/src/user/views/profile/SellerReturnListView.vue`)：
     *   显示作为卖家收到的退货请求列表。
     *   显示退货状态。
     *   提供查看详情、处理退货 (同意/拒绝) 等操作入口。
     *   调用 API 获取列表。
-*   `[ ] TODO: (开发者 D)` 退货请求详情页面 (`frontend/src/views/return/ReturnRequestDetailView.vue`)：
+*   `[ ] TODO: (开发者 D)` 退货请求详情页面 (`frontend/src/return/views/ReturnRequestDetailView.vue`)：
     *   显示退货请求的详细信息（订单信息、退货原因、申请时间、处理状态、处理意见）。
     *   根据当前用户身份和退货状态，动态显示相关操作按钮 (如卖家"同意/拒绝"、买家"申请介入"、管理员"介入处理")。
     *   调用 API 获取详情。
@@ -291,7 +291,7 @@
 
 ### 6.1 系统通知 (开发者 E)
 
-*   `[ ] TODO: (开发者 E)` 实现系统通知列表页面 (`frontend/src/views/user/NotificationsView.vue`)：
+*   `[ ] TODO: (开发者 E)` 实现系统通知列表页面 (`frontend/src/user/views/profile/NotificationsView.vue`)：
     *   显示通知列表。
     *   支持分页加载。
     *   显示通知标题、内容、时间、已读状态。
@@ -302,7 +302,7 @@
 
 ### 6.2 用户举报 (开发者 E)
 
-*   `[ ] TODO: (开发者 E)` 举报表单组件 (`frontend/src/components/report/ReportForm.vue`)：
+*   `[ ] TODO: (开发者 E)` 举报表单组件 (`frontend/src/report/components/ReportForm.vue`)：
     *   通常集成在用户主页、商品详情页、订单详情页等。
     *   选择举报对象类型 (用户、商品、订单)。
     *   输入举报内容。

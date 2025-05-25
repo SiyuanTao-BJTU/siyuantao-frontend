@@ -1,213 +1,397 @@
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
-import {ChatLineRound, Download, House, Phone, Sell, Switch, User} from "@element-plus/icons-vue";
-import {ElMessage} from "element-plus";
+import { Search, ChatLineRound, Bell, Plus, UserFilled, Setting, Goods, List, Star, Lock, Switch, HomeFilled, Box, ArrowDown, Expand, Fold, User } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import api from '@/API_PRO.js';
 import WebSocketService from "@/socket_client/socket.js";
 
 // 组件全局变量定义
-const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const MODE = process.env.NODE_ENV;
 let username = ref('');
+let avatarUrl = ref(null);
+let isAdmin = ref(false);
 let avatar_char = computed(() => {
-  // Ensure username.value is a string and not null/undefined before calling slice
   return (username.value && typeof username.value === 'string') ? username.value.slice(0, 2).toUpperCase() : '??';
 });
 
-// 获取用户名的函数
-const fetchUsernameAndId = async () => {
-  try {
-    api.getUserProfile()
-      .then(response => { // Changed data to response
-        if (response && response.data && response.code === 0) {
-          const userInfo = response.data; // Actual user data is in response.data
-          username.value = userInfo.username;
-          localStorage.setItem('username', userInfo.username);
-          localStorage.setItem('userId', userInfo.id);
-           // Re-initialize WebSocket if userId is now available and was undefined before
-          if (userInfo.id && WebSocketService.userId === 'undefined') { 
-            WebSocketService.init(userInfo.id);
-          }
-        } else {
-          console.warn("TopNav: 获取用户信息API响应格式不正确或code不为0:", response);
-          ElMessage.error(t('navigator.username_error'));
-          username.value = '??';
+const searchQuery = ref('');
+
+const isLoggedIn = ref(ref(localStorage.getItem('token') !== null)); // 根据 token 初始判断登录状态
+
+// 获取用户信息的函数
+const fetchUserInfo = async () => {
+  const token = localStorage.getItem('token');
+  console.log("TopNav: Checking for token:", token);
+  if (token) {
+    try {
+      const response = await api.getUserProfile();
+      console.log("TopNav: Fetch user info API response:", response);
+      // 修改判断逻辑，检查响应中是否包含用户数据字段，例如 user_id 或 username
+      if (response && (response.user_id || response.username)) {
+        const userInfo = response; // API 直接返回用户信息对象
+        username.value = userInfo.username;
+        avatarUrl.value = userInfo.avatar_url || null;
+        isAdmin.value = userInfo.is_staff || false; // 假设 is_staff 字段表示管理员
+        isLoggedIn.value = true; // 成功获取用户信息即视为登录
+        localStorage.setItem('username', userInfo.username);
+        localStorage.setItem('userId', userInfo.user_id); // 假设用户ID字段是 user_id
+
+        // 初始化 WebSocket
+        if (userInfo.user_id && (!WebSocketService.userId || WebSocketService.userId === 'undefined')) {
+          WebSocketService.init(userInfo.user_id);
+        } else if (userInfo.user_id && WebSocketService.userId !== userInfo.user_id) {
+          WebSocketService.close();
+          WebSocketService.init(userInfo.user_id);
         }
-      })
-      .catch(error => {
-        console.error("获取用户信息失败 TopNav:", error);
-        ElMessage.error(t('navigator.username_error'));
-        username.value = '??';
-      });
-  }
-  catch (error) {
-    console.error("Outer catch in fetchUsernameAndId:", error);
-    ElMessage.error(t('navigator.username_error'));
-    username.value = '??';
+      } else {
+        console.warn("TopNav: 获取用户信息API响应不包含用户数据或格式不正确:", response);
+        // 如果 API 返回非预期格式，视为未登录
+        resetLoginState();
+      }
+    } catch (error) {
+      console.error("获取用户信息失败 TopNav:", error);
+      // API 调用失败（如 401 Unauthorized），视为未登录
+      resetLoginState();
+    }
+  } else {
+    // 没有 token，视为未登录
+    console.log("TopNav: No token found, user is not logged in.");
+    resetLoginState();
   }
 };
 
-// 监听 token 的变化以更新用户名
-const handleStorageChange = (event) => {
-  if (event.key === 'token') {
-    if (event.oldValue !== event.newValue) {
-      fetchUsernameAndId(); // token 变更时请求最新用户名
-    }
-  }
-};
-
-const checkFileAvailable = async (fileURL) => {
-  try {
-    const res = await fetch(fileURL, {
-      method: 'HEAD'
-    });
-    if (res.ok) {
-      window.location.href = fileURL;
-      return true;
-    } else {
-      return false;
-    }
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
-}
-
-// 菜单选择事件
-const handleSelect = (key, keyPath) => {
-  const routes = {
-    '1': '/home',
-    '2': '/sell',
-    '3': '/message',
-    '4': '/profile',
-  };
-  if (routes[key]) {
-    router.push(routes[key]);
-  } else if (keyPath[1] === '6-1') {
+// 重置登录状态的辅助函数
+const resetLoginState = () => {
+    isLoggedIn.value = false;
+    username.value = '';
+    avatarUrl.value = null;
+    isAdmin.value = false;
     localStorage.removeItem('token');
-    localStorage.removeItem('refresh');
+    localStorage.removeItem('refresh'); // 如果有 refresh token 也移除
     localStorage.removeItem('username');
     localStorage.removeItem('userId');
-    WebSocketService.close();
-    router.push('/login');
-  } else if (keyPath[1] === '6-2') {
-    router.push('/profile');
+    WebSocketService.close(); // 关闭 WebSocket 连接
+};
+
+// 登录成功的处理函数 (由 LoginView 调用)
+const handleLoginSuccess = () => {
+  fetchUserInfo();
+};
+
+// 登出处理函数
+const handleLogout = () => {
+  resetLoginState();
+  router.push('/login');
+};
+
+// 路由跳转函数
+const navigateTo = (path) => {
+  router.push(path);
+};
+
+// 菜单选择事件 (主要用于处理下拉菜单)
+const handleCommand = (command) => {
+  switch (command) {
+    case 'profile':
+      navigateTo('/profile');
+      break;
+    case 'change-password':
+      ElMessage.info("修改密码功能待实现");
+      break;
+    case 'admin':
+      navigateTo('/admin');
+      break;
+    case 'logout':
+      handleLogout();
+      break;
   }
-  else if (key[0] === "7") {
-    const fileURL = "/app/Goods Exchange Setup 0.0.0.exe";
-    if (!checkFileAvailable(fileURL)) {
-      ElMessage.warning(t("profile.download_error"));
+};
+
+// 监听路由变化，在进入非公共路由时检查并获取用户信息
+watch(
+  () => route.path,
+  (newPath) => {
+    const publicPaths = ['/login', '/register', '/verify-email', '/admin/login']; // 包含管理员登录页
+    if (!publicPaths.includes(newPath)) {
+      console.log("TopNav: Route changed to non-public path, fetching user info.");
+      fetchUserInfo();
+    } else {
+      console.log("TopNav: Route changed to public path, resetting login state if necessary.");
+      // 如果当前在公共页面，确保前端显示未登录状态（如果实际未登录）
+      // 但是不清除 token，因为路由守卫会在需要时处理重定向和 token 检查
+      // 只需同步一下 isLoggedIn 状态即可，fetchUserInfo 会在需要时清除 token
+       if (!localStorage.getItem('token')) {
+           isLoggedIn.value = false;
+           username.value = '';
+           avatarUrl.value = null;
+           isAdmin.value = false;
+       }
     }
-  }
-  else if (key[0] === "8") {
-    const emailURL = "xkpu7496@gmail.com";
-    window.location.href = `mailto:${emailURL}`;
-  }
-};
+  },
+  { immediate: true } // 立即执行一次
+);
 
-// 语言切换
-const change_language = () => {
-  locale.value = locale.value === 'en' ? 'zh' : 'en';
-};
-
-// 组件挂载和卸载
+// 在组件挂载时也检查一次登录状态和用户信息
 onMounted(() => {
-  if (localStorage.getItem('token')) {
-    fetchUsernameAndId(); // 初始挂载时请求用户名
-  } else {
-    username.value = '??';
-  }
+    console.log("TopNav: Component mounted, initial fetch user info.");
+    fetchUserInfo();
 });
 
-// 监听路由变化
-watch(
-    () => route.path,
-    (newPath) => {
-      if (newPath === '/login') {
-        // 如果用户回到 login 路由，重置 username
-        username.value = '??';
-      } else if (newPath === '/home' && localStorage.getItem('token')) {
-        // 如果用户从 login 路由到 home 路由，发起请求获取 username
-        fetchUsernameAndId();
-      }
-    }
-);
+// TODO: 实现未读消息和通知数量的获取和显示
+const unreadMessageCount = ref(0);
+const unreadNotificationCount = ref(0);
 </script>
 
 <template>
   <el-menu
-      default-active="activeIndex"
-      :ellipsis=false
-      class="navigation-bar"
+      :default-active="route.path"
+      :ellipsis="false"
+      class="top-navigation-bar"
       mode="horizontal"
-      background-color="#545c64"
-      text-color="#fff"
-      active-text-color="#ffd04b"
-      @select="handleSelect"
+      router
   >
-    <el-menu-item index="0" disabled>
-      <!--<span class="logo_word">GoodsExchange</span> -->
-      <img src="/src/assets/icon_deep.png" alt="logo" class="logo-img">
-    </el-menu-item>
-    <el-menu-item index="1">
-      <el-icon><House /></el-icon>
-      <span>{{ t("navigator.home_page") }}</span>
-    </el-menu-item>
-    <el-menu-item index="2">
-      <el-icon><Sell /></el-icon>
-      <span>{{ t("navigator.sell_page") }}</span>
-    </el-menu-item>
-    <el-menu-item index="3">
-      <el-icon><ChatLineRound /></el-icon>
-      <span>{{ t("navigator.chat_page") }}</span>
-    </el-menu-item>
-    <el-menu-item index="4">
-      <el-icon><User /></el-icon>
-      <span>{{ t("navigator.personal_page") }}</span>
-    </el-menu-item>
-    <el-menu-item index="5" @click="change_language">
-      <el-icon><Switch /></el-icon>
-      <span>{{ t("navigator.change_language") }}</span>
-    </el-menu-item>
-    <el-menu-item index="8">
-      <el-icon><Phone /></el-icon>
-      <span>@xkpu7496@gmail.com</span>
-    </el-menu-item>
-    <el-menu-item index="7" v-if="MODE !== 'desktop'">
-      <el-icon><Download /></el-icon>
-      <span>{{t("navigator.download_desktop_app")}}</span>
-    </el-menu-item>
-    <el-sub-menu index="6">
-      <template #title>
-        <el-avatar>{{ avatar_char }}</el-avatar>
+    <div class="navbar-left">
+       <img src="/src/assets/思源淘.png" alt="思源淘 Logo" class="logo-img">
+       <span class="site-name">思源淘</span>
+    </div>
+
+    <div class="navbar-right">
+      <template v-if="!isLoggedIn">
+         <el-button text @click="navigateTo('/login')" class="nav-link-button">登录</el-button>
+         <el-button type="primary" @click="navigateTo('/register')" class="nav-register-button">注册</el-button>
       </template>
-      <el-menu-item index="6-1">{{ t("navigator.logout") }}</el-menu-item>
-      <el-menu-item index="6-2">{{ t("navigator.personal_info") }}</el-menu-item>
-    </el-sub-menu>
+
+      <template v-else>
+         <!-- 将发布商品按钮改为图标+文字 -->
+         <!-- <div class="nav-item-with-text" @click="navigateTo('/publish')">
+           <el-icon class="nav-icon"><Box /></el-icon>
+           <span class="nav-text">发布</span>
+         </div> -->
+
+        <!-- 移除个人中心和我的发布图标 -->
+        <!-- <el-icon class="nav-icon" @click="navigateTo('/profile')"><User /></el-icon> -->
+        <!-- <el-icon class="nav-icon" @click="navigateTo('/profile/my-products')"><Goods /></el-icon> -->
+
+        <div class="nav-item-with-text" @click="navigateTo('/message')">
+          <el-badge :value="unreadMessageCount" :hidden="unreadMessageCount === 0" class="message-badge">
+             <el-icon class="nav-icon"><ChatLineRound /></el-icon>
+          </el-badge>
+          <span class="nav-text">消息</span>
+        </div>
+
+        <div class="nav-item-with-text" @click="navigateTo('/notifications')">
+          <el-badge :value="unreadNotificationCount" :hidden="unreadNotificationCount === 0" class="notification-badge">
+             <el-icon class="nav-icon"><Bell /></el-icon>
+          </el-badge>
+          <span class="nav-text">通知</span>
+        </div>
+
+        <el-dropdown trigger="click" @command="handleCommand">
+          <span class="el-dropdown-link">
+            <el-avatar v-if="!avatarUrl" :size="32" class="user-avatar">{{ avatar_char }}</el-avatar>
+            <el-avatar v-else :size="32" :src="avatarUrl" class="user-avatar"></el-avatar>
+            <span class="username">{{ username }}</span>
+            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <!-- 保留个人中心 -->
+              <el-dropdown-item command="profile"><el-icon><User /></el-icon>个人中心</el-dropdown-item>
+              <!-- 以下扁平化路径的菜单项已移至侧边栏，从顶部下拉菜单中移除 -->
+              <!-- <el-dropdown-item command="my-products"><el-icon><Goods /></el-icon>我的发布</el-dropdown-item> -->
+              <!-- <el-dropdown-item command="my-orders"><el-icon><List /></el-icon>我的订单</el-dropdown-item> -->
+              <!-- <el-dropdown-item command="my-favorites"><el-icon><Star /></el-icon>我的收藏</el-dropdown-item> -->
+              <!-- <el-dropdown-item command="my-messages"><el-icon><ChatLineRound /></el-icon>我的消息</el-dropdown-item> -->
+              <el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item>
+              <el-dropdown-item v-if="isAdmin" command="admin" divided><el-icon><Setting /></el-icon>管理后台</el-dropdown-item>
+              <el-dropdown-item command="logout" divided><el-icon><Switch /></el-icon>退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </template>
+    </div>
   </el-menu>
 </template>
 
-<style>
-.el-menu--horizontal > .el-menu-item:nth-child(5) {
-  margin-right: auto;
+<style scoped>
+.top-navigation-bar {
+  height: 60px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1000;
 }
 
-.el-menu-item.is-disabled {
-  color: white !important;
-  opacity: 1 !important;
+.navbar-left,
+.navbar-center,
+.navbar-right {
+  display: flex;
+  align-items: center;
 }
 
-.logo_word {
-  font-size: 20px;
-  font-weight: bold;
+.navbar-left {
+  flex-shrink: 0;
+  margin-right: 30px;
+  /* cursor: pointer; */ /* Remove cursor pointer */
 }
 
 .logo-img {
-  width: 150px;
-  height: 50px;
+  height: 40px;
+  margin-right: 10px;
 }
+
+.site-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: #4A90E2;
+}
+
+.navbar-center {
+  flex-grow: 1;
+  max-width: 600px;
+  margin: 0 30px;
+}
+
+.search-input {
+  margin-right: 10px;
+}
+
+.search-button {
+    background-color: #F5A623;
+    border-color: #F5A623;
+}
+
+.search-button:hover {
+    background-color: #E0951C;
+    border-color: #E0951C;
+}
+
+.navbar-right {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.nav-link-button {
+    color: #4A90E2;
+    margin-right: 15px;
+    font-size: 15px;
+}
+
+.nav-link-button:hover {
+    color: #6FA8DC;
+}
+
+.nav-register-button {
+    background-color: #4A90E2;
+    border-color: #4A90E2;
+    font-size: 15px;
+}
+
+.nav-register-button:hover {
+    background-color: #6FA8DC;
+    border-color: #6FA8DC;
+}
+
+.publish-button {
+    /* Remove button specific styles */
+    /* background-color: #67C23A;
+    border-color: #67C23A;
+    margin-right: 20px;
+     font-size: 15px; */
+    /* display: none; */ /* Hide the original button element */
+}
+
+/* 移除发布商品图标+文字的样式 */
+.nav-item-with-text:has(.el-icon-box) {
+  display: none;
+}
+
+.nav-icon {
+  font-size: 24px;
+  color: #606266;
+  /* margin: 0 15px; */ /* Adjust margin */
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.nav-icon:hover {
+    color: #4A90E2;
+}
+
+.message-badge,
+.notification-badge {
+  /* margin: 0 15px; */ /* Adjust margin */
+  margin-right: 5px; /* Add some space between icon badge and text */
+}
+
+.nav-item-with-text {
+  display: flex;
+  flex-direction: row; /* Stack icon and text */
+  align-items: center; /* Center horizontally */
+  margin: 0 15px;
+  cursor: pointer;
+}
+
+.nav-text {
+  font-size: 12px; /* Smaller text size */
+  color: #606266; /* Match icon color */
+  /* margin-top: 2px; */ /* Space between icon and text */
+}
+
+.user-avatar {
+  margin-right: 8px;
+  background-color: #4A90E2;
+  color: #fff;
+}
+
+.el-dropdown-link {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-left: 15px;
+}
+
+.username {
+  font-size: 15px;
+  color: #303133;
+  margin-right: 5px;
+}
+
+.top-navigation-bar.el-menu--horizontal > .el-menu-item.is-active {
+    border-bottom: 2px solid #4A90E2;
+    color: #4A90E2;
+}
+
+.top-navigation-bar.el-menu--horizontal > .el-menu-item:not(.is-disabled):hover,
+.top-navigation-bar.el-menu--horizontal > .el-menu-item:not(.is-disabled):focus {
+    background-color: #f0f0f0;
+    color: #4A90E2;
+}
+
+.top-navigation-bar .el-menu-item,
+.top-navigation-bar .el-sub-menu {
+    display: none;
+}
+
+.top-navigation-bar .navbar-left {
+    display: flex;
+}
+
+.top-navigation-bar .navbar-center {
+    display: flex;
+}
+
+.top-navigation-bar .navbar-right {
+    display: flex;
+}
+
 </style>

@@ -49,19 +49,45 @@
 ```
 frontend/
 ├── src/                    # 源代码目录
-│   ├── assets/            # 静态资源
-│   ├── components/        # 可复用组件
-│   ├── views/             # 页面组件
-│   ├── router/            # 路由配置
-│   ├── store/             # Vuex 状态管理
-│   ├── axios_client/      # Axios 封装
-│   ├── socket_client/     # WebSocket 封装
-│   ├── utils/             # 工具函数
-│   ├── App.vue           # 根组件
-│   └── main.js           # 入口文件
+│   ├── admin/             # 管理员后台 (开发者 A)
+│   │   ├── components/
+│   │   ├── store/
+│   │   └── views/
+│   ├── assets/            # 静态资源 (通用)
+│   ├── axios_client/      # Axios 封装 (通用)
+│   ├── chat/              # 消息与退货 (开发者 D)
+│   │   ├── components/
+│   │   ├── store/
+│   │   └── views/
+│   ├── components/        # 通用组件 (开发者 A)
+│   ├── notification_report/ # 通知与举报 (开发者 E)
+│   │   ├── components/
+│   │   ├── store/
+│   │   └── views/
+│   ├── order/             # 交易模块 (开发者 C)
+│   │   ├── components/
+│   │   ├── store/
+│   │   └── views/
+│   ├── product/           # 商品模块 (开发者 B)
+│   │   ├── components/
+│   │   ├── store/
+│   │   └── views/
+│   ├── router/            # 路由配置 (通用)
+│   ├── socket_client/     # WebSocket 封装 (开发者 D)
+│   ├── store/             # Vuex 根 Store (通用)
+│   │   └── modules/       # 模块 Store (按需移动)
+│   ├── user/              # 用户模块 (开发者 A)
+│   │   ├── components/
+│   │   ├── store/
+│   │   └── views/
+│   ├── utils/             # 工具函数 (通用)
+│   ├── API_PRO.js         # API 服务 (通用)
+│   ├── App.vue            # 根组件 (通用)
+│   ├── FormatObject.js    # 格式化工具 (通用)
+│   └── main.js            # 入口文件 (通用)
 ├── public/                # 公共资源目录
 ├── electron/              # Electron 相关文件
-├── dist/                  # 构建输出目录
+├── dist/                # 构建输出目录
 ├── release/               # 桌面应用打包输出
 ├── docs/                 # 项目文档
 ├── .gitignore            # Git 忽略文件配置
@@ -74,8 +100,22 @@ frontend/
 **核心目录说明：**
 
 *   `src/`: 存放所有的前端应用源代码，按照功能和职责划分为不同的子目录。
+*   `admin/`: 管理员后台模块，由开发者 A 负责。
+*   `assets/`: 静态资源，通用。
+*   `axios_client/`: Axios 封装，通用。
+*   `chat/`: 消息与退货模块，由开发者 D 负责。
+*   `components/`: 通用可复用组件，由开发者 A 负责。
+*   `notification_report/`: 通知与举报模块，由开发者 E 负责。
+*   `order/`: 交易模块，由开发者 C 负责。
+*   `product/`: 商品模块，由开发者 B 负责。
+*   `router/`: 路由配置，通用。
+*   `socket_client/`: WebSocket 封装，由开发者 D 负责。
+*   `store/`: Vuex 状态管理根目录，通用，模块 store 建议迁移至对应模块目录下。
+*   `user/`: 用户模块，由开发者 A 负责。
+*   `utils/`: 工具函数，通用。
+*   其他位于 `src/` 根目录的文件（如 `API_PRO.js`, `App.vue`, `FormatObject.js`, `main.js`）属于基础架构部分，通用。
 *   `public/`: 存放静态公共资源。
-*   `electron/`: 存放 Electron 桌面应用构建相关的文件。
+*   `electron/`: Electron 相关文件。
 *   `dist/`: Web 应用打包输出目录。
 *   `release/`: 桌面应用打包输出目录。
 *   `docs/`: 存放详细的项目文档。
@@ -86,9 +126,9 @@ frontend/
 
 前端项目的模块划分旨在与后端服务的分工相对独立，同时确保前端内部的逻辑清晰和组件复用。我们将根据功能领域进行模块划分，例如：用户模块、商品模块、交易模块、消息模块等。
 
-每个模块应包含其相关的页面组件 (`views`)、可复用组件 (`components`)、状态管理 (`store`)、API 调用逻辑（封装在 `axios_client` 中，按模块组织调用函数）等。模块内部应尽量减少对外部模块的直接依赖，通过集中的状态管理或事件总线进行通信。
+每个模块应包含其相关的页面组件 (`views`)、可复用组件 (`components`)、状态管理 (`store`)、API 调用逻辑等（模块内的 API 调用可以组织在各自模块下，例如 `frontend/src/user/api/user.js`）。模块内部应尽量减少对外部模块的直接依赖，通过集中的状态管理或事件总线进行通信。
 
-详细的模块划分方案、各模块职责、以及与后端分组的协作方式，请查阅 [docs/模块划分与职责.md](./docs/模块划分与职责.md)。
+详细的模块划分方案、各模块职责、以及与后端分组的协作方式，请查阅 [TODO.md](./TODO.md) 中的团队分工部分。
 
 前端开发应遵循组件化原则，提高代码复用性；遵循状态管理的最佳实践，避免状态混乱；遵循接口调用规范，统一处理数据和错误。
 

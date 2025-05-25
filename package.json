@@ -39,12 +39,12 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "./src/assets/icon_light.ico",
-      "uninstallerIcon": "./src/assets/icon_deep.ico",
+      "installerIcon": "./src/assets/思源淘.png",
+      "uninstallerIcon": "./src/assets/思源淘.png",
       "shortcutName": "SiYuanTao"
     },
     "win": {
-      "icon": "./src/assets/icon_light.ico"
+      "icon": "./src/assets/思源淘.png"
     },
     "files": [
       "dist/**/*",
@@ -63,5 +63,8 @@
         "url": "file:///E:\\Projects\\SiYuanTao\\cache"
       }
     ]
+  },
+  "dependencies": {
+    "vuex": "^4.1.0"
   }
 }
