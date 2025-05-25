@@ -65,6 +65,7 @@
     ]
   },
   "dependencies": {
+    "nprogress": "^0.2.0",
     "vuex": "^4.1.0"
   }
 }

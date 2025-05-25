@@ -1,5 +1,5 @@
 <script setup>
-import TableInfo from '@/user/components/TableInfo.vue'; // Import the TableInfo component
+import TableInfo from '@/order/components/TableInfo.vue'; // Import the TableInfo component
 
 // TODO: Add any specific logic needed for the Buyer Order List View
 

@@ -11,7 +11,7 @@
     ChatSquare,
     School
   } from "@element-plus/icons-vue";
-  import PasswordDialog from "@/user/components/PasswordDialog.vue";
+  import ChangePassword from "@/user/components/ChangePassword.vue";
   import WebSocketService from "@/socket_client/socket.js";
   import router from "@/router/index.js";
   import {ElMessage} from "element-plus";
@@ -171,7 +171,7 @@
             <el-icon><Star /></el-icon>
             <span>我的收藏</span>
           </el-card>
-           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/message')">
+           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/messages')">
             <el-icon><ChatSquare /></el-icon>
             <span>我的消息</span>
           </el-card>
@@ -184,11 +184,11 @@
       </div>
     </div>
   </div>
-  <PasswordDialog
+  <ChangePassword
       :isPasswordDialogVisiable="passwordDialogVisible"
       :key="componentKey"
       @updateCancel="passwordDialogVisible = false"
-      @updateSuccess="passwordDialogVisible = false" 
+      @updateSuccess="passwordDialogVisible = false"
   />
 </template>
 
