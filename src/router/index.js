@@ -9,8 +9,16 @@ const router = createRouter({
     // 将根路径 / 重定向到 /products，作为商品浏览主入口
     {
       path: '/',
-      redirect: '/products',
-      meta: { requiresAuth: true }
+      redirect: to => {
+        const isAuthenticated = localStorage.getItem("token");
+        // const isLoggedIn = store.getters['user/isAuthenticated']; // Use localStorage for simplicity in redirect function
+        if (isAuthenticated) {
+          return '/products'; // If authenticated, go to products page
+        } else {
+          return '/login'; // If not authenticated, go to login page
+        }
+      },
+      // meta: { requiresAuth: true } // Removed requiresAuth from root redirect as it's handled by the redirect function
     },
     { // 商品浏览主页，所有商品列表 (原 /products)
       path: '/products',
@@ -177,80 +185,104 @@ const router = createRouter({
 
 // 路由导航守卫
 router.beforeEach(async (to, from, next) => {
-  const isLoggedIn = store.getters['user/isAuthenticated'];
-  const isAdmin = store.state.user.userInfo?.is_staff === true;
+  // Check if the route requires authentication
+  if (to.meta.requiresAuth) {
+    // Check if user is logged in by checking for token
+    const isAuthenticated = localStorage.getItem("token");
+    const isLoggedIn = store.getters['user/isAuthenticated']; // Also check store state
 
-  // 尝试在每次路由跳转前获取用户信息，这也会更新登录状态
-  // 避免在登录页、注册页、邮箱验证页、管理员登录页触发 fetchUserInfo
-  const publicAuthPages = ['/login', '/register', '/verify-email', '/admin/login'];
-  if (!publicAuthPages.includes(to.path)) {
-     // 如果 store 中没有用户信息或者未登录，尝试获取
-     if (!isLoggedIn || !store.state.user.userInfo) {
-        try {
+    // If not authenticated and not logged in via store state
+    if (!isAuthenticated && !isLoggedIn) {
+      // Redirect to login page
+      ElMessage.error('请先登录才能访问此页面'); // Provide feedback
+      return next('/login');
+    }
+
+    // If token exists but store state is not logged in, try to fetch user info
+    if (isAuthenticated && !isLoggedIn) {
+       try {
             await store.dispatch('user/fetchUserInfo');
-            // 重新检查登录状态，fetchUserInfo 成功后 isLoggedIn 应该为 true
-            if (store.getters['user/isAuthenticated']) {
-               // 用户已登录，继续导航
-               // 检查是否是需要管理员权限的页面，如果不是管理员则重定向
-               if (to.meta.requiresAdmin && !store.state.user.userInfo?.is_staff) {
-                   ElMessage.error('您没有权限访问此页面');
-                   return next(from.fullPath || '/'); // 重定向回上一页或首页
-               }
-               // 如果是管理员，检查是否需要超级管理员权限
-               if (to.meta.requiresSuperAdmin && !store.state.user.userInfo?.is_superuser) { // 假设超级管理员字段是 is_superuser
-                   ElMessage.error('您没有超级管理员权限访问此页面');
-                   return next(from.fullPath || '/admin/dashboard'); // 重定向回上一页或管理员首页
-               }
-               next();
-            } else {
-               // fetchUserInfo 未能成功登录（例如 token 无效），重定向到登录页
-               localStorage.removeItem('token');
-               localStorage.removeItem('userId');
-               localStorage.removeItem('username');
-               // 只有当目标页面需要认证时才重定向到登录页
-               if (to.meta.requiresAuth) {
-                  ElMessage.error('登录已过期，请重新登录');
-                  return next('/login');
-               } else {
-                  next(); // 目标页面不需要认证，允许访问
-               }
+            // After fetching, re-check if user is now logged in and has user info
+            const updatedIsLoggedIn = store.getters['user/isAuthenticated'];
+            const userInfo = store.state.user.userInfo;
+
+            if (!updatedIsLoggedIn || !userInfo) {
+                // Still not logged in after fetching, token might be invalid
+                localStorage.removeItem('token');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('username');
+                ElMessage.error('登录已过期，请重新登录');
+                return next('/login');
             }
+
+            // Successfully logged in, proceed with permission checks
+            const isAdmin = userInfo.is_staff === true;
+            const isSuperAdmin = userInfo.is_superuser === true;
+
+            if (to.meta.requiresAdmin && !isAdmin) {
+                ElMessage.error('您没有权限访问此管理员页面');
+                return next(from.fullPath || '/');
+            }
+            if (to.meta.requiresSuperAdmin && !isSuperAdmin) {
+                ElMessage.error('您没有超级管理员权限访问此页面');
+                return next(from.fullPath || '/admin/dashboard');
+            }
+
+            // User is authenticated and has required roles, proceed
+            next();
 
         } catch (error) {
             console.error("Failed to fetch user info in router guard:", error);
-            // 获取用户信息失败（网络错误或其他），清除登录状态并重定向
+            // Error fetching user info, assume token is invalid
             localStorage.removeItem('token');
             localStorage.removeItem('userId');
             localStorage.removeItem('username');
-            if (to.meta.requiresAuth) {
-               ElMessage.error('获取用户信息失败或登录已过期，请重新登录');
-               return next('/login');
-            } else {
-               next(); // 目标页面不需要认证，允许访问
-            }
+            ElMessage.error('获取用户信息失败或登录已过期，请重新登录');
+            return next('/login');
         }
-     } else { // 用户信息已存在且已登录
-         // 检查是否是需要管理员权限的页面，如果不是管理员则重定向
-         if (to.meta.requiresAdmin && !isAdmin) {
-             ElMessage.error('您没有权限访问此页面');
-             return next(from.fullPath || '/'); // 重定向回上一页或首页
-         }
-          // 如果是管理员，检查是否需要超级管理员权限
-         if (to.meta.requiresSuperAdmin && !store.state.user.userInfo?.is_superuser) { // 假设超级管理员字段是 is_superuser
-             ElMessage.error('您没有超级管理员权限访问此页面');
-             return next(from.fullPath || '/admin/dashboard'); // 重定向回上一页或管理员首页
-         }
-         next(); // 已登录且权限符合，继续导航
+    } else {
+       // User is already logged in (token exists and store state confirms)
+       const userInfo = store.state.user.userInfo; // Get user info from store
+       const isAdmin = userInfo?.is_staff === true;
+       const isSuperAdmin = userInfo?.is_superuser === true;
+
+       if (to.meta.requiresAdmin && !isAdmin) {
+            ElMessage.error('您没有权限访问此管理员页面');
+            return next(from.fullPath || '/');
+        }
+        if (to.meta.requiresSuperAdmin && !isSuperAdmin) {
+            ElMessage.error('您没有超级管理员权限访问此页面');
+            return next(from.fullPath || '/admin/dashboard');
+        }
+
+       // User is authenticated and has required roles, proceed
+       next();
+    }
+
+
+  } else {
+    // The route does NOT require authentication (it's a public page)
+    const isAuthenticated = localStorage.getItem("token");
+    const isLoggedIn = store.getters['user/isAuthenticated'];
+
+    // If user is already logged in and trying to access login, register, or verify email page
+    if ((isAuthenticated || isLoggedIn) && (to.path === '/login' || to.path === '/register' || to.path === '/verify-email')) {
+        console.log("Already logged in, redirecting from auth page.");
+        return next('/products'); // Redirect to home/products page
+    }
+
+    // If user is already logged in as admin and trying to access admin login
+     if ((isAuthenticated || isLoggedIn) && to.path === '/admin/login') {
+        const userInfo = store.state.user.userInfo;
+        const isAdmin = userInfo?.is_staff === true;
+        if (isAdmin) {
+             console.log("Already logged in as admin, redirecting from admin login.");
+             return next('/admin/dashboard'); // Redirect to admin dashboard
+        }
      }
-  } else { // 当前是公共认证页面
-     // 如果已经登录，并且尝试访问登录、注册、邮箱验证、管理员登录页，则重定向到首页或管理员后台
-     if (isLoggedIn && (to.path === '/login' || to.path === '/register' || to.path === '/verify-email')) {
-       return next('/home');
-     }
-     if (isAdmin && to.path === '/admin/login') {
-       return next('/admin/dashboard');
-     }
-     next(); // 未登录或目标是允许访问的公共页面，继续导航
+
+    // Otherwise, allow access to public page
+    next();
   }
 });
 

@@ -118,6 +118,7 @@ const actions = {
     localStorage.removeItem("token");
     // localStorage.removeItem("refresh_token");
     ElMessage.success("已退出登录");
+    router.push("/login");
     // 可选：重定向到登录页，这通常在路由守卫或组件中处理
   },
 

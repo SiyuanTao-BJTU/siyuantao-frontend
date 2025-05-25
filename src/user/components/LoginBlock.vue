@@ -60,12 +60,20 @@ const handleLoginClick = async () => {
 
     const userId = localStorage.getItem('userId');
     if (userId) {
-        WebSocketService.init(userId); 
+        WebSocketService.init(userId);
     } else {
         console.warn("Login successful but userId not found in localStorage, WebSocket not initialized.");
     }
-    
-    router.push("/home");
+
+    // 在跳转到主页前，确保 Vuex store 中的登录状态已更新
+    if (store.getters['user/isAuthenticated']) {
+        router.push("/products");
+    } else {
+        // 如果状态未更新，可能是同步问题或登录流程有误
+        console.error("Login successful, but Vuex state not updated.");
+        // 可以选择留在此页，或者给用户一个提示
+        ElMessage.error("登录成功但状态异常，请尝试刷新页面。");
+    }
 
   } catch (error) {
     console.error("Login failed in component:", error);
