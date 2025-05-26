@@ -258,8 +258,16 @@ const deleteUser = (userId) => {
  * @note openapi.json lists /api/v1/items/. Adjusting path.
  */
 const getProductList = (filters) => {
-  // Path adjusted to /v1/items/ based on openapi.json /api/v1/items
-  return apiRequest('GET', '/v1/items/', null, filters);
+  // Construct query parameters string from filters object
+  let queryString = '';
+  if (filters) {
+    queryString = Object.keys(filters)
+      .map(key => filters[key] ? `${encodeURIComponent(key)}=${encodeURIComponent(filters[key])}` : null)
+      .filter(part => part !== null)
+      .join('&');
+  }
+  const path = queryString ? `/products/?${queryString}` : '/products/';
+  return apiRequest('get', path, null, null); // Filters are now part of the path
 };
 
 /**

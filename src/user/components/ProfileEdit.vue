@@ -99,18 +99,14 @@ const beforeAvatarUpload = (rawFile) => {
 };
 
 const saveProfile = async () => {
-  console.log('ProfileEdit.vue: saveProfile method CALLED');
   await nextTick(); // Wait for DOM updates
   if (!profileFormRef.value) {
     console.error('ProfileEdit.vue: profileFormRef is NOT defined after nextTick!');
     return;
   }
-  console.log('ProfileEdit.vue: profileFormRef is defined, calling validate...');
 
   await profileFormRef.value.validate(async (valid, fields) => {
-    console.log('ProfileEdit.vue: Validate callback executed. Valid:', valid, 'Fields:', fields);
     if (valid) {
-      console.log('ProfileEdit.vue: Form is valid, attempting to save profile...');
       try {
         const updateData = { 
           major: profileForm.major || null, 
@@ -118,11 +114,9 @@ const saveProfile = async () => {
           bio: profileForm.bio || null, 
           avatar_url: profileForm.avatarUrl 
         };
-        console.log('ProfileEdit.vue: Sending updateData to API:', JSON.stringify(updateData));
         
         // Call the API to update user profile
         const response = await api.updateUserProfile(updateData);
-        console.log('ProfileEdit.vue: API updateUserProfile response:', response);
 
         ElMessage.success('资料更新成功');
         emits('updateSuccess'); // Emit success event
@@ -133,7 +127,6 @@ const saveProfile = async () => {
       }
 
     } else {
-      console.log('ProfileEdit.vue: Form validation failed');
       ElMessage.error('表单验证失败，请检查输入');
       return false;
     }

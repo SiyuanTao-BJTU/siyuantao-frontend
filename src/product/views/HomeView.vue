@@ -82,7 +82,9 @@ const handleSearch = () => {
 };
 
 const recommendCall = () => {
-  api.getProductList()
+  // Passing null or empty object if no specific filters are needed for "recommendations"
+  // The API_PRO.js change will ensure it hits /products/
+  api.getProductList(null) 
     .then(data => {
       if (data && data.length > 0) { // 检查API是否返回数据
         // Ensure img is an array for PurchaseGoodsCard
@@ -118,7 +120,8 @@ const recommendCall = () => {
 
 const handleTagClick = (tag) => {
   searchQuery.value = tag;
-  handleSearch();
+  // Ensure handleSearch calls getProductList with the correct search filter format
+  handleSearch(); // handleSearch already uses { search: searchQuery.value }
 };
 
 onMounted(() => {

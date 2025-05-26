@@ -44,8 +44,7 @@
   const fetchUserProfile = () => {
     api.getUserProfile()
       .then(response => {
-        console.log("ProfileView fetchUserProfile - API response:", JSON.parse(JSON.stringify(response)));
-        if (response) {
+       if (response) {
           const userInfo = response;
           userProfileResponseData.value = userInfo;
           database_id.value = userInfo.id || userInfo.user_id;
@@ -123,7 +122,6 @@
       })
       .finally(() => {
         componentKey.value += 1;
-        console.log("ProfileView fetchUserProfile - componentKey incremented:", componentKey.value);
       });
   };
 
