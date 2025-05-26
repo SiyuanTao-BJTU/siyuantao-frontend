@@ -215,6 +215,38 @@ const getAllUsersApi = () => {
   return apiRequest('GET', '/v1/users/');
 };
 
+/**
+ * @summary 管理员根据用户 ID 更改用户状态（禁用/启用）
+ * @method PUT
+ * @path /api/v1/users/{user_id}/status
+ * @param {string} userId - 用户的UUID
+ * @param {object} statusData - { status: "Active" | "Disabled" }
+ */
+const updateUserStatus = (userId, statusData) => {
+  return apiRequest('PUT', `/v1/users/${userId}/status`, statusData);
+};
+
+/**
+ * @summary 管理员根据用户 ID 调整用户信用分
+ * @method PUT
+ * @path /api/v1/users/{user_id}/credit
+ * @param {string} userId - 用户的UUID
+ * @param {object} creditAdjustmentData - { credit_adjustment: number, reason: string }
+ */
+const adjustUserCredit = (userId, creditAdjustmentData) => {
+  return apiRequest('PUT', `/v1/users/${userId}/credit`, creditAdjustmentData);
+};
+
+/**
+ * @summary 管理员根据用户 ID 删除用户
+ * @method DELETE
+ * @path /api/v1/users/{user_id}
+ * @param {string} userId - 用户的UUID
+ */
+const deleteUser = (userId) => {
+  return apiRequest('DELETE', `/v1/users/${userId}`);
+};
+
 // ========================================================================
 // Product Management (来自 itemTrade/urls/item.py)
 // ========================================================================
@@ -510,6 +542,9 @@ export default {
   getUserBoughtRecords,
   getUserSoldRecords,
   getAllUsersApi,
+  updateUserStatus,
+  adjustUserCredit,
+  deleteUser,
 
   // Product
   getProductList,

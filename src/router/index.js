@@ -132,31 +132,31 @@ const router = createRouter({
         {
           path: 'users',
           name: 'AdminUserManagement',
-          component: { template: '<div>用户管理 (占位符)</div>' },
+          component: () => import('@/admin/views/UserManagementView.vue'),
           meta: { title: '用户管理', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'products-audit',
           name: 'AdminProductAudit',
-          component: { template: '<div>商品审核 (占位符)</div>' },
+          component: () => import('@/admin/views/ProductsAuditView.vue'),
           meta: { title: '商品审核', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'returns',
           name: 'AdminReturnManagement',
-          component: { template: '<div>退货申请管理 (占位符)</div>' },
+          component: () => import ('@/admin/views/ReturnsManagement.vue' ),
           meta: { title: '退货申请管理', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'reports',
           name: 'AdminReportManagement',
-          component: { template: '<div>举报管理 (占位符)</div>' },
+          component: () => import('@/admin/views/ReportManagement.vue'),
           meta: { title: '举报管理', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'notifications',
           name: 'AdminNotificationSend',
-          component: { template: '<div>系统通知发送 (占位符)</div>' },
+          component: () => import('@/admin/views/NotificationManagement.vue' ),
           meta: { title: '系统通知发送', requiresAuth: true, requiresAdmin: true }
         },
         {

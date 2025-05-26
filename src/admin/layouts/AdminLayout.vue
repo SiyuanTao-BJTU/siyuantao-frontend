@@ -139,104 +139,97 @@ export default defineComponent({
 
 <style scoped>
 .admin-layout-container {
-  height: 100vh;
-  overflow: hidden; /* 确保子元素不会溢出 */
+  min-height: 100vh;
 }
 
-/* Header 样式 */
 .admin-header {
-  background-color: #ffffff; /* 白色背景 */
-  color: #333;
+  background-color: #fff; /* 白色背景 */
+  color: var(--el-text-color-primary);
+  line-height: 60px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e6e6e6; /* 底部细线 */
-  height: 60px; /* 固定高度 */
-  padding: 0 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08); /* 轻微阴影 */
-  flex-shrink: 0; /* 防止被压缩 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  padding: 0 20px; /* 调整内边距 */
 }
 
 .header-left {
   display: flex;
   align-items: center;
+  gap: 10px; /* Logo 和标题之间的间距 */
 }
 
 .admin-logo {
-  height: 32px; /* 调整 Logo 大小 */
-  margin-right: 10px;
+  height: 40px; /* 调整 Logo 大小 */
 }
 
 .admin-title {
   font-size: 20px;
   font-weight: bold;
-  color: #4A90E2; /* 蓝色网站名称 */
+  color: #333; /* 标题颜色 */
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  gap: 20px; /* 右侧元素之间的间距 */
 }
 
 .admin-info {
-  margin-right: 20px;
   font-size: 14px;
   color: #666;
 }
 
 .admin-user-name {
   cursor: pointer;
-  color: #4A90E2; /* 蓝色用户名称 */
-  font-weight: bold;
-  display: flex; /* 使图标和文字对齐 */
+  color: var(--el-color-primary);
+  display: flex;
   align-items: center;
 }
 
-/* Aside 侧边导航样式 */
 .admin-content-wrapper {
-  display: flex; /* 使用 flex 布局 */
-  flex-direction: row; /* 子元素水平排列 */
-  height: calc(100vh - 60px); /* 减去 header 的高度 */
+  flex-grow: 1;
 }
 
 .admin-aside {
-  background-color: #304156; /* 深色侧边栏背景 */
-  overflow-x: hidden; /* 防止溢出滚动条 */
-   transition: width 0.3s ease; /* 添加宽度过渡动画 */
-  flex-shrink: 0; /* 防止被压缩 */
+  background-color: #304156; /* 侧边栏背景颜色 */
+  color: #bfcbd9;
+  transition: width 0.3s;
+  box-shadow: 2px 0 6px rgba(0,0,0,0.1);
 }
 
 .el-menu-vertical-demo:not(.el-menu--collapse) {
   width: 200px;
+  min-height: 400px;
 }
 
 .el-menu-vertical-demo {
-  border-right: none; /* 移除右侧边框 */
-  height: 100%; /* 菜单高度充满侧边栏 */
-}
-
-.el-menu-item {
-  color: #bfcbd9 !important; /* 默认文字颜色 */
+  border-right: none; /* 移除 Element Plus 默认边框 */
 }
 
 .el-menu-item.is-active {
-  background-color: #4A90E2 !important; /* 选中项背景色为蓝色 */
-  color: #ffffff !important; /* 选中项文字为白色 */
+  background-color: #4a5b72 !important; /* 激活菜单项背景色 */
 }
 
 .el-menu-item:hover {
-  background-color: #4A90E250 !important; /* 悬停效果，稍透明的蓝色 */
+  background-color: #263445 !important; /* 菜单项 hover 背景色 */
 }
 
-/* Main 内容区域样式 */
 .admin-main-content {
-  background-color: #f0f2f5; /* 浅灰色内容背景 */
-  padding: 20px;
-  overflow-y: auto; /* 允许内容区域滚动 */
-  flex-grow: 1; /* 填充剩余空间 */
+  background-color: #f0f2f5; /* 主内容区域背景 */
+  padding: 20px; /* 主内容区域内边距 */
 }
 
+/* 可选：侧边栏折叠按钮样式 */
+/*
 .collapse-button {
-   margin-left: 20px;
+  margin-left: 20px;
 }
+*/
+
+</style>
+
+<style>
+/* 导入公共样式 */
+@import '../styles/admin-common.css';
 </style> 
