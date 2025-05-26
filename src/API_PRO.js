@@ -146,8 +146,7 @@ const userRegister = (userData) => {
 const userModifyPassword = (passwordData) => {
   // Adjusting method to PUT and data structure to match openapi.json /api/v1/users/me/password
   // openapi expects { old_password, new_password }
-  const { origin_password, new_password } = passwordData;
-  return apiRequest('PUT', '/v1/users/me/password', { old_password: origin_password, new_password });
+  return apiRequest('PUT', '/v1/users/me/password', { old_password: passwordData.old_password, new_password: passwordData.new_password });
 };
 
 /**

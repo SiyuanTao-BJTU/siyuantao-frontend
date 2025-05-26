@@ -8,9 +8,12 @@
     List,
     Goods,
     Star,
-    ChatSquare,
+    Message, // Changed from ChatSquare for consistency if an icon named Message exists
     School,
-    Setting // 导入 Setting 图标
+    Setting,
+    CreditCard, // For Credit Score
+    CircleCheckFilled, // For Verified status
+    CircleCloseFilled // For Unverified status
   } from "@element-plus/icons-vue";
   import ChangePassword from "@/user/components/ChangePassword.vue";
   import ProfileEdit from "@/user/components/ProfileEdit.vue"; // 导入 ProfileEdit 组件
@@ -171,11 +174,16 @@
           <el-avatar v-if="!avatarUrl" :size="100" shape="circle" class="avatar">{{avatar_char}}</el-avatar>
           <el-avatar v-else :src="avatarUrl" :size="100" shape="circle" class="avatar" />
           <h3>{{username}}</h3>
+          <p v-if="bio" class="user-bio">{{ bio }}</p>
+          <p v-else class="user-bio-placeholder">这位用户很神秘，什么简介都没留下~</p>
           <div class="status-info">
-            <span class="credit-score">信用分: {{ userProfileResponseData ? userProfileResponseData.credit : 'N/A' }}</span>
-            <el-divider direction="vertical" />
-            <span class="verification-status">学生认证状态: {{ studentVerificationStatus }}</span>
-             <!-- TODO: Add a badge or icon for verified status based on backend data -->
+            <el-tag type="primary" effect="light" class="status-tag">
+              <el-icon><CreditCard /></el-icon>&nbsp;信用分: {{ userProfileResponseData ? userProfileResponseData.credit : 'N/A' }}
+            </el-tag>
+            <el-tag :type="userProfileResponseData && userProfileResponseData.is_verified ? 'success' : 'info'" effect="light" class="status-tag">
+              <el-icon><component :is="userProfileResponseData && userProfileResponseData.is_verified ? CircleCheckFilled : CircleCloseFilled" /></el-icon>
+              &nbsp;学生认证: {{ studentVerificationStatus }}
+            </el-tag>
           </div>
         </div>
 
@@ -201,7 +209,7 @@
             <span>我的收藏</span>
           </el-card>
            <el-card class="functional-card" shadow="hover" @click="handleCardClick('/messages')">
-            <el-icon><ChatSquare /></el-icon>
+            <el-icon><Message /></el-icon>
             <span>我的消息</span>
           </el-card>
            <!-- 学生认证入口 (如果未认证) -->
@@ -284,7 +292,26 @@
   font-size: 28px; /* Larger username */
   font-weight: bold;
   color: #303133; /* Dark text */
-  margin-bottom: 10px;
+  margin-bottom: 8px; /* Adjusted margin */
+}
+
+.user-bio {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 15px;
+  text-align: center;
+  max-width: 80%;
+  line-height: 1.6;
+}
+
+.user-bio-placeholder {
+  font-size: 14px;
+  color: #909399; /* Lighter color for placeholder */
+  margin-bottom: 15px;
+  text-align: center;
+  max-width: 80%;
+  line-height: 1.6;
+  font-style: italic;
 }
 
 .status-info {
@@ -299,6 +326,12 @@
     border-left: 1px solid #dcdfe6; /* Match element plus divider color */
     height: 1em; /* Match font height */
     margin: 0 15px; /* Increase space around divider */
+}
+
+.status-tag {
+  margin: 0 8px;
+  padding: 8px 12px;
+  font-size: 13px;
 }
 
 .functional-cards {

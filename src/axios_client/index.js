@@ -56,7 +56,25 @@ axiosClient.interceptors.response.use(
              // ElMessage.error('服务器响应异常，请稍后再试'); // 避免频繁提示
         } else {
           console.error("Axios Interceptor: Request failed with status", status, error.response);
-          // ElMessage.error(i18n.global.t('axios_client.request_failed'));
+          if (error.response.data && error.response.data.detail) {
+            let detail = error.response.data.detail;
+            if (typeof detail === 'string') {
+              if (detail.includes("User") && detail.includes("phone_number") && detail.includes("already exists")) {
+                ElMessage.error(i18n.global.t('axios_client.phone_number_exists'));
+              } else if (detail.includes("User") && detail.includes("username") && detail.includes("already exists")) {
+                ElMessage.error(i18n.global.t('axios_client.username_exists'));
+              } else {
+                ElMessage.error(detail);
+              }
+            } else if (Array.isArray(detail) && detail[0] && detail[0].msg) {
+              // 处理 FastAPI HTTPValidationError
+              ElMessage.error(detail[0].msg);
+            } else {
+              ElMessage.error(i18n.global.t('axios_client.request_failed'));
+            }
+          } else {
+            ElMessage.error(i18n.global.t('axios_client.request_failed'));
+          }
         }
       } else {
         console.error("Axios Interceptor: Network exception or other error", error);
