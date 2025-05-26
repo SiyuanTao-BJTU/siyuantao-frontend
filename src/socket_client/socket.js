@@ -43,11 +43,11 @@ const WebSocketService = {
         this.socket.onclose = (event) => {
             // console.log('WebSocket connection closed');
             // console.log(`WebSocket connection Exit with the code ${event.code}`);
-            setTimeout(() => {
-                if (this.userId) {
-                    this.init(this.userId); // 重新初始化连接
-                }
-            }, 3000); // 等待3秒后重连
+            // setTimeout(() => {
+            //     if (this.userId) {
+            //         this.init(this.userId); // 重新初始化连接
+            //     }
+            // }, 3000); // 等待3秒后重连
         };
 
         this.socket.onerror = (error) => {

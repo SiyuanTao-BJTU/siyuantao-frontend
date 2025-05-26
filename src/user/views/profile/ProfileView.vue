@@ -219,17 +219,15 @@
     </div>
   </div>
   <ChangePassword
-      :isPasswordDialogVisiable="passwordDialogVisible"
-      :key="componentKey"
+      :isPasswordDialogVisible="passwordDialogVisible"
       @updateCancel="passwordDialogVisible = false"
       @updateSuccess="passwordDialogVisible = false"
   />
   <ProfileEdit
       :isProfileEditDialogVisible="profileEditDialogVisible"
       :userInfo="userProfileResponseData"
-      :key="componentKey + 1" 
       @updateCancel="profileEditDialogVisible = false"
-      @updateSuccess="() => { profileEditDialogVisible = false; fetchUserProfile(); }" 
+      @updateSuccess="() => { profileEditDialogVisible = false; fetchUserProfile(); }"
   />
 </template>
 

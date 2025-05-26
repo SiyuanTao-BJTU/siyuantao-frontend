@@ -5,10 +5,12 @@ import { Search, ChatLineRound, Bell, Plus, UserFilled, Setting, Goods, List, St
 import { ElMessage } from "element-plus";
 import api from '@/API_PRO.js';
 import WebSocketService from "@/socket_client/socket.js";
+import { useStore } from 'vuex';
 
 // 组件全局变量定义
 const router = useRouter();
 const route = useRoute();
+const store = useStore();
 const MODE = process.env.NODE_ENV;
 let username = ref('');
 let avatarUrl = ref(null);
@@ -19,16 +21,22 @@ let avatar_char = computed(() => {
 
 const searchQuery = ref('');
 
-const isLoggedIn = ref(ref(localStorage.getItem('token') !== null)); // 根据 token 初始判断登录状态
+const isLoggedIn = ref(localStorage.getItem('token') !== null); // 根据 token 初始判断登录状态
+
+// 在组件挂载时也检查一次登录状态和用户信息
+onMounted(() => {
+    // console.log("TopNav: Component mounted, initial fetch user info.");
+    fetchUserInfo();
+});
 
 // 获取用户信息的函数
 const fetchUserInfo = async () => {
   const token = localStorage.getItem('token');
-  console.log("TopNav: Checking for token:", token);
+  // console.log("TopNav: Checking for token:", token);
   if (token) {
     try {
       const response = await api.getUserProfile();
-      console.log("TopNav: Fetch user info API response:", response);
+      // console.log("TopNav: Fetch user info API response:", response);
       // 修改判断逻辑，检查响应中是否包含用户数据字段，例如 user_id 或 username
       if (response && (response.user_id || response.username)) {
         const userInfo = response; // API 直接返回用户信息对象
@@ -59,21 +67,24 @@ const fetchUserInfo = async () => {
   } else {
     // 没有 token，视为未登录
     console.log("TopNav: No token found, user is not logged in.");
-    resetLoginState();
+    resetLoginState(); // 调用时不带参数，isExplicitLogout 会是 false
   }
 };
 
 // 重置登录状态的辅助函数
-const resetLoginState = () => {
+const resetLoginState = (isExplicitLogout = false) => { // 增加 isExplicitLogout 参数，默认为 false
     isLoggedIn.value = false;
     username.value = '';
     avatarUrl.value = null;
     isAdmin.value = false;
     localStorage.removeItem('token');
-    localStorage.removeItem('refresh'); // 如果有 refresh token 也移除
+    localStorage.removeItem('refresh');
     localStorage.removeItem('username');
     localStorage.removeItem('userId');
-    WebSocketService.close(); // 关闭 WebSocket 连接
+    localStorage.removeItem('is_staff');
+    localStorage.removeItem('is_verified');
+    WebSocketService.close();
+    store.dispatch('user/logout', { inStoreLogout: isExplicitLogout }); // 根据 isExplicitLogout 调用
 };
 
 // 登录成功的处理函数 (由 LoginView 调用)
@@ -83,8 +94,8 @@ const handleLoginSuccess = () => {
 
 // 登出处理函数
 const handleLogout = () => {
-  resetLoginState();
-  router.push('/login');
+  resetLoginState(true); // 用户主动登出，传递 true
+  // router.push('/login'); // 由 Vuex action 处理导航
 };
 
 // 路由跳转函数
@@ -116,10 +127,10 @@ watch(
   (newPath) => {
     const publicPaths = ['/login', '/register', '/verify-email', '/admin/login']; // 包含管理员登录页
     if (!publicPaths.includes(newPath)) {
-      console.log("TopNav: Route changed to non-public path, fetching user info.");
+      // console.log("TopNav: Route changed to non-public path, fetching user info.");
       fetchUserInfo();
     } else {
-      console.log("TopNav: Route changed to public path, resetting login state if necessary.");
+      // console.log("TopNav: Route changed to public path, resetting login state if necessary.");
       // 如果当前在公共页面，确保前端显示未登录状态（如果实际未登录）
       // 但是不清除 token，因为路由守卫会在需要时处理重定向和 token 检查
       // 只需同步一下 isLoggedIn 状态即可，fetchUserInfo 会在需要时清除 token
@@ -133,12 +144,6 @@ watch(
   },
   { immediate: true } // 立即执行一次
 );
-
-// 在组件挂载时也检查一次登录状态和用户信息
-onMounted(() => {
-    console.log("TopNav: Component mounted, initial fetch user info.");
-    fetchUserInfo();
-});
 
 // TODO: 实现未读消息和通知数量的获取和显示
 const unreadMessageCount = ref(0);

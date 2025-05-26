@@ -1,11 +1,14 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import TopNavigationBar from '@/components/TopNavigationBar.vue';
 import { HomeFilled, Files, Menu, ShoppingBag, Money, Setting, Upload, Back,
   Expand, Fold, ChatLineRound, Star, List, UserFilled, Box } from "@element-plus/icons-vue";
+import { useStore } from 'vuex';
 
 const route = useRoute();
+const router = useRouter();
+const store = useStore();
 const activeMenu = computed(() => route.path);
 
 // 前台侧边导航菜单数据源 - 按照新的职责排序和包含内容
@@ -19,13 +22,16 @@ const commonNavMenus = [
   { path: '/transactions', title: '交易记录', icon: Money }, // 个人管理模块
   { path: '/profile', title: '个人中心', icon: UserFilled }, // 辅助功能
   { path: '/settings', title: '偏好设置', icon: Setting }, // 辅助功能
-  { path: '/logout', title: '登出', icon: Back }, // 辅助功能
 ];
 
 // 可选：侧边栏折叠功能 (如果你需要)
 const isSidebarCollapsed = ref(false);
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
+
+const handleLogout = () => {
+  store.dispatch('user/logout');
 };
 
 // 监听路由变化，确保 activeMenu 正确更新
@@ -71,6 +77,10 @@ const toggleSidebar = () => {
                   <span>{{ menuItem.title }}</span>
                 </el-menu-item>
               </template>
+              <el-menu-item index="/logout-action" @click="handleLogout">
+                <el-icon><Back /></el-icon>
+                <span>登出</span>
+              </el-menu-item>
             </el-menu>
           </el-aside>
 

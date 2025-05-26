@@ -11,10 +11,12 @@ import ElementPlus from 'element-plus';
 import { ElMessage } from 'element-plus';
 
 import WebSocketService from "@/socket_client/socket.js";
+import i18n from '@/vue_i18n/index.js';
 
 const app = createApp(App)
 app.use(VueAxios, axios)
 app.use(ElementPlus);
+app.use(i18n);
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

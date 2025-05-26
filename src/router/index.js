@@ -204,9 +204,11 @@ router.beforeEach(async (to, from, next) => {
       localStorage.removeItem('is_staff');
       localStorage.removeItem('is_verified');
       // 如果当前路由需要认证，重定向到登录页
+      // 调用 dispatch 时传递 { inStoreLogout: false }
+      await store.dispatch('user/logout', { inStoreLogout: false }); 
       if (to.meta.requiresAuth) {
-         ElMessage.warning('用户信息获取失败或登录已过期，请重新登录');
-         next({ name: 'login', query: { redirect: to.fullPath } });
+         // ElMessage.warning('用户信息获取失败或登录已过期，请重新登录'); // logout action 中已包含跳转逻辑，这里无需再跳转
+         // next({ name: 'login', query: { redirect: to.fullPath } }); // logout action 中已包含跳转逻辑
          NProgress.done(); // 结束进度条
          return; // 阻止继续执行
       }

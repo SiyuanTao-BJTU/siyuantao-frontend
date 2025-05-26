@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, onMounted, watch } from 'vue';
+import { reactive, ref, onMounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElForm, ElDialog } from 'element-plus'; // Import ElForm and ElDialog
 import { Plus } from '@element-plus/icons-vue'; // Import Plus icon
@@ -20,6 +20,9 @@ const props = defineProps({
 
 // Define emits
 const emits = defineEmits(['updateCancel', 'updateSuccess']);
+
+// Local ref for dialog visibility, synced with prop
+const localDialogVisible = ref(props.isProfileEditDialogVisible);
 
 const profileForm = reactive({
   // username is not editable based on openapi.json, but we can display it
@@ -48,10 +51,11 @@ const rules = {
   ],
 };
 
-const profileFormRef = ref<typeof ElForm | null>(null); // Ref for the form
+const profileFormRef = ref(null); // Simplified ref definition
 
-// Watch for dialog visibility change to populate form
+// Watch for prop changes to update localDialogVisible
 watch(() => props.isProfileEditDialogVisible, (newValue) => {
+  localDialogVisible.value = newValue;
   if (newValue && props.userInfo) {
     // Populate form with current user info when dialog opens
     profileForm.username = props.userInfo.username || ''; // Display username
@@ -95,35 +99,41 @@ const beforeAvatarUpload = (rawFile) => {
 };
 
 const saveProfile = async () => {
-  if (!profileFormRef.value) return;
+  console.log('ProfileEdit.vue: saveProfile method CALLED');
+  await nextTick(); // Wait for DOM updates
+  if (!profileFormRef.value) {
+    console.error('ProfileEdit.vue: profileFormRef is NOT defined after nextTick!');
+    return;
+  }
+  console.log('ProfileEdit.vue: profileFormRef is defined, calling validate...');
 
-  await profileFormRef.value.validate(async (valid) => {
+  await profileFormRef.value.validate(async (valid, fields) => {
+    console.log('ProfileEdit.vue: Validate callback executed. Valid:', valid, 'Fields:', fields);
     if (valid) {
-      console.log('Form is valid, saving profile...');
-      // TODO: Call Vuex action or API to update profile
+      console.log('ProfileEdit.vue: Form is valid, attempting to save profile...');
       try {
-        // Construct data payload for API based on UserProfileUpdateSchema
         const updateData = { 
-          // username is not included as it's not in UserProfileUpdateSchema
-          major: profileForm.major || null, // Send null if empty string
-          phone_number: profileForm.phoneNumber || null, // Send null if empty string
-          bio: profileForm.bio || null, // Send null if empty string
-          // Add other fields like professional
-          avatar_url: profileForm.avatarUrl // Assuming API expects URL directly or it's handled separately
+          major: profileForm.major || null, 
+          phone_number: profileForm.phoneNumber || null, 
+          bio: profileForm.bio || null, 
+          avatar_url: profileForm.avatarUrl 
         };
+        console.log('ProfileEdit.vue: Sending updateData to API:', JSON.stringify(updateData));
+        
         // Call the API to update user profile
-        await api.updateUserProfile(updateData);
+        const response = await api.updateUserProfile(updateData);
+        console.log('ProfileEdit.vue: API updateUserProfile response:', response);
 
         ElMessage.success('资料更新成功');
         emits('updateSuccess'); // Emit success event
       } catch (error) {
-        console.error('Save profile failed:', error);
+        console.error('ProfileEdit.vue: Save profile API call failed:', error);
         // API wrapper should handle error messages, but adding a fallback here
-        ElMessage.error('资料更新失败'); 
+        ElMessage.error('资料更新失败，详情请查看控制台'); 
       }
 
     } else {
-      console.log('Form validation failed');
+      console.log('ProfileEdit.vue: Form validation failed');
       ElMessage.error('表单验证失败，请检查输入');
       return false;
     }
@@ -139,7 +149,7 @@ const cancelEdit = () => {
 
 <template>
   <el-dialog
-    v-model="props.isProfileEditDialogVisible"
+    v-model="localDialogVisible"
     title="编辑个人资料"
     width="500px"
     :before-close="cancelEdit" 

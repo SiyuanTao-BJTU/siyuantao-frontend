@@ -1,5 +1,6 @@
 import api from "@/API_PRO.js"; // 导入 API
 import { ElMessage } from "element-plus"; // 导入 ElMessage 用于提示
+import router from '@/router/index.js'; // 导入 router 实例
 
 const state = () => ({
   // 用户模块的状态
@@ -111,15 +112,16 @@ const actions = {
     }
   },
 
-  async logout({ commit }) {
+  async logout({ commit }, { inStoreLogout = true } = {}) {
     // 清除用户信息和登录状态
     commit("SET_LOGIN_STATUS", false);
     commit("SET_USER_INFO", null);
     localStorage.removeItem("token");
     // localStorage.removeItem("refresh_token");
-    ElMessage.success("已退出登录");
-    router.push("/login");
-    // 可选：重定向到登录页，这通常在路由守卫或组件中处理
+    if (inStoreLogout) {
+      ElMessage.success("已退出登录");
+    }
+    router.push("/login"); // 现在 router 已定义
   },
 
   async fetchUserInfo({ commit, state }) {

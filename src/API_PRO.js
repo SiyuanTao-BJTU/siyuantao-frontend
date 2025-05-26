@@ -260,7 +260,7 @@ const deleteUser = (userId) => {
  */
 const getProductList = (filters) => {
   // Path adjusted to /v1/items/ based on openapi.json /api/v1/items
-  return apiRequest('GET', '/v1/products/', null, filters);
+  return apiRequest('GET', '/v1/items/', null, filters);
 };
 
 /**
@@ -277,7 +277,7 @@ const getProductList = (filters) => {
  */
 const createProduct = (productData, isFormData = false) => {
   // Path adjusted to /v1/items/ based on openapi.json /api/v1/items for POST
-  return apiRequest('POST', '/v1/products/', productData, null, isFormData);
+  return apiRequest('POST', '/v1/items/', productData, null, isFormData);
 };
 
 /**
@@ -289,7 +289,7 @@ const createProduct = (productData, isFormData = false) => {
  */
 const getProductDetail = (productId) => {
   // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('GET', `/v1/products/${productId}`);
+  return apiRequest('GET', `/v1/items/${productId}`);
 };
 
 /**
@@ -303,7 +303,7 @@ const getProductDetail = (productId) => {
  */
 const updateProduct = (productId, productData, isFormData = false) => {
   // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('PUT', `/v1/products/${productId}/`, productData, null, isFormData);
+  return apiRequest('PUT', `/v1/items/${productId}/`, productData, null, isFormData);
 };
 
 /**
@@ -315,7 +315,7 @@ const updateProduct = (productId, productData, isFormData = false) => {
  */
 const deleteProduct = (productId) => {
   // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('DELETE', `/v1/products/${productId}/`);
+  return apiRequest('DELETE', `/v1/items/${productId}/`);
 };
 
 /**
@@ -328,7 +328,7 @@ const deleteProduct = (productId) => {
  */
 const addProductComment = (productId, commentData) => {
   // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
-  return apiRequest('POST', `/v1/products/${productId}/comments/`, commentData);
+  return apiRequest('POST', `/v1/items/${productId}/comments/`, commentData);
 };
 
 /**
@@ -340,7 +340,7 @@ const addProductComment = (productId, commentData) => {
  */
 const getProductComments = (productId) => {
   // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
-  return apiRequest('GET', `/v1/products/${productId}/comments/`);
+  return apiRequest('GET', `/v1/items/${productId}/comments/`);
 };
 
 // ========================================================================

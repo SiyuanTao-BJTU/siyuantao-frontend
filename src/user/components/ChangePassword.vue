@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch, defineProps, defineEmits } from 'vue';
+import { reactive, ref, watch, defineProps, defineEmits, nextTick } from 'vue';
 import { ElMessage, ElForm } from 'element-plus';
 import { View, Hide } from '@element-plus/icons-vue';
 import api from '@/API_PRO.js';
@@ -9,7 +9,7 @@ import api from '@/API_PRO.js';
 
 // Component props and emits
 const props = defineProps({
-  isPasswordDialogVisiable: Boolean,
+  isPasswordDialogVisible: Boolean,
 });
 
 const emits = defineEmits([
@@ -23,11 +23,11 @@ const passwordForm = reactive({
   confirmNewPassword: '',
 });
 
-const passwordDialogVisible = ref(props.isPasswordDialogVisiable);
+const passwordDialogVisible = ref(props.isPasswordDialogVisible);
 const oldPasswordVisible = ref(false);
 const newPasswordVisible = ref(false);
 const confirmNewPasswordVisible = ref(false);
-const passwordFormRef = ref<typeof ElForm | null>(null);
+const passwordFormRef = ref(null);
 
 // Validation rules
 const rules = {
@@ -50,7 +50,7 @@ const rules = {
   ],
 };
 
-watch(() => props.isPasswordDialogVisiable, (newVal) => {
+watch(() => props.isPasswordDialogVisible, (newVal) => {
   passwordDialogVisible.value = newVal;
 });
 
@@ -69,29 +69,38 @@ const resetForm = () => {
 };
 
 const savePassword = async () => {
-  if (!passwordFormRef.value) return;
+  console.log('ChangePassword.vue: savePassword method CALLED');
+  await nextTick();
+  if (!passwordFormRef.value) {
+    console.error('ChangePassword.vue: passwordFormRef is NOT defined after nextTick!');
+    return;
+  }
+  console.log('ChangePassword.vue: passwordFormRef is defined, calling validate...');
 
-  await passwordFormRef.value.validate(async (valid) => {
+  await passwordFormRef.value.validate(async (valid, fields) => {
+    console.log('ChangePassword.vue: Validate callback executed. Valid:', valid, 'Fields:', fields);
     if (valid) {
-      console.log('Password form is valid, saving password...');
+      console.log('ChangePassword.vue: Password form is valid, attempting to save password...');
       try {
         const passwordData = {
           old_password: passwordForm.oldPassword,
           new_password: passwordForm.newPassword,
         };
+        console.log('ChangePassword.vue: Sending passwordData to API:', JSON.stringify(passwordData));
         // Call the API to change password
-        await api.userModifyPassword(passwordData);
+        const response = await api.userModifyPassword(passwordData);
+        console.log('ChangePassword.vue: API userModifyPassword response:', response);
 
         ElMessage.success('密码修改成功');
         emits('updateSuccess');
         handleClose();
       } catch (error) {
-        console.error('Change password failed:', error);
+        console.error('ChangePassword.vue: Change password API call failed:', error);
         // API wrapper should handle error messages, but adding a fallback here
-        ElMessage.error('密码修改失败');
+        ElMessage.error('密码修改失败，详情请查看控制台');
       }
     } else {
-      console.log('Password form validation failed');
+      console.log('ChangePassword.vue: Password form validation failed');
       ElMessage.error('表单验证失败，请检查输入');
       return false;
     }
@@ -128,7 +137,7 @@ const toggleConfirmNewPasswordVisibility = () => {
         label-width="auto"
         class="password-form"
     >
-      <el-form-item :label="t('passwordDialog.old_password')" prop="oldPassword">
+      <el-form-item label="旧密码" prop="oldPassword">
         <el-input
             v-model="passwordForm.oldPassword"
             :type="oldPasswordVisible ? 'text' : 'password'"
@@ -142,7 +151,7 @@ const toggleConfirmNewPasswordVisibility = () => {
           </template>
         </el-input>
       </el-form-item>
-      <el-form-item :label="t('passwordDialog.new_password')" prop="newPassword">
+      <el-form-item label="新密码" prop="newPassword">
         <el-input
             v-model="passwordForm.newPassword"
             :type="newPasswordVisible ? 'text' : 'password'"
@@ -156,7 +165,7 @@ const toggleConfirmNewPasswordVisibility = () => {
           </template>
         </el-input>
       </el-form-item>
-      <el-form-item :label="t('passwordDialog.confirm_new_password')" prop="confirmNewPassword">
+      <el-form-item label="确认新密码" prop="confirmNewPassword">
         <el-input
             v-model="passwordForm.confirmNewPassword"
             :type="confirmNewPasswordVisible ? 'text' : 'password'"

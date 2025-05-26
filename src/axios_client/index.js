@@ -19,9 +19,7 @@ axiosClient.interceptors.request.use(
 
       // 如果请求路径不在 authExcludedRoutes 中，并且存在 token，则添加 Authorization 头
       if (token && !authExcludedRoutes.some(route => config.url.includes(route))) { // 使用 includes 进行更灵活的匹配
-         console.log("Axios Interceptor: Token from localStorage:", token);
          const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-         console.log("Axios Interceptor: Setting Authorization header:", authHeader);
          config.headers['Authorization'] = authHeader;
       }
 
