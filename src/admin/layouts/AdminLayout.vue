@@ -33,6 +33,7 @@
           :default-active="activeMenu"
           class="el-menu-vertical-demo"
           router
+          @select="handleMenuItemClick"
           :collapse="isCollapse"
           background-color="#304156"
           text-color="#bfcbd9"
@@ -62,12 +63,12 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 
 // 导入 Element Plus 图标组件
-import { Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold } from '@element-plus/icons-vue';
+import { Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold, ArrowLeftBold } from '@element-plus/icons-vue';
 
 export default defineComponent({
   name: 'AdminLayout',
   components: { // 注册图标组件
-     Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold
+     Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold, ArrowLeftBold
   },
   setup() {
     const store = useStore();
@@ -94,6 +95,7 @@ export default defineComponent({
       { path: '/admin/reports', title: '举报管理', iconComponent: Warning, roles: ['admin', 'super_admin'] },
       { path: '/admin/notifications', title: '系统通知发送', iconComponent: Bell, roles: ['admin', 'super_admin'] },
       { path: '/admin/permissions', title: '权限管理', iconComponent: Setting, roles: ['super_admin'] }, // 仅超级管理员可见
+      { path: 'back-to-user', title: '前往平台', iconComponent: ArrowLeftBold, roles: ['admin', 'super_admin'] },
     ];
 
     // 根据权限过滤菜单项
@@ -118,6 +120,20 @@ export default defineComponent({
       }
     };
 
+    // 处理侧边栏菜单点击事件
+    const handleMenuItemClick = (path) => {
+      if (path === 'back-to-user') {
+        const previousPath = localStorage.getItem('previousUserPath');
+        if (previousPath && previousPath !== '/admin/login') { // 避免返回到管理员登录页
+          router.push(previousPath);
+        } else {
+          router.push('/products'); // 默认返回商品列表页
+        }
+      } else {
+        router.push(path);
+      }
+    };
+
     // 可选：侧边栏折叠功能
     const isCollapse = ref(false); // 初始为展开
     const toggleCollapse = () => {
@@ -130,6 +146,7 @@ export default defineComponent({
       activeMenu,
       filteredAdminMenus,
       handleCommand,
+      handleMenuItemClick,
       isCollapse,
       toggleCollapse,
     };

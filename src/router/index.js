@@ -144,25 +144,25 @@ const router = createRouter({
         {
           path: 'returns',
           name: 'AdminReturnManagement',
-          component: () => import ('@/admin/views/ReturnsManagement.vue' ),
+          component: () => import ('@/admin/views/ReturnsManagementView.vue' ),
           meta: { title: '退货申请管理', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'reports',
           name: 'AdminReportManagement',
-          component: () => import('@/admin/views/ReportManagement.vue'),
+          component: () => import('@/admin/views/ReportManagementView.vue'),
           meta: { title: '举报管理', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'notifications',
           name: 'AdminNotificationSend',
-          component: () => import('@/admin/views/NotificationManagement.vue' ),
+          component: () => import('@/admin/views/NotificationManagementView.vue' ),
           meta: { title: '系统通知发送', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'permissions',
           name: 'AdminPermissionManagement',
-          component: { template: '<div>权限管理 (占位符)</div>' },
+          component: () => import('@/admin/views/PermissionManagementView.vue'),
           meta: { requiresSuperAdmin: true, title: '权限管理', requiresAuth: true, requiresAdmin: true }
         },
       ]
@@ -180,6 +180,11 @@ const router = createRouter({
 // 路由导航守卫
 router.beforeEach(async (to, from, next) => {
   NProgress.start(); // 启动顶部进度条
+
+  // 在从非管理员页面进入管理员页面时保存用户端路径
+  if (to.path.startsWith('/admin') && !from.path.startsWith('/admin')) {
+    localStorage.setItem('previousUserPath', from.fullPath);
+  }
 
   // 直接通过导入的 store 访问状态和 getters
   const isAuthenticated = store.getters['user/isAuthenticated'];

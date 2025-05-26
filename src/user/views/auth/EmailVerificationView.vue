@@ -36,12 +36,12 @@ const goToLogin = () => {
 <template>
   <div class="verification-container">
     <el-card class="verification-card">
-      <div class="success-icon">
+      <div class="wait-icon">
         <el-icon><Check /></el-icon>
       </div>
       <h2>邮箱验证</h2>
-      <p>您的邮箱已成功验证。请点击下方按钮返回登录页面。</p>
-      <el-button type="primary" @click="goToLogin" class="login-button">返回登录</el-button>
+      <p>我们还在开发，请耐心等待。请点击下方按钮返回平台。</p>
+      <el-button type="primary" @click="goToLogin" class="login-button">返回平台</el-button>
     </el-card>
   </div>
 </template>
