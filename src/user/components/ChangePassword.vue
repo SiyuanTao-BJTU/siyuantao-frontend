@@ -2,9 +2,8 @@
 import { reactive, ref, watch, defineProps, defineEmits } from 'vue';
 import { ElMessage, ElForm } from 'element-plus';
 import { View, Hide } from '@element-plus/icons-vue';
+import api from '@/API_PRO.js';
 
-// Assuming api.js exists and has a changePassword method
-// import api from '@/API_PRO.js';
 // Assuming Vuex store exists and has user module with changePassword action
 // import { useStore } from 'vuex';
 
@@ -75,28 +74,22 @@ const savePassword = async () => {
   await passwordFormRef.value.validate(async (valid) => {
     if (valid) {
       console.log('Password form is valid, saving password...');
-      // TODO: Call Vuex action or API to change password
-      // Example using a dummy success:
-      // try {
-      //   const passwordData = {
-      //     old_password: passwordForm.oldPassword,
-      //     new_password: passwordForm.newPassword,
-      //   };
-      //   // await store.dispatch('user/changePassword', passwordData);
-      //   ElMessage.success(t('passwordDialog.save_success'));
-      //   emits('updateSuccess');
-      //   handleClose(); // Close dialog on success
-      // } catch (error) {
-      //   console.error('Change password failed:', error);
-      //   // Error message handled by API wrapper ideally
-      //   // ElMessage.error(t('passwordDialog.save_failure'));
-      // }
+      try {
+        const passwordData = {
+          old_password: passwordForm.oldPassword,
+          new_password: passwordForm.newPassword,
+        };
+        // Call the API to change password
+        await api.userModifyPassword(passwordData);
 
-      // Dummy success for UI testing
-      ElMessage.success('密码修改成功');
-      emits('updateSuccess');
-      handleClose();
-
+        ElMessage.success('密码修改成功');
+        emits('updateSuccess');
+        handleClose();
+      } catch (error) {
+        console.error('Change password failed:', error);
+        // API wrapper should handle error messages, but adding a fallback here
+        ElMessage.error('密码修改失败');
+      }
     } else {
       console.log('Password form validation failed');
       ElMessage.error('表单验证失败，请检查输入');

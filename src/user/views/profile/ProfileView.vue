@@ -9,9 +9,11 @@
     Goods,
     Star,
     ChatSquare,
-    School
+    School,
+    Setting // 导入 Setting 图标
   } from "@element-plus/icons-vue";
   import ChangePassword from "@/user/components/ChangePassword.vue";
+  import ProfileEdit from "@/user/components/ProfileEdit.vue"; // 导入 ProfileEdit 组件
   import WebSocketService from "@/socket_client/socket.js";
   import router from "@/router/index.js";
   import {ElMessage} from "element-plus";
@@ -34,6 +36,7 @@
   let activeIndex = ref("1"); // 控制显示的内容，初始化为个人数据页面
   let componentKey = ref(0); // 用于强制刷新子组件
   let passwordDialogVisible = ref(false); // 控制修改密码对话框的显示
+  let profileEditDialogVisible = ref(false); // 控制编辑个人信息对话框的显示
 
   const fetchUserProfile = () => {
     api.getUserProfile()
@@ -64,6 +67,15 @@
           }
           localStorage.setItem("username", userInfo.username);
           localStorage.setItem("userId", userInfo.id || userInfo.user_id);
+          // 检查 is_staff 并存储
+          if (userInfo.is_staff !== undefined) {
+            localStorage.setItem("is_staff", userInfo.is_staff);
+          }
+          // 检查 is_verified 并存储
+          if (userInfo.is_verified !== undefined) {
+            localStorage.setItem("is_verified", userInfo.is_verified);
+          }
+
           if ((userInfo.id || userInfo.user_id) && WebSocketService.userId === 'undefined') {
             WebSocketService.init(userInfo.id || userInfo.user_id);
           }
@@ -73,6 +85,8 @@
           localStorage.removeItem('token');
           localStorage.removeItem('userId');
           localStorage.removeItem('username');
+          localStorage.removeItem('is_staff');
+          localStorage.removeItem('is_verified');
           database_id.value = null;
           username.value = "";
           email.value = "";
@@ -91,6 +105,8 @@
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
         localStorage.removeItem('username');
+        localStorage.removeItem('is_staff');
+        localStorage.removeItem('is_verified');
         database_id.value = null;
         username.value = "";
         email.value = "";
@@ -114,14 +130,15 @@
 
   // Computed property for student verification status display
   const studentVerificationStatus = computed(() => {
-    if (userProfileResponseData.value && userProfileResponseData.value.student_profile) {
-      // Assuming student_profile exists means they have started/completed verification
-      // You might need a specific field in student_profile like `is_verified`
-      // For now, let's just check if student_profile exists and assume it implies some verification progress/completion.
-      // A more robust implementation would check userProfileResponseData.value.student_profile.status or similar.
+    // Check the is_verified field directly from userProfileResponseData
+    if (userProfileResponseData.value && userProfileResponseData.value.is_verified) {
       return "已认证"; // Add to i18n
+    } else if (userProfileResponseData.value && !userProfileResponseData.value.is_verified) {
+        // If is_verified is false but student_profile exists, it might mean verification started but not completed.
+        // For now, we'll just show "未认证". If more detailed statuses are needed, the backend needs to provide them.
+        return "未认证"; // Add to i18n
     } else {
-      return "未认证"; // Add to i18n
+      return "未认证"; // Default to 未认证 if no user data or student_profile
     }
   });
 
@@ -131,6 +148,18 @@
 
   const handlePasswordCardClick = () => {
     passwordDialogVisible.value = true;
+  };
+
+  const handleProfileEditCardClick = () => {
+    profileEditDialogVisible.value = true;
+  };
+
+  const handleStudentAuthCardClick = () => {
+    router.push('/profile/student-auth'); // TODO: Add this route
+  };
+
+  const handleAdminCardClick = () => {
+    router.push('/admin'); // TODO: Add this route and AdminLayout
   };
 </script>
 
@@ -143,7 +172,7 @@
           <el-avatar v-else :src="avatarUrl" :size="100" shape="circle" class="avatar" />
           <h3>{{username}}</h3>
           <div class="status-info">
-            <span class="credit-score">信用分: {{ userProfileResponseData ? userProfileResponseData.credit_score : 'N/A' }}</span>
+            <span class="credit-score">信用分: {{ userProfileResponseData ? userProfileResponseData.credit : 'N/A' }}</span>
             <el-divider direction="vertical" />
             <span class="verification-status">学生认证状态: {{ studentVerificationStatus }}</span>
              <!-- TODO: Add a badge or icon for verified status based on backend data -->
@@ -151,7 +180,7 @@
         </div>
 
         <div class="functional-cards">
-          <el-card class="functional-card" shadow="hover" @click="handleCardClick('/profile/edit')">
+          <el-card class="functional-card" shadow="hover" @click="handleProfileEditCardClick">
             <el-icon><Edit /></el-icon>
             <span>编辑个人信息</span>
           </el-card>
@@ -175,11 +204,16 @@
             <el-icon><ChatSquare /></el-icon>
             <span>我的消息</span>
           </el-card>
-           <!-- TODO: Add Student Authentication Card -->
-           <!-- <el-card class="functional-card" shadow="hover" @click="handleCardClick('/profile/student-auth')">
+           <!-- 学生认证入口 (如果未认证) -->
+           <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && !userProfileResponseData.is_verified" @click="handleStudentAuthCardClick">
              <el-icon><School /></el-icon>
              <span>学生认证</span>
-           </el-card> -->
+           </el-card>
+           <!-- 管理员后台入口 (如果是管理员) -->
+           <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && userProfileResponseData.is_staff" @click="handleAdminCardClick">
+             <el-icon><Setting /></el-icon>
+             <span>管理员后台</span>
+           </el-card>
         </div>
       </div>
     </div>
@@ -189,6 +223,13 @@
       :key="componentKey"
       @updateCancel="passwordDialogVisible = false"
       @updateSuccess="passwordDialogVisible = false"
+  />
+  <ProfileEdit
+      :isProfileEditDialogVisible="profileEditDialogVisible"
+      :userInfo="userProfileResponseData"
+      :key="componentKey + 1" 
+      @updateCancel="profileEditDialogVisible = false"
+      @updateSuccess="() => { profileEditDialogVisible = false; fetchUserProfile(); }" 
   />
 </template>
 

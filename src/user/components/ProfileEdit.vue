@@ -1,57 +1,71 @@
 <script setup>
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage, ElForm } from 'element-plus'; // Import ElForm for type hinting
+import { ElMessage, ElForm, ElDialog } from 'element-plus'; // Import ElForm and ElDialog
 import { Plus } from '@element-plus/icons-vue'; // Import Plus icon
 
 // Assuming api.js exists and has an updateProfile method
-// import api from '@/API_PRO.js'; 
+import api from '@/API_PRO.js'; // Import api
 // Assuming Vuex store exists and has user module with updateProfile action
 // import { useStore } from 'vuex';
 
 const router = useRouter();
 // const store = useStore(); // Uncomment when integrating with Vuex
 
+// Define props
+const props = defineProps({
+  isProfileEditDialogVisible: Boolean,
+  userInfo: Object // Prop to receive user info from parent
+});
+
+// Define emits
+const emits = defineEmits(['updateCancel', 'updateSuccess']);
+
 const profileForm = reactive({
-  nickname: '',
-  professional: '', // Corresponds to 'facauty' or 'verified_department' in backend data
+  // username is not editable based on openapi.json, but we can display it
+  username: '', // Display username, not editable
+  major: '', // Corresponds to 'major' in backend data (openapi.json)
   bio: '', // Corresponds to 'bio' in backend data
-  phoneNumber: '', // Corresponds to 'contact_info' in backend data
+  phoneNumber: '', // Corresponds to 'phone_number' in backend data (openapi.json)
   // avatar: null // For avatar file object or URL
   avatarUrl: null, // To display current avatar
 });
 
 // Basic validation rules (integrate with form_validation.js later)
 const rules = {
-  nickname: [
-    { required: true, message: '请输入昵称', trigger: 'blur' },
-    { max: 30, message: '昵称长度不能超过 30 个字符', trigger: 'blur' }
+  // username is read-only
+  major: [
+    // { required: true, message: '请输入专业', trigger: 'blur' }, // Decide if major is required
+    { max: 100, message: '专业长度不能超过 100 个字符', trigger: 'blur' }
   ],
-  // professional: [{ required: true, message: t('profileEdit.professional_required'), trigger: 'blur' }], // Decide if required
-  // phoneNumber: [{ validator: (rule, value, callback) => { /* phone format validation */ }, trigger: 'blur' }], // Add phone format validation
+  bio: [
+    { max: 500, message: '个人简介长度不能超过 500 个字符', trigger: 'blur' }
+  ],
+  phoneNumber: [
+    { required: true, message: '请输入手机号', trigger: 'blur' }, // Assuming phone number is required as per design
+    // TODO: Add phone number format validation if needed
+    { max: 20, message: '手机号长度不能超过 20 个字符', trigger: 'blur' }
+  ],
 };
 
 const profileFormRef = ref<typeof ElForm | null>(null); // Ref for the form
 
-// Fetch user data to prefill the form
-onMounted(() => {
-  // TODO: Fetch user data from Vuex store or API and prefill profileForm
-  // Example fetching from Vuex (assuming userInfo is available):
-  // const userInfo = store.getters['user/userInfo'];
-  // if (userInfo) {
-  //   profileForm.nickname = userInfo.username || ''; // Assuming nickname is username for now
-  //   profileForm.professional = userInfo.facauty || userInfo.verified_department || '';
-  //   profileForm.bio = userInfo.bio || '';
-  //   profileForm.phoneNumber = userInfo.contact_info || '';
-  //   profileForm.avatarUrl = userInfo.avatar_url || null;
-  // }
-
-  // Dummy data for UI testing
-  profileForm.nickname = '李同学';
-  profileForm.professional = '计算机科学与技术';
-  profileForm.bio = '一个热爱编程的大学生';
-  profileForm.phoneNumber = '13812345678';
-  // profileForm.avatarUrl = 'some_dummy_avatar_url'; // Uncomment to test avatar preview
+// Watch for dialog visibility change to populate form
+watch(() => props.isProfileEditDialogVisible, (newValue) => {
+  if (newValue && props.userInfo) {
+    // Populate form with current user info when dialog opens
+    profileForm.username = props.userInfo.username || ''; // Display username
+    profileForm.major = props.userInfo.major || ''; // Use 'major' from backend schema
+    profileForm.bio = props.userInfo.bio || '';
+    profileForm.phoneNumber = props.userInfo.phone_number || ''; // Use 'phone_number' from backend schema
+    profileForm.avatarUrl = props.userInfo.avatar_url || null;
+  } else if (!newValue && profileFormRef.value) {
+      // Optionally reset form when dialog closes
+      profileFormRef.value.resetFields();
+       // Also manually reset other fields not controlled by resetFields if necessary
+       profileForm.username = '';
+       profileForm.avatarUrl = null;
+  }
 });
 
 // Handle avatar upload success
@@ -75,6 +89,8 @@ const beforeAvatarUpload = (rawFile) => {
   //   return false;
   // }
   console.log('Before avatar upload:', rawFile);
+  // Return true to allow upload, false to prevent
+  // For now, we will return true to allow upload framework testing, but need a real upload URL
   return true; // Allow upload for now
 };
 
@@ -85,28 +101,26 @@ const saveProfile = async () => {
     if (valid) {
       console.log('Form is valid, saving profile...');
       // TODO: Call Vuex action or API to update profile
-      // Example using a dummy success:
-      // try {
-      //   // Construct data payload for API, including handling avatar upload if needed
-      //   const updateData = { 
-      //      username: profileForm.nickname, // Or a separate username field if nickname is different
-      //      contact_info: profileForm.phoneNumber,
-      //      bio: profileForm.bio,
-      //      // Add other fields like professional
-      //      // avatar_url: profileForm.avatarUrl // If API expects URL directly
-      //      // or upload avatar file separately before calling updateProfile
-      //   };
-      //   // await store.dispatch('user/updateProfile', updateData);
-      //   ElMessage.success(t('profileEdit.save_success'));
-      //   router.push('/profile'); // Navigate back after saving
-      // } catch (error) {
-      //   console.error('Save profile failed:', error);
-      //   ElMessage.error(t('profileEdit.save_failure')); // Error message handled by API wrapper ideally
-      // }
+      try {
+        // Construct data payload for API based on UserProfileUpdateSchema
+        const updateData = { 
+          // username is not included as it's not in UserProfileUpdateSchema
+          major: profileForm.major || null, // Send null if empty string
+          phone_number: profileForm.phoneNumber || null, // Send null if empty string
+          bio: profileForm.bio || null, // Send null if empty string
+          // Add other fields like professional
+          avatar_url: profileForm.avatarUrl // Assuming API expects URL directly or it's handled separately
+        };
+        // Call the API to update user profile
+        await api.updateUserProfile(updateData);
 
-      // Dummy success for UI testing
-      ElMessage.success('资料更新成功');
-      router.push('/profile'); // Navigate back after dummy save
+        ElMessage.success('资料更新成功');
+        emits('updateSuccess'); // Emit success event
+      } catch (error) {
+        console.error('Save profile failed:', error);
+        // API wrapper should handle error messages, but adding a fallback here
+        ElMessage.error('资料更新失败'); 
+      }
 
     } else {
       console.log('Form validation failed');
@@ -118,117 +132,76 @@ const saveProfile = async () => {
 
 const cancelEdit = () => {
   // TODO: Implement cancel logic - maybe confirm with user if changes are unsaved
-  router.push('/profile'); // Navigate back without saving
+  emits('updateCancel'); // Emit cancel event
 };
 
 </script>
 
 <template>
-  <div class="basic-container">
-    <div class="center-container">
-      <el-card class="edit-card">
-        <h2>编辑个人资料</h2>
-        <el-form
-            :model="profileForm"
-            :rules="rules"
-            ref="profileFormRef"
-            label-width="auto"
-            class="profile-form"
+  <el-dialog
+    v-model="props.isProfileEditDialogVisible"
+    title="编辑个人资料"
+    width="500px"
+    :before-close="cancelEdit" 
+  >
+    <el-form
+      :model="profileForm"
+      :rules="rules"
+      ref="profileFormRef"
+      label-width="auto"
+      class="profile-form"
+    >
+      <!-- 头像上传 -->
+      <el-form-item label="头像">
+        <el-upload
+          class="avatar-uploader"
+          action="YOUR_UPLOAD_URL"
+          :show-file-list="false"
+          :on-success="handleAvatarUploadSuccess"
+          :before-upload="beforeAvatarUpload"
         >
-           <el-form-item :label="t('profileEdit.avatar')">
-             <el-form-item label="头像">
-               <el-upload
-                  class="avatar-uploader"
-                  action="YOUR_UPLOAD_URL"
-                  :show-file-list="false"
-                  :on-success="handleAvatarUploadSuccess" 
-                  :before-upload="beforeAvatarUpload" 
-               >
-                 <!-- Display current avatar or placeholder -->
-                 <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" class="avatar-preview"/>
-                 <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-               </el-upload>
-             </el-form-item>
-           </el-form-item>
-          <el-form-item :label="t('profileEdit.nickname')" prop="nickname">
-          </el-form-item>
-          <el-form-item label="昵称" prop="nickname">
-             <el-input v-model="profileForm.nickname" :placeholder="t('profileEdit.nickname_placeholder')"/>
-             <el-input v-model="profileForm.nickname" placeholder="请输入昵称"/>
-           </el-form-item>
-          <el-form-item :label="t('profileEdit.professional')" prop="professional">
-          </el-form-item>
-          <el-form-item label="专业" prop="professional">
-             <el-input v-model="profileForm.professional" :placeholder="t('profileEdit.professional_placeholder')"/>
-             <el-input v-model="profileForm.professional" placeholder="请输入专业"/>
-           </el-form-item>
-            <el-form-item :label="t('profileEdit.bio')" prop="bio">
-            </el-form-item>
-           <el-form-item label="个人简介" prop="bio">
-              <el-input
-                 v-model="profileForm.bio"
-                 type="textarea"
-                 :rows="3"
-                 placeholder="请输入个人简介"
-              />
-           </el-form-item>
-            <el-form-item :label="t('profileEdit.phoneNumber')" prop="phoneNumber">
-            </el-form-item>
-           <el-form-item label="手机号" prop="phoneNumber">
-              <el-input v-model="profileForm.phoneNumber" :placeholder="t('profileEdit.phoneNumber_placeholder')"/>
-              <el-input v-model="profileForm.phoneNumber" placeholder="请输入手机号"/>
-           </el-form-item>
+          <!-- Display current avatar or placeholder -->
+          <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" class="avatar-preview"/>
+          <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+        </el-upload>
+      </el-form-item>
 
-          <el-form-item>
-            <div class="button-group">
-              <el-button type="primary" @click="saveProfile">保存</el-button>
-              <el-button @click="cancelEdit">取消</el-button>
-            </div>
-          </el-form-item>
-        </el-form>
-      </el-card>
-    </div>
-  </div>
+      <!-- 用户名 (不可编辑) -->
+      <el-form-item label="用户名">
+        <el-input v-model="profileForm.username" disabled />
+      </el-form-item>
+
+      <!-- 专业 -->
+      <el-form-item label="专业" prop="major">
+        <el-input v-model="profileForm.major" placeholder="请输入专业 (选填)"/>
+      </el-form-item>
+
+      <!-- 个人简介 -->
+      <el-form-item label="个人简介" prop="bio">
+        <el-input
+          v-model="profileForm.bio"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入个人简介"
+        />
+      </el-form-item>
+
+      <!-- 手机号 -->
+      <el-form-item label="手机号" prop="phoneNumber">
+        <el-input v-model="profileForm.phoneNumber" placeholder="请输入手机号"/>
+      </el-form-item>
+    </el-form>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="cancelEdit">取消</el-button>
+        <el-button type="primary" @click="saveProfile">保存</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
-.basic-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #CAD9F1; /* Light blue background */
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-.center-container{
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  max-width: 700px; /* Adjust width for the form card */
-}
-
-.edit-card {
-  width: 100%;
-  padding: 30px; /* Padding inside the card */
-  border-radius: 10px;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.edit-card h2 {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 30px;
-  text-align: center;
-}
-
-.profile-form .el-form-item {
-  margin-bottom: 20px; /* Space between form items */
-}
-
 .avatar-uploader .el-upload {
   border: 1px dashed var(--el-border-color-darker);
   border-radius: 6px;
@@ -258,13 +231,13 @@ const cancelEdit = () => {
   border-radius: 6px; /* Match container border radius */
 }
 
-.button-group {
+.dialog-footer {
   display: flex;
   justify-content: flex-end; /* Align buttons to the right */
   width: 100%;
 }
 
-.button-group .el-button {
+.dialog-footer .el-button {
   margin-left: 20px; /* Space between buttons */
   min-width: 100px; /* Minimum button width */
 }

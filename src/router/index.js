@@ -1,19 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// import store from '@/store'; // 不在路由文件中直接导入 store，而是在 main.js 中挂载后使用
+import store from '@/store'; // 直接导入 store 实例
 import { ElMessage } from 'element-plus'; // 确保 ElMessage 被导入
 import NProgress from 'nprogress'; // 导入 NProgress
 import 'nprogress/nprogress.css'; // 导入 NProgress 样式
 
 // 静态导入 ProfileView，暂时解决动态加载问题
 import ProfileView from '@/user/views/profile/ProfileView.vue';
-// import LoginView from '@/user/views/auth/LoginView.vue';
-// import EmailVerificationView from '@/user/views/auth/EmailVerificationView.vue';
-// import HomeView from '@/product/views/HomeView.vue';
-// import ItemInfoView from '@/views/ItemInfoView.vue';
-// import UserProductsView from '@/user/views/profile/UserProductsView.vue';
-// import UserFavoritesView from '@/product/views/UserFavoritesView.vue';
-// import MessageView from '@/chat/views/MessageView.vue';
-// import ProductPostView from '@/product/views/ProductPostView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -84,6 +76,12 @@ const router = createRouter({
       component: { template: '<div>用户资料搜索页面 (占位符)</div>' },
       meta: { requiresAuth: true }
     },
+    { // 学生认证页面 (通过个人中心进入)
+      path: '/profile/student-auth',
+      name: 'StudentAuth',
+      component: () => import('@/user/views/auth/EmailVerificationView.vue'),
+      meta: { requiresAuth: true, title: '学生认证', hideNavbar: true }
+    },
     { // 偏好设置页面 (保留原路径)
       path: '/settings',
       name: 'settings',
@@ -121,14 +119,14 @@ const router = createRouter({
     // 管理员后台布局 (requiresAdminLayout: true)
     {
       path: '/admin',
-      component: { template: '<div>管理员布局 (占位符)</div>' },
+      component: () => import('@/admin/layouts/AdminLayout.vue'),
       redirect: '/admin/dashboard',
       meta: { requiresAdminLayout: true, requiresAuth: true, requiresAdmin: true },
       children: [
         {
           path: 'dashboard',
           name: 'AdminDashboard',
-          component: { template: '<div>仪表盘概览 (占位符)</div>' },
+          component: () => import('@/admin/views/DashboardView.vue'),
           meta: { title: '仪表盘概览', requiresAuth: true, requiresAdmin: true }
         },
         {
@@ -183,27 +181,43 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   NProgress.start(); // 启动顶部进度条
 
-  // 在这里可以安全地访问 store，因为 main.js 会先创建 store 再挂载 router
-  const isAuthenticated = router.app.config.globalProperties.$store.getters['user/isAuthenticated'];
+  // 直接通过导入的 store 访问状态和 getters
+  const isAuthenticated = store.getters['user/isAuthenticated'];
   const token = localStorage.getItem('token');
 
   // 尝试获取用户信息，如果 token 存在但 store 中没有用户信息
-  if (token && !router.app.config.globalProperties.$store.state.user.userInfo) {
+  if (token && !store.state.user.userInfo) {
     try {
-      await router.app.config.globalProperties.$store.dispatch('user/fetchUserInfo');
+      // 直接通过导入的 store 调用 dispatch
+      await store.dispatch('user/fetchUserInfo');
     } catch (error) {
       console.warn('路由守卫: fetchUserInfo 失败', error);
+      // 如果获取用户信息失败，清除本地 token 和 user info，视为未认证
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('username');
+      localStorage.removeItem('is_staff');
+      localStorage.removeItem('is_verified');
+      // 如果当前路由需要认证，重定向到登录页
+      if (to.meta.requiresAuth) {
+         ElMessage.warning('用户信息获取失败或登录已过期，请重新登录');
+         next({ name: 'login', query: { redirect: to.fullPath } });
+         NProgress.done(); // 结束进度条
+         return; // 阻止继续执行
+      }
     }
   }
 
   // 检查路由是否需要认证
+  // 重新获取 isAuthenticated 状态，以防 fetchUserInfo 清除了 token
+  const currentIsAuthenticated = store.getters['user/isAuthenticated'];
+  const isAdmin = store.getters['user/getUserInfo']?.is_staff || localStorage.getItem('is_staff') === 'true';
+
   if (to.meta.requiresAuth) {
-    if (isAuthenticated) {
+    if (currentIsAuthenticated) {
       // 用户已认证，检查是否需要管理员权限
       if (to.meta.requiresAdmin) {
-        // 使用 router.app.config.globalProperties.$store 来访问 store 实例和 getters
-        const userInfo = router.app.config.globalProperties.$store.getters['user/getUserInfo'];
-        if (userInfo && userInfo.is_staff) {
+        if (isAdmin) {
           next();
         } else {
           ElMessage.warning('您没有访问此页面的权限');
@@ -220,7 +234,7 @@ router.beforeEach(async (to, from, next) => {
   } else {
     // 公开路由，直接访问
     // 如果已登录且尝试访问登录或注册页，重定向到首页 (商品列表页)
-    if ((to.name === 'login' || to.name === 'register' || to.name === 'verify-email') && isAuthenticated) {
+    if ((to.name === 'login' || to.name === 'register' || to.name === 'verify-email') && currentIsAuthenticated) {
       next({ name: 'ProductList' });
     } else {
       next();

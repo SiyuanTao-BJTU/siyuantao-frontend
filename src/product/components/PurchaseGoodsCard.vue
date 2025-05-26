@@ -4,7 +4,7 @@ import FormatObject from "@/utils/format.js";
 
 // 组件事件属性设置
 const props = defineProps({
-  img: String,
+  img: Array,
   itemName: String,
   price: Number,
   description: String,
@@ -23,7 +23,7 @@ const goItemPage = () => {
 <template>
   <el-card class="clickable-card" @click="goItemPage">
     <img
-      :src="FormatObject.formattedImgUrl(decodeURIComponent(img?img.length>0?img[0]:null:null))"
+      :src="FormatObject.formattedImgUrl(props.img && props.img.length > 0 ? props.img[0] : null)"
       :alt="props.itemName"/>
     <div class="price">
       <p>￥{{props.price}}</p>

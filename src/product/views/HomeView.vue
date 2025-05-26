@@ -63,7 +63,11 @@ const handleSearch = () => {
   }
   api.getProductList({ search: searchQuery.value })
     .then(data => {
-      cardList.value = data;
+      // Ensure img is an array for PurchaseGoodsCard
+      cardList.value = data.map(item => ({
+        ...item,
+        img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
+      }));
       if (!data || data.length === 0) {
         ElMessage.info('未找到相关商品');
         cardList.value = []; // 清空列表，显示"暂无商品"
@@ -81,11 +85,15 @@ const recommendCall = () => {
   api.getProductList()
     .then(data => {
       if (data && data.length > 0) { // 检查API是否返回数据
-         cardList.value = data; // 使用API数据
-         // 根据API数据填充顶部推荐商品，如果不足3个，保持空对象
-         top_item_1.value = data[0] || {}; 
-         top_item_2.value = data[1] || {};
-         top_item_3.value = data[2] || {};
+        // Ensure img is an array for PurchaseGoodsCard
+        cardList.value = data.map(item => ({
+          ...item,
+          img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
+        })); // 使用API数据
+        // 根据API数据填充顶部推荐商品，如果不足3个，保持空对象
+        top_item_1.value = data[0] || {}; 
+        top_item_2.value = data[1] || {};
+        top_item_3.value = data[2] || {};
       } else { // 如果API没有返回数据，使用模拟数据
         ElMessage.info('API未返回商品，显示模拟数据');
         cardList.value = mockCardList;

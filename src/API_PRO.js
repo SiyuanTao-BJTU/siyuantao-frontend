@@ -206,6 +206,14 @@ const getUserSoldRecords = () => {
   return apiRequest('GET', '/v1/users/me/sold');
 };
 
+/**
+ * @summary 获取所有用户列表 (管理员接口)
+ * @method GET
+ * @path /api/v1/users/
+ */
+const getAllUsersApi = () => {
+  return apiRequest('GET', '/v1/users/');
+};
 
 // ========================================================================
 // Product Management (来自 itemTrade/urls/item.py)
@@ -220,7 +228,7 @@ const getUserSoldRecords = () => {
  */
 const getProductList = (filters) => {
   // Path adjusted to /v1/items/ based on openapi.json /api/v1/items
-  return apiRequest('GET', '/v1/items/', null, filters);
+  return apiRequest('GET', '/v1/products/', null, filters);
 };
 
 /**
@@ -237,7 +245,7 @@ const getProductList = (filters) => {
  */
 const createProduct = (productData, isFormData = false) => {
   // Path adjusted to /v1/items/ based on openapi.json /api/v1/items for POST
-  return apiRequest('POST', '/v1/items/', productData, null, isFormData);
+  return apiRequest('POST', '/v1/products/', productData, null, isFormData);
 };
 
 /**
@@ -249,7 +257,7 @@ const createProduct = (productData, isFormData = false) => {
  */
 const getProductDetail = (productId) => {
   // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('GET', `/v1/items/${productId}`);
+  return apiRequest('GET', `/v1/products/${productId}`);
 };
 
 /**
@@ -263,7 +271,7 @@ const getProductDetail = (productId) => {
  */
 const updateProduct = (productId, productData, isFormData = false) => {
   // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('PUT', `/v1/items/${productId}`, productData, null, isFormData);
+  return apiRequest('PUT', `/v1/products/${productId}/`, productData, null, isFormData);
 };
 
 /**
@@ -275,7 +283,7 @@ const updateProduct = (productId, productData, isFormData = false) => {
  */
 const deleteProduct = (productId) => {
   // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('DELETE', `/v1/items/${productId}`);
+  return apiRequest('DELETE', `/v1/products/${productId}/`);
 };
 
 /**
@@ -288,7 +296,7 @@ const deleteProduct = (productId) => {
  */
 const addProductComment = (productId, commentData) => {
   // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
-  return apiRequest('POST', `/v1/items/${productId}/comments`, commentData);
+  return apiRequest('POST', `/v1/products/${productId}/comments/`, commentData);
 };
 
 /**
@@ -300,7 +308,7 @@ const addProductComment = (productId, commentData) => {
  */
 const getProductComments = (productId) => {
   // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
-  return apiRequest('GET', `/v1/items/${productId}/comments`);
+  return apiRequest('GET', `/v1/products/${productId}/comments/`);
 };
 
 // ========================================================================
@@ -483,6 +491,12 @@ const imagesUploadCreate = (imageData) => {
   return apiRequest('POST', '/v1/images/upload/', imageData, null, true);
 };
 
+// 新增：管理员后台仪表盘统计 (占位符，待后端接口实现)
+const getNewUsersToday = () => Promise.resolve(10); // 模拟数据
+const getProductsPendingReviewCount = () => Promise.resolve(5); // 模拟数据
+const getPendingReturnsCount = () => Promise.resolve(3); // 模拟数据
+const getLatestReportsCount = () => Promise.resolve(2); // 模拟数据
+
 // 导出所有 API 函数
 export default {
   // User
@@ -495,6 +509,7 @@ export default {
   getUserTradeComments,
   getUserBoughtRecords,
   getUserSoldRecords,
+  getAllUsersApi,
 
   // Product
   getProductList,
@@ -524,4 +539,10 @@ export default {
 
   // 新增：统一图片上传
   imagesUploadCreate,
+
+  // 新增：管理员后台仪表盘统计 (占位符，待后端接口实现)
+  getNewUsersToday,
+  getProductsPendingReviewCount,
+  getPendingReturnsCount,
+  getLatestReportsCount,
 }; 

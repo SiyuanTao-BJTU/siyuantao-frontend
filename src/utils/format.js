@@ -62,14 +62,22 @@ const FormatObject = {
 
   formattedImgUrl: (res_img_url) => {
     if (!res_img_url) return null; 
-    const baseUrl = "http://8.138.167.80:6699"; 
-    if (res_img_url.startsWith("/media/")) {
-      return baseUrl + res_img_url;
-    } else if (res_img_url.startsWith("/")) {
-      return baseUrl + "/media" + res_img_url; 
-    } else {
-      return baseUrl + "/media/" + res_img_url;
+    // Check if the URL is already a complete URL (http or https)
+    if (res_img_url.startsWith('http://') || res_img_url.startsWith('https://')) {
+      return res_img_url; // It's already a complete URL, return directly
     }
+
+    // Use the base URL from backend.config.js
+    // Ensure backend.config.js is imported if not already
+    // import BackendConfig from '../../backend.config'; // Add this import if needed
+    const baseUrl = BackendConfig.BASIC_URL; // Use BASIC_URL from config
+
+    // Ensure baseUrl does not end with / and the image path does not start with / for correct joining
+    const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const imgPath = res_img_url.startsWith('/') ? res_img_url.slice(1) : res_img_url;
+
+    // Assuming the media path relative to the base URL is /media/
+    return `${base}/media/${imgPath}`;
   },
 
   formattedImgUrlList: (res_img_url_list) => {

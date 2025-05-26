@@ -25,12 +25,12 @@ const WebSocketService = {
     messageQueue: [],  // 添加消息队列
 
     init(userId) {
-        console.log('WebSocketService init');
+        // console.log('WebSocketService init');
         this.userId = userId;
         this.socket = new WebSocket(BackendConfig.WebSocket_URL + `/${this.userId}/`);
 
         this.socket.onopen = () => {
-            console.log('WebSocket connection opened');
+            // console.log('WebSocket connection opened');
             // 清空消息队列，发送所有等待中的消息
             this.flushMessageQueue();
         };
@@ -41,8 +41,8 @@ const WebSocketService = {
         };
 
         this.socket.onclose = (event) => {
-            console.log('WebSocket connection closed');
-            console.log(`WebSocket connection Exit with the code ${event.code}`);
+            // console.log('WebSocket connection closed');
+            // console.log(`WebSocket connection Exit with the code ${event.code}`);
             setTimeout(() => {
                 if (this.userId) {
                     this.init(this.userId); // 重新初始化连接
@@ -69,7 +69,7 @@ const WebSocketService = {
             this.socket.send(message);
         } else if (this.socket.readyState === WebSocket.CONNECTING) {
             // 如果连接正在建立中，将消息存入队列
-            console.log('WebSocket is connecting. Queuing message:', message);
+            // console.log('WebSocket is connecting. Queuing message:', message);
             this.messageQueue.push(message);
         } else {
             console.error('WebSocket is not open. Cannot send message:', message);
@@ -90,7 +90,7 @@ const WebSocketService = {
     reconnect() {
         // 重新连接逻辑
         if (this.socket.readyState !== WebSocket.OPEN) {
-            console.log('Attempting to reconnect WebSocket...');
+            // console.log('Attempting to reconnect WebSocket...');
             this.init(this.userId);  // 重新初始化连接
         }
     },
@@ -136,7 +136,7 @@ const WebSocketService = {
         if (this.socket) {
             this.socket.close();  // 关闭 WebSocket 连接
             this.socket = null;   // 清空 socket 实例以便重新连接
-            console.log('WebSocket connection manually closed');
+            // console.log('WebSocket connection manually closed');
         }
     }
 };

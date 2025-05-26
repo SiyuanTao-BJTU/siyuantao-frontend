@@ -40,8 +40,8 @@ app.use(store)
 // 初始化websocket
 // 只有在登录状态下才尝试初始化 WebSocket
 // WebSocket 初始化逻辑最好放在用户成功获取 userId 后，例如在 store 的 login action 或 fetchUserInfo action 成功后
-// if (localStorage.getItem('userId')) {
-//   WebSocketService.init(localStorage.getItem('userId'));
-// }
+if (localStorage.getItem('userId')) {
+  WebSocketService.init(localStorage.getItem('userId'));
+}
 
 app.mount('#app')
