@@ -6,6 +6,10 @@ import 'nprogress/nprogress.css'; // 导入 NProgress 样式
 
 // 静态导入 ProfileView，暂时解决动态加载问题
 import ProfileView from '@/user/views/profile/ProfileView.vue';
+// 导入学生认证请求页面
+import StudentAuthRequestView from '@/user/views/profile/StudentAuthRequestView.vue';
+// 导入通用的邮箱验证页面
+import EmailVerificationView from '@/user/views/auth/EmailVerificationView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -76,11 +80,11 @@ const router = createRouter({
       component: { template: '<div>用户资料搜索页面 (占位符)</div>' },
       meta: { requiresAuth: true }
     },
-    { // 学生认证页面 (通过个人中心进入)
+    { // 学生认证请求页面 (通过个人中心进入)
       path: '/profile/student-auth',
-      name: 'StudentAuth',
-      component: () => import('@/user/views/auth/EmailVerificationView.vue'),
-      meta: { requiresAuth: true, title: '学生认证', hideNavbar: true }
+      name: 'StudentAuthRequest',
+      component: StudentAuthRequestView,
+      meta: { requiresAuth: true, title: '学生认证请求' }
     },
     { // 偏好设置页面 (保留原路径)
       path: '/settings',
@@ -92,7 +96,7 @@ const router = createRouter({
       path: '/publish',
       name: 'publish',
       component: () => import('@/product/views/ProductPostView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresVerified: true }
     },
     // TODO: 修改密码页面可以在个人中心页面通过弹窗处理，无需单独路由
     // {
@@ -112,7 +116,7 @@ const router = createRouter({
     {
       path: '/verify-email',
       name: 'verify-email',
-      component: () => import('@/user/views/auth/EmailVerificationView.vue'),
+      component: EmailVerificationView,
       meta: { hideNavbar: true }
     },
 
@@ -173,6 +177,12 @@ const router = createRouter({
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: { template: '<div>404 页面未找到 (占位符)</div>' }
+    },
+    {
+      path: '/request-student-auth',
+      name: 'RequestStudentAuth',
+      component: () => import('../user/views/profile/StudentAuthRequestView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
@@ -193,36 +203,24 @@ router.beforeEach(async (to, from, next) => {
   // 尝试获取用户信息，如果 token 存在但 store 中没有用户信息
   if (token && !userInfo) {
     try {
-      await store.dispatch('user/fetchUserInfo');
-      // After fetching, update local userInfo and isAuthenticated state for subsequent checks in this guard
-      userInfo = store.state.user.userInfo;
-      currentIsAuthenticated = store.getters['user/isAuthenticated']; 
+      // 使用 dispatch 并 await 确保获取用户信息完成后再继续
+      userInfo = await store.dispatch('user/fetchUserInfo');
+      // fetchUserInfo 成功后，userInfo 和 isLoggedIn 状态会在 store 中更新
+      currentIsAuthenticated = store.getters['user/isAuthenticated'];
     } catch (error) {
       console.warn('路由守卫: fetchUserInfo 失败', error);
-      // 清除本地 token 和 user info，视为未认证
-      // logout action 应该处理 localStorage 和 store state 的清理以及重定向
-      await store.dispatch('user/logout', { inStoreLogout: false }); 
-      // 更新 currentIsAuthenticated 状态，因为已登出
-      currentIsAuthenticated = false; 
-      userInfo = null;
-
-      // 如果目标路由需要认证，而此时获取用户信息失败并已登出，则重定向到登录
-      // logout action 内部会处理重定向到登录页的逻辑，所以这里不需要显式 next({ name: 'login' })
-      // 但是，我们需要确保 NProgress.done() 被调用，并且由于 logout action 可能会异步重定向，
-      // 我们应该在这里调用 next(false) 或 next() 来结束当前导航，让 logout action 控制流程。
-      // 然而，logout action 的重定向可能与这里的 next() 冲突。
-      // 最好的做法是让 logout action 完成重定向，这里只结束当前导航。
-      // 如果 logout action 保证会导航，这里调用 next() 或 next(false) 是安全的。
-      // 如果 logout action 只是清除状态，则需要在这里 next({name: 'login'})。
-      // 假设 logout 包含跳转逻辑, 那么这里调用 next() 允许它执行。
-      // 但如果 to.meta.requiresAuth 为真，并且 fetchUserInfo 失败，我们确实不应该进入目标路由。
-      // 考虑到 user.js 的 logout action 会执行 router.replace({ name: 'login' })，
-      // 这里调用 next() 然后 return 是安全的，让 logout 的导航接管。
+      // fetchUserInfo 失败通常意味着 token 无效或过期，执行登出
+      // logout action 会清除状态并重定向到登录页
+      await store.dispatch('user/logout', { inStoreLogout: false });
+      // 在登出后，如果目标页面需要认证，则中断当前导航，让 logout 的重定向接管
       if (to.meta.requiresAuth) {
-         NProgress.done();
-         // next({ name: 'login', query: { redirect: to.fullPath } }); // logout action handles this
-         return; // Stop further processing in this guard, allow logout's navigation to take place
+        NProgress.done();
+        // router.push('/login') is handled by logout action
+        return; // Stop navigation
       }
+       // 如果目标页面不需要认证 (例如 /login, /verify-email), 继续正常导航
+       currentIsAuthenticated = false; // Update state after failed fetch/logout
+       userInfo = null;
     }
   }
 
@@ -231,25 +229,43 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.meta.requiresAuth) {
     if (currentIsAuthenticated) {
-      if (to.meta.requiresAdmin) {
-        if (isAdmin) {
-          next();
-        } else {
-          ElMessage.warning('您没有访问此页面的权限');
-          next({ name: 'ProductList' }); 
-        }
+      // 用户已认证，检查是否需要邮箱验证
+      if (to.meta.requiresVerified && !userInfo?.is_verified) {
+          ElMessage.warning('请先完成邮箱验证以访问此页面');
+          // 重定向到学生认证请求页面
+          next({ name: 'StudentAuthRequest', query: { redirect: to.fullPath } });
+      } else if (to.meta.requiresAdmin) {
+           // 检查是否需要管理员权限
+           if (isAdmin) {
+               next();
+           } else {
+               ElMessage.warning('您没有访问此页面的权限');
+               next({ name: 'ProductList' }); // 重定向到普通用户主页
+           }
       } else {
-        next();
+           // 仅需要认证，且不需要验证或已验证
+           next();
       }
     } else {
+      // This case should ideally be handled by the initial fetchUserInfo check,
+      // but keeping it as a fallback.
       ElMessage.warning('请先登录以访问此页面');
       next({ name: 'login', query: { redirect: to.fullPath } });
     }
   } else {
     // 公开路由
-    if ((to.name === 'login' || to.name === 'register' || to.name === 'verify-email') && currentIsAuthenticated) {
+    // 如果已认证用户尝试访问登录或注册页面，重定向到商品列表
+    if ((to.name === 'login' || to.name === 'register') && currentIsAuthenticated) {
       next({ name: 'ProductList' });
+    // 如果是邮箱验证页面 (/verify-email)，并且 URL 中有 token，允许访问
+    } else if (to.name === 'verify-email' && to.query.token) {
+        next(); // Allow access to verification page if token is present
+    // 如果是邮箱验证页面，但没有 token，重定向到登录页 (或者可以显示错误信息)
+    } else if (to.name === 'verify-email' && !to.query.token) {
+         ElMessage.error('邮箱验证链接无效。');
+         next({ name: 'login' }); // Redirect to login
     } else {
+      // Other public routes, just allow access
       next();
     }
   }

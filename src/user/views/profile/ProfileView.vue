@@ -180,7 +180,7 @@
             </el-tag>
             <el-tag :type="userProfileResponseData && userProfileResponseData.is_verified ? 'success' : 'info'" effect="light" class="status-tag">
               <el-icon><component :is="userProfileResponseData && userProfileResponseData.is_verified ? CircleCheckFilled : CircleCloseFilled" /></el-icon>
-              &nbsp;学生认证: {{ studentVerificationStatus }}
+              &nbsp;学生认证: {{ userProfileResponseData && userProfileResponseData.is_verified ? '已认证' : '未认证' }}
             </el-tag>
           </div>
         </div>
@@ -211,9 +211,14 @@
             <span>我的消息</span>
           </el-card>
            <!-- 学生认证入口 (如果未认证) -->
-           <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && !userProfileResponseData.is_verified" @click="handleStudentAuthCardClick">
+           <el-card 
+             v-if="userProfileResponseData && !userProfileResponseData.is_verified" 
+             class="functional-card" 
+             shadow="hover" 
+             @click="handleCardClick('/request-student-auth')"
+           >
              <el-icon><School /></el-icon>
-             <span>学生认证</span>
+             <span>学生身份认证</span>
            </el-card>
            <!-- 管理员后台入口 (如果是管理员) -->
            <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && userProfileResponseData.is_staff" @click="handleAdminCardClick">
@@ -228,7 +233,7 @@
       :isPasswordDialogVisible="passwordDialogVisible"
       @updateCancel="passwordDialogVisible = false"
       @updateSuccess="passwordDialogVisible = false"
-  />
+  />’
   <ProfileEdit
       :isProfileEditDialogVisible="profileEditDialogVisible"
       :userInfo="userProfileResponseData"
