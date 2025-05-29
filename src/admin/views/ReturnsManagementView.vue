@@ -226,9 +226,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <div class="action-buttons">
+            <div class="action-buttons-column">
               <el-button size="small" @click="viewDetail(row)">
                 详情
               </el-button>
@@ -247,14 +247,6 @@
                 @click="rejectReturn(row)"
               >
                 拒绝
-              </el-button>
-              <el-button
-                v-if="row.status === 'approved'"
-                size="small"
-                type="primary"
-                @click="completeReturn(row)"
-              >
-                完成
               </el-button>
             </div>
           </template>
@@ -764,266 +756,353 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 页面背景和内边距 - 保留特定背景 */
 .returns-management {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 保留特定背景 */
+   padding: 24px;
+   /* Use the overall light gray background from AdminLayout */
+  background: #F8F9FA; /* Match AdminLayout background */
+   min-height: calc(100vh - 60px);
 }
 
-/* 页面头部 - 保留特定样式 */
+/* Page Header - Adjust to match UserManagementView */
+.page-header {
+   margin-bottom: 24px;
+}
+
+.header-left {
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
+}
+
 .page-title {
-  background: linear-gradient(135deg, #667eea, #764ba2); /* 保留特定颜色渐变 */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+   font-size: 28px; /* Match UserManagementView */
+   font-weight: 700;
+   background: linear-gradient(135deg, #667eea, #764ba2); /* Keep unique gradient */
+   -webkit-background-clip: text;
+   -webkit-text-fill-color: transparent;
+   margin: 0 0 8px 0;
 }
 
-/* 统计卡片 - 保留特定颜色 */
-.stat-card.pending .stat-icon {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+.page-subtitle {
+   font-size: 16px; /* Match UserManagementView */
+   color: #64748b; /* Match UserManagementView */
+   margin: 0;
 }
 
-.stat-card.approved .stat-icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-
-.stat-card.rejected .stat-icon {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.stat-card.completed .stat-icon {
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-}
-
-/* 筛选卡片 - 保留特定样式 */
-.filter-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.filter-left {
+/* Adjust header-actions for consistency */
+.header-actions {
   display: flex;
   gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
+
+/* Stats Grid - Adjust to match UserManagementView */
+.stats-grid {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+   gap: 20px;
+   margin-bottom: 24px;
+}
+
+.stat-card {
+   display: flex;
+   align-items: center;
+   padding: 24px;
+   background: rgba(255, 255, 255, 0.95); /* Match UserManagementView */
+   backdrop-filter: blur(10px); /* Keep backdrop-filter if desired */
+   border-radius: 12px; /* Match UserManagementView */
+   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); /* Match UserManagementView */
+}
+
+.stat-icon {
+   width: 48px;
+   height: 48px;
+   border-radius: 12px; /* Match UserManagementView */
+   display: flex;
+   justify-content: center;
+   align-items: center;
+   margin-right: 16px;
+   color: #fff; /* White icon color */
+}
+
+/* Keep unique stat icon colors/gradients */
+.stat-card.pending .stat-icon { background: linear-gradient(45deg, #f59e0b, #ffcf96); }
+.stat-card.approved .stat-icon { background: linear-gradient(45deg, #10b981, #6ee7b7); }
+.stat-card.rejected .stat-icon { background: linear-gradient(45deg, #ef4444, #fca5a5); }
+.stat-card.completed .stat-icon { background: linear-gradient(45deg, #3b82f6, #93c5fd); }
+
+.stat-icon .el-icon {
+   font-size: 28px; /* Match UserManagementView */
+}
+
+.stat-content h3 {
+   font-size: 24px; /* Match UserManagementView */
+   font-weight: bold; /* Match UserManagementView */
+   color: #303133; /* Match UserManagementView */
+   margin: 0 0 4px 0; /* Adjust margin */
+}
+
+.stat-content p {
+   font-size: 14px; /* Match UserManagementView */
+   color: #606266; /* Match UserManagementView */
+   margin: 0;
+}
+
+
+/* Filter and Search Area - Adjust to match UserManagementView */
+.filter-card {
+   margin-bottom: 24px;
+   border-radius: 12px; /* Match UserManagementView radius */
+   background: #FFFFFF; /* White background for filter card */
+   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Match UserManagementView shadow */
+   /* Remove unnecessary padding/styles */
+   /* padding: 20px; */
+}
+
+.filter-card :deep(.el-card__body) {
+  padding: 24px; /* Match UserManagementView padding */
+}
+
+.filter-row {
+  display: grid; /* Use grid layout */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive grid */
+  gap: 20px; /* Consistent gap */
+  margin-bottom: 20px; /* Space below filter items */
+  align-items: center; /* Vertically align items */
+}
+
+/* Adjust filter items for consistency */
+.filter-left,
 .filter-right {
-  display: flex;
-  gap: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Consistent gap */
+    /* Remove flex-wrap if not intended */
+    /* flex-wrap: wrap; */
 }
 
+.filter-left > *, .filter-right > * {
+    /* Ensure elements within flex containers dont stretch unnecessarily */
+     flex-shrink: 0;
+}
+
+.search-input {
+    flex-grow: 1; /* Allow search input to grow */
+    min-width: 250px; /* Ensure minimum width */
+}
+
+.filter-select,
+.date-picker {
+    width: auto; /* Allow select/date picker to size based on content or grid */
+    min-width: 150px; /* Ensure minimum width */
+}
+
+/* Advanced Filter Area - Adjust to match UserManagementView pattern */
 .advanced-filter {
-  margin-top: 16px;
+  /* Use consistent padding and background/shadow if it were a separate card */
+  /* For now, just adjust internal spacing */
+   margin-top: 20px; /* Space after basic filter row */
 }
 
 .advanced-filter-row {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
+  display: grid; /* Use grid layout */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive grid */
+  gap: 20px; /* Consistent gap */
+  align-items: center; /* Vertically align items */
 }
 
-/* 批量操作工具栏 - 保留特定样式 */
+.advanced-filter-row .el-select,
+.advanced-filter-row .el-input-number {
+  width: 100%; /* Ensure inputs take full width of grid item */
+}
+
+
+/* Batch Toolbar - Adjust to match UserManagementView pattern */
 .batch-toolbar {
-  background: rgba(59, 130, 246, 0.1); /* 保留特定背景 */
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 20px;
+   padding: 12px 20px; /* Add padding */
+   background-color: #e6f2ff; /* Light blue background */
+   border: 1px solid #b3d8ff; /* Light blue border */
+   border-radius: 8px; /* Rounded corners */
+   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow */
 }
 
 .batch-info {
-  font-size: 14px;
-  color: #333;
+   font-size: 14px;
+   color: #303133;
 }
 
 .selected-count {
-  font-weight: bold;
-  color: #3b82f6;
+   font-weight: bold;
+   color: #409eff; /* Element Plus Primary blue */
 }
 
 .batch-actions {
-  display: flex;
-  gap: 8px;
+   display: flex;
+   gap: 10px;
 }
 
-/* 商品信息列 - 保留特定样式 */
-.product-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.batch-actions .el-button {
+   font-size: 12px;
+   padding: 5px 10px; /* Adjust button padding */
+}
+
+
+/* Data Table - Adjust to match UserManagementView */
+.table-card {
+   border-radius: 12px; /* Match UserManagementView radius */
+   background: #FFFFFF; /* White background for table card */
+   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Match UserManagementView shadow */
+   /* Remove unnecessary padding/styles */
+   /* padding: 20px; */
+}
+
+.table-card :deep(.el-card__body) {
+  padding: 24px; /* Match UserManagementView padding */
+}
+
+
+.el-table {
+}
+
+.el-table :deep(.el-table__header th) {
+   background-color: #f8f8f8 !important; /* Match UserManagementView */
+   color: #606266; /* Match UserManagementView */
+   font-weight: bold; /* Match UserManagementView */
+}
+
+.el-table :deep(.el-table__cell) {
+   padding: 12px 0; /* Match UserManagementView padding */
+}
+
+/* Specific column styles to match UserManagementView */
+.product-info,
+.user-info {
+   display: flex;
+   align-items: center;
+   gap: 8px; /* Consistent gap */
 }
 
 .product-image {
-  width: 60px; /* 保留特定尺寸 */
-  height: 60px; /* 保留特定尺寸 */
-  border-radius: 8px;
-  object-fit: cover;
-  flex-shrink: 0;
+   width: 60px;
+   height: 60px;
+   border-radius: 4px; /* Subtle radius for image */
+   object-fit: cover;
 }
 
 .product-details {
-  flex: 1;
-  min-width: 0;
+   display: flex;
+   flex-direction: column;
 }
 
 .product-name {
-  font-size: 15px; /* 保留特定字体大小 */
-  font-weight: 500; /* 保留特定字体粗细 */
-  color: #333;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+   font-weight: bold;
+   color: #303133;
+   margin-bottom: 4px;
 }
 
 .product-price {
-  font-size: 14px; /* 保留特定字体大小 */
-  color: #f56c6c;
-}
-
-/* 用户信息列 - 保留特定样式 */
-.user-info {
-  flex-direction: column; /* 保留特定布局方向 */
-  align-items: center; /* 保留特定对齐方式 */
-  gap: 6px; /* 保留特定间距 */
+   font-size: 14px;
+   color: #f56c6c; /* Danger color for price */
+   margin-bottom: 4px;
 }
 
 .user-name {
-  font-size: 13px; /* 保留特定字体大小 */
-  color: #555;
+   font-size: 14px;
+   color: #303133;
 }
 
-/* 详情对话框 - 保留特定样式 */
-.detail-header {
+.time-info {
+   font-size: 13px;
+   color: #606266;
+}
+
+.status-column {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
-.return-info h3 {
-  font-size: 20px; /* 保留特定字体大小 */
-  color: #333;
-  margin: 0 0 8px 0;
-}
-
-.return-time {
-  font-size: 14px;
-  color: #999;
-}
-
-.detail-content {
+/* Pagination Wrapper - Match UserManagementView */
+.pagination-wrapper {
   margin-top: 20px;
-}
-
-.content-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.content-left, .content-right {
-  padding: 15px;
-  border-radius: 8px;
-  background: #f9f9f9;
-}
-
-.content-left h4, .content-right h4 {
-  margin-top: 0;
-  margin-bottom: 12px;
-  color: #555;
-}
-
-.product-card, .user-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
 }
 
-.detail-product-image {
-  width: 80px; /* 保留特定尺寸 */
-  height: 80px; /* 保留特定尺寸 */
-  border-radius: 8px;
-  object-fit: cover;
+
+/* Detail Dialog - Keep specific styles but align padding/margins */
+.detail-dialog :deep(.el-dialog__body) {
+  padding: 20px; /* Consistent dialog body padding */
 }
 
-.product-info-detail h5,
-.user-info-detail h5 {
-  font-size: 15px; /* 保留特定字体大小 */
-  color: #333;
-  margin: 0 0 4px 0;
-}
-
-.product-info-detail p,
-.user-info-detail p {
-  font-size: 13px; /* 保留特定字体大小 */
-  color: #666;
-  margin: 0 0 4px 0;
-}
-
-.return-reason-section,
-.return-images-section,
-.admin-note-section {
+.detail-section {
   margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ebeef5; /* Keep separator */
 }
 
-.return-reason-section h4,
-.return-images-section h4,
-.admin-note-section h4 {
-  margin-bottom: 12px;
-  color: #555;
+.detail-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
-.reason-description,
-.admin-note {
-  font-size: 14px; /* 保留特定字体大小 */
-  color: #666;
-  line-height: 1.6;
-  margin-top: 8px; /* 部分有 margin-top */
+.detail-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 12px 0;
 }
 
-.images-grid {
+/* Keep unique styles for images, descriptions, etc. within details */
+.images-gallery {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.return-image {
-  width: 100px; /* 保留特定尺寸 */
-  height: 100px; /* 保留特定尺寸 */
+.gallery-image {
+  width: 100px;
+  height: 100px;
   border-radius: 8px;
   object-fit: cover;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .user-info {
-      flex-direction: row; /* 保留特定布局方向 */
-      align-items: center; /* 保留特定对齐方式 */
-  }
+.description-content {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+}
 
-  .detail-header {
-      flex-direction: column;
-      align-items: flex-start;
-  }
 
-  .return-time {
-      margin-top: 12px;
-  }
+/* Reject Dialog - Keep specific styles but align padding/margins */
+.reject-dialog :deep(.el-dialog__body) {
+   padding: 20px; /* Consistent dialog body padding */
+}
 
-  .content-row {
-      grid-template-columns: 1fr;
-  }
+.dialog-footer {
+   text-align: right;
+   padding-top: 20px; /* Space above footer buttons */
+   border-top: 1px solid #ebeef5; /* Add a separator */
+}
 
-  .dialog-footer {
-      text-align: center;
-  }
+/* Action Buttons in Table - Adjust to Stack Vertically */
+.action-buttons-column {
+    display: flex;
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 4px; /* Space between buttons */
+    align-items: flex-start; /* Align buttons to the left */
+}
 
-  .dialog-footer button {
-      margin: 4px;
-  }
+.action-buttons-column .el-button {
+    width: 100%; /* Make buttons take full width of the column */
+    /* Adjust padding if needed */
+    padding: 4px 8px;
+    font-size: 12px;
 }
 </style>

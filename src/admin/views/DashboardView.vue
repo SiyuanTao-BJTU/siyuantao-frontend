@@ -95,36 +95,6 @@
 
     <!-- 图表和列表区域 -->
     <div class="dashboard-content">
-      <!-- 左侧：数据图表 -->
-      <div class="charts-section">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <h3>用户增长趋势</h3>
-              <el-select v-model="chartPeriod" size="small">
-                <el-option label="最近7天" value="7d"></el-option>
-                <el-option label="最近30天" value="30d"></el-option>
-                <el-option label="最近90天" value="90d"></el-option>
-              </el-select>
-            </div>
-          </template>
-          <div class="chart-container">
-            <div ref="userChart" class="chart"></div>
-          </div>
-        </el-card>
-
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <h3>商品分类分布</h3>
-            </div>
-          </template>
-          <div class="chart-container">
-            <div ref="categoryChart" class="chart"></div>
-          </div>
-        </el-card>
-      </div>
-
       <!-- 右侧：快速操作和列表 -->
       <div class="sidebar-section">
         <!-- 快速操作 -->
@@ -215,8 +185,6 @@ const store = useStore()
 
 // 响应式数据
 const chartPeriod = ref('7d')
-const userChart = ref(null)
-const categoryChart = ref(null)
 
 // 统计数据
 const stats = ref({
@@ -311,25 +279,25 @@ const initCharts = async () => {
 
   // 这里可以使用 ECharts 或其他图表库
   // 模拟图表初始化
-  if (userChart.value) {
-    userChart.value.innerHTML = '<div style="height: 200px; display: flex; align-items: center; justify-content: center; color: #999;">用户增长图表</div>'
-  }
+  // if (userChart.value) {
+  //   userChart.value.innerHTML = '<div style="height: 200px; display: flex; align-items: center; justify-content: center; color: #999;">用户增长图表</div>'
+  // }
 
-  if (categoryChart.value) {
-    categoryChart.value.innerHTML = '<div style="height: 200px; display: flex; align-items: center; justify-content: center; color: #999;">分类分布图表</div>'
-  }
+  // if (categoryChart.value) {
+  //   categoryChart.value.innerHTML = '<div style="height: 200px; display: flex; align-items: center; justify-content: center; color: #999;">分类分布图表</div>'
+  // }
 }
 
 onMounted(() => {
   fetchDashboardData()
-  initCharts()
+  // initCharts()
 })
 </script>
 
 <style scoped>
 .dashboard-container {
   padding: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #F8F9FA;
   min-height: calc(100vh - 60px);
 }
 
@@ -415,7 +383,7 @@ onMounted(() => {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
 }
 
-.metric-card.primary { border-left: 4px solid #3b82f6; }
+.metric-card.primary { border-left: 4px solid #357ABD; }
 .metric-card.success { border-left: 4px solid #10b981; }
 .metric-card.warning { border-left: 4px solid #f59e0b; }
 .metric-card.danger { border-left: 4px solid #ef4444; }
@@ -430,11 +398,11 @@ onMounted(() => {
 .metric-icon {
   padding: 12px;
   border-radius: 12px;
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: rgba(53, 123, 189, 0.1);
+  color: #357ABD;
 }
 
-.primary .metric-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.primary .metric-icon { background: rgba(53, 123, 189, 0.1); color: #357ABD; }
 .success .metric-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .warning .metric-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
 .danger .metric-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
@@ -473,21 +441,14 @@ onMounted(() => {
 
 /* 主要内容区域 */
 .dashboard-content {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
-}
-
-.charts-section {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  display: block;
 }
 
 .sidebar-section {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
 }
 
 /* 卡片样式 */
@@ -518,15 +479,6 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 600;
   color: #1e293b;
-}
-
-.chart-container {
-  height: 240px;
-}
-
-.chart {
-  width: 100%;
-  height: 100%;
 }
 
 /* 快速操作 */

@@ -855,345 +855,329 @@ const getTimelineType = (action) => {
 </script>
 
 <style scoped>
-/* 页面背景和内边距 - 保留特定背景 */
 .reports-container {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 保留特定背景 */
+  padding: 24px;
+  /* Use the overall light gray background from AdminLayout */
+  background: #F8F9FA; /* Match AdminLayout background */
+  min-height: calc(100vh - 60px);
 }
 
-/* 页面头部 - 移除大部分，保留特定样式 */
+/* Page Header - Adjust to match UserManagementView */
+.page-header {
+  margin-bottom: 24px;
+}
+
 .header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 32px; /* Match UserManagementView header padding */
+   background: rgba(255, 255, 255, 0.95); /* Match UserManagementView header background */
+   backdrop-filter: blur(10px); /* Keep backdrop-filter if desired */
+   border-radius: 20px; /* Match UserManagementView header radius */
+   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Match UserManagementView header shadow */
 }
 
 .header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
 }
 
 .page-title {
-  font-size: 28px; /* 保留特定字体大小 */
-  font-weight: 700; /* 保留特定字体粗细 */
-  color: #1e293b;
-  margin: 0;
+   font-size: 28px; /* Match UserManagementView */
+   font-weight: 700;
+   background: linear-gradient(135deg, #667eea, #764ba2); /* Keep unique gradient */
+   -webkit-background-clip: text;
+   -webkit-text-fill-color: transparent;
+   margin: 0 0 8px 0;
 }
 
+.page-subtitle {
+   font-size: 16px; /* Match UserManagementView */
+   color: #64748b; /* Match UserManagementView */
+   margin: 0;
+}
+
+/* Stats - Adjust to match UserManagementView */
 .header-stats {
-  display: flex;
-  gap: 20px;
+  display: grid; /* Use grid layout */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+  gap: 20px; /* Consistent gap */
+  /* Remove header-stats specific flex/alignment */
+  /* display: flex; */
+  /* align-items: center; */
+  /* gap: 20px; */
 }
 
 .stat-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   padding: 24px; /* Match UserManagementView stat card padding */
+   background: #FFFFFF; /* White background for stat items */
+   border-radius: 8px; /* Rounded corners */
+   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow */
 }
 
+/* Keep unique stat item colors */
+.stat-item.urgent { border-left: 4px solid #ef4444; /* Danger color */ }
+.stat-item.success { border-left: 4px solid #10b981; /* Success color */ }
+.stat-item.primary { border-left: 4px solid #3b82f6; /* Primary color */ }
+
+
 .stat-item .stat-number {
-  font-size: 24px; /* 保留特定字体大小 */
-  font-weight: 700; /* 保留特定字体粗细 */
-  color: #1e293b;
+   font-size: 24px; /* Match UserManagementView */
+   font-weight: bold; /* Match UserManagementView */
+   color: #303133; /* Match UserManagementView */
+   margin-bottom: 4px;
 }
 
 .stat-item .stat-label {
-  font-size: 14px;
-  color: #64748b;
+   font-size: 14px; /* Match UserManagementView */
+   color: #606266; /* Match UserManagementView */
 }
 
-.stat-item.urgent .stat-number {
-  color: #ef4444; /* 保留特定颜色 */
-}
 
-.stat-item.success .stat-number {
-  color: #10b981; /* 保留特定颜色 */
-}
-
-/* 筛选区域 - 移除大部分，保留特定样式 */
+/* Filter and Search Area - Adjust to match UserManagementView */
 .filters-section {
   margin-bottom: 24px;
 }
 
+.filters-card {
+  border-radius: 12px; /* Match UserManagementView radius */
+  background: #FFFFFF; /* White background for filter card */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Match UserManagementView shadow */
+}
+
 .filters-card :deep(.el-card__body) {
-  padding: 24px;
+  padding: 24px; /* Match UserManagementView padding */
 }
 
 .filters-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start; /* 保留特定对齐方式 */
-  gap: 20px;
-  flex-wrap: wrap;
+  /* Remove padding as it's now on the card body */
+  /* padding: 20px; */
 }
 
-.filters-left {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  flex: 1; /* 填充剩余空间 */
-}
-
-.filter-select {
-  width: 150px; /* 保留特定宽度 */
-}
-
-.date-picker {
-  width: 240px; /* 保留特定宽度 */
-}
-
+.filters-left,
 .filters-right {
-  display: flex;
-  gap: 12px; /* 保留特定间距 */
-  align-items: center; /* 保留特定对齐方式 */
+   display: flex;
+   align-items: center;
+   gap: 12px; /* Consistent gap */
+   /* Remove flex-wrap if not intended */
+   /* flex-wrap: wrap; */
+}
+
+.filters-left > *, .filters-right > * {
+    /* Ensure elements within flex containers dont stretch unnecessarily */
+     flex-shrink: 0;
+}
+
+.filter-select,
+.date-picker {
+  width: auto; /* Allow select/date picker to size based on content or grid */
+  min-width: 150px; /* Ensure minimum width */
 }
 
 .search-input {
-  width: 250px; /* 保留特定宽度 */
+  flex-grow: 1; /* Allow search input to grow */
+  min-width: 250px; /* Ensure minimum width */
 }
 
-/* 举报列表 - 移除大部分，保留特定样式 */
+/* Adjust filter row for consistency */
+.filters-content {
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack filter rows vertically */
+  gap: 20px; /* Space between filter rows */
+}
+
+.filters-left {
+  flex-wrap: wrap; /* Allow items to wrap in the left filter section */
+}
+
+.filters-right {
+  justify-content: flex-end; /* Align actions to the right */
+  width: 100%; /* Take full width */
+}
+
+
+/* Advanced Filter Area - Adjust to match UserManagementView pattern */
+.advanced-filter {
+  /* Use consistent padding and background/shadow if it were a separate card */
+  /* For now, just adjust internal spacing */
+   margin-top: 20px; /* Space after basic filter row */
+}
+
+.advanced-filter-row {
+  display: grid; /* Use grid layout */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive grid */
+  gap: 20px; /* Consistent gap */
+  align-items: center; /* Vertically align items */
+}
+
+.advanced-filter-row .el-select,
+.advanced-filter-row .el-input-number {
+  width: 100%; /* Ensure inputs take full width of grid item */
+}
+
+
+/* Reports List (Table/Card View) - Adjust to match UserManagementView Table Card */
 .reports-list {
-  margin-bottom: 24px;
+   margin-top: 24px; /* Space above the list card */
+}
+
+.list-card {
+  border-radius: 12px; /* Match UserManagementView radius */
+  background: #FFFFFF; /* White background for table card */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Match UserManagementView shadow */
 }
 
 .list-card :deep(.el-card__body) {
-  padding: 24px;
+  padding: 24px; /* Match UserManagementView padding */
 }
 
 .list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 20px; /* Space below header */
 }
 
 .list-title h3 {
-  margin: 0;
-  font-size: 18px; /* 保留特定字体大小 */
-  font-weight: 600; /* 保留特定字体粗细 */
+  font-size: 18px; /* Match UserManagementView table header */
+  font-weight: 600;
   color: #1e293b;
+  margin: 0;
 }
 
 .count-badge {
-  font-size: 14px;
+  font-size: 14px; /* Match UserManagementView result count */
   color: #64748b;
   margin-left: 12px;
 }
 
-/* 表格视图 - 保留特定样式 */
+/* Table View - Adjust table styles to match UserManagementView */
 .table-view {
-  /* styles */
+  /* Styles for the table container */
+}
+
+.reports-table {
+  width: 100%; /* Ensure table takes full width */
 }
 
 .reports-table :deep(.el-table__header th) {
-  background-color: #f8fafc !important;
-  color: #374151;
-  font-weight: 600 !important;
+   background-color: #f8f8f8 !important; /* Match UserManagementView */
+   color: #606266; /* Match UserManagementView */
+   font-weight: bold; /* Match UserManagementView */
 }
 
-/* 举报信息列样式 - 保留特定样式 */
+.reports-table :deep(.el-table__cell) {
+   padding: 12px 0; /* Match UserManagementView padding */
+}
+
+/* Specific column styles to match UserManagementView */
 .report-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+   display: flex;
+   flex-direction: column;
+   gap: 4px; /* Space between items */
 }
 
-.report-type {
-  /* styles */
+.report-type .el-tag {
+  /* Default tag styling is fine */
 }
 
 .report-target {
-  font-size: 14px;
-  color: #333;
+   font-size: 14px;
+   color: #303133;
 }
 
 .target-type {
-  font-weight: bold;
-  margin-right: 4px;
+   font-weight: bold;
+   margin-right: 4px;
 }
 
 .report-reason {
-  font-size: 13px; /* 保留特定字体大小 */
-  color: #666;
-  display: -webkit-box; /* 多行文本截断 */
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+   font-size: 13px;
+   color: #606266;
+   /* Allow text wrapping */
+   white-space: normal; /* Override nowrap if applied elsewhere */
 }
 
-/* 举报人列样式 - 保留特定样式 */
 .reporter-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+   display: flex;
+   align-items: center;
+   gap: 8px; /* Consistent gap */
 }
 
 .reporter-name {
-  font-size: 14px; /* 保留特定字体大小 */
-  color: #555;
+   font-size: 14px;
+   color: #303133;
 }
 
-/* 优先级标签样式 - 保留特定样式 */
-.priority-tag .el-icon {
-  vertical-align: -2px;
-  margin-right: 4px;
-}
-
-/* 状态标签样式 - 保留特定样式 */
-/* .status-tag {
-  styles
-} */
-
-/* 举报时间样式 - 保留特定样式 */
 .time-info {
-  font-size: 13px;
-  color: #606266;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+   font-size: 13px;
+   color: #606266;
+   display: flex;
+   flex-direction: column;
+   gap: 4px;
 }
 
-.time-info small {
-  font-size: 12px;
-  color: #909399;
-}
-
-/* 操作按钮样式 - 保留特定样式 */
 .table-actions .el-button {
-  padding: 0;
-  height: auto;
+   padding: 4px 8px; /* Adjust button padding */
+   font-size: 12px; /* Adjust font size */
 }
 
-/* 卡片视图 - 保留特定样式 */
+/* Card View - Keep existing styles but ensure consistency where applicable */
 .card-view {
-  /* styles */
-}
-
-.reports-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* 保留特定网格布局 */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
 }
 
 .report-card {
-  padding: 20px;
-  border: 1px solid #ebeef5;
   border-radius: 8px;
-  background: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
 }
 
-.report-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-.report-card.urgent {
-  border-left: 4px solid #ef4444; /* 保留特定边框 */
+.report-card :deep(.el-card__body) {
+  padding: 20px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 15px;
 }
 
-.card-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.report-id {
+.card-title {
+  font-size: 16px;
   font-weight: bold;
-  color: #303133;
+  color: #333;
 }
 
-.card-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.card-meta {
+  font-size: 12px;
+  color: #999;
 }
 
 .card-content {
-  margin-bottom: 16px;
-}
-
-.target-info {
-  font-size: 14px;
-  color: #606266;
-  margin-bottom: 8px;
-}
-
-.target-label {
-  font-weight: bold;
-  margin-right: 4px;
-}
-
-.target-link {
-  font-size: 14px;
-}
-
-.reason-text {
-  font-size: 14px;
-  color: #303133;
-  line-height: 1.5;
-  margin-bottom: 12px;
-}
-
-.reporter-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #909399;
-}
-
-.report-time {
-  margin-left: auto; /* 时间靠右 */
+  margin-bottom: 15px;
 }
 
 .card-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-/* 举报详情对话框 - 移除大部分，保留特定样式 */
-.detail-content {
-  /* padding: 20px; 提取到 common */
-}
-
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.detail-basic h3 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  color: #303133;
-}
-
-.detail-tags .el-tag {
-  margin-right: 8px;
-}
-
-.detail-time {
-  font-size: 14px;
-  color: #909399;
   text-align: right;
+}
+
+/* Detail Dialog - Keep specific styles but align padding/margins */
+.detail-dialog :deep(.el-dialog__body) {
+  padding: 20px; /* Consistent dialog body padding */
 }
 
 .detail-section {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #ebeef5; /* Keep separator */
 }
 
 .detail-section:last-child {
@@ -1209,40 +1193,6 @@ const getTimelineType = (action) => {
   margin: 0 0 12px 0;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.info-item label {
-  font-weight: bold;
-  color: #606266;
-  margin-right: 8px;
-}
-
-.reporter-detail {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.reason-section label,
-.evidence-section label {
-  font-weight: bold;
-  color: #606266;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.reason-content,
-.timeline-note {
-  font-size: 14px;
-  color: #303133;
-  line-height: 1.6;
-}
-
 .evidence-list {
   display: flex;
   gap: 10px;
@@ -1250,123 +1200,26 @@ const getTimelineType = (action) => {
 }
 
 .evidence-image {
-  width: 100px; /* 保留特定尺寸 */
-  height: 100px; /* 保留特定尺寸 */
+  width: 100px;
+  height: 100px;
   border-radius: 8px;
   object-fit: cover;
 }
 
-/* 处理历史时间线样式 */
-.processing-timeline {
-  margin-top: 16px;
-}
-
-.timeline-content {
+.reason-text {
   font-size: 14px;
-  color: #555;
+  color: #606266;
+  line-height: 1.6;
 }
 
-.timeline-action {
-  font-weight: bold;
-  margin-bottom: 4px;
+/* Process Dialog - Keep specific styles but align padding/margins */
+.process-dialog :deep(.el-dialog__body) {
+  padding: 20px; /* Consistent dialog body padding */
 }
 
-.timeline-operator {
-  font-size: 13px;
-  color: #777;
-}
-
-/* 处理举报对话框 - 移除通用部分，保留特定样式 */
-.process-dialog .el-form-item {
-  margin-bottom: 20px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-/*   .reports-container {
-    padding: 16px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-  }
-
-  .header-stats {
-    width: 100%;
-    justify-content: space-around;
-    gap: 12px;
-  }
-
-  .filters-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filters-left,
-  .filters-right {
-    width: 100%;
-    gap: 12px;
-  }
-
-  .filters-left > *,
-  .filters-right > * {
-      width: 100% !important;
-  }
-
-  .list-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .count-badge {
-    margin-left: 0;
-    margin-top: 8px;
-  }
-
-  .reports-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .report-card {
-    padding: 16px;
-  }
-
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .card-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .reporter-section {
-      flex-wrap: wrap;
-  }
-
-  .report-time {
-      margin-left: 0;
-      width: 100%;
-      text-align: right;
-  }
-
-  .detail-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .detail-time {
-    margin-top: 12px;
-    text-align: left;
-  }
-
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
- */
+.dialog-footer {
+   text-align: right;
+   padding-top: 20px; /* Space above footer buttons */
+   border-top: 1px solid #ebeef5; /* Add a separator */
 }
 </style>

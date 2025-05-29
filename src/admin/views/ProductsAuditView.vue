@@ -8,12 +8,13 @@
           <p class="page-subtitle">审核用户发布的商品，确保平台商品质量</p>
         </div>
         <div class="header-actions">
-          <el-badge :value="pendingCount" class="badge-item">
+          <!-- Removed Batch Audit and Refresh from here -->
+          <!-- <el-badge :value="pendingCount" class="badge-item">
             <el-button type="primary" :icon="Bell" @click="handleBatchAudit">
               批量审核 ({{ selectedProducts.length }})
             </el-button>
           </el-badge>
-          <el-button :icon="Refresh" @click="refreshData">刷新</el-button>
+          <el-button :icon="Refresh" @click="refreshData">刷新</el-button> -->
         </div>
       </div>
     </div>
@@ -122,6 +123,13 @@
           >
             导出
           </el-button>
+          <!-- Moved Batch Audit and Refresh buttons here -->
+           <el-badge :value="pendingCount" class="badge-item">
+            <el-button type="primary" size="small" :icon="Bell" @click="handleBatchAudit">
+              批量审核 ({{ selectedProducts.length }})
+            </el-button>
+          </el-badge>
+          <el-button size="small" :icon="Refresh" @click="refreshData">刷新</el-button>
         </div>
       </div>
 
@@ -697,19 +705,66 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 页面背景和内边距 */
 .products-audit-container {
   padding: 24px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  /* Use the overall light gray background from AdminLayout */
+  background: #F8F9FA; /* Match AdminLayout background */
   min-height: calc(100vh - 60px);
+}
+
+/* 页面头部 - Keep unique styling */
+.page-header {
+  margin-bottom: 24px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.95); /* Keep unique background */
+  backdrop-filter: blur(10px);
+  border-radius: 20px; /* Keep unique larger radius */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Keep unique larger shadow */
 }
 
 .title-section h1 {
   font-size: 32px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #667eea, #764ba2); /* Keep unique gradient */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 8px 0;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: #606266;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Stats Cards - Keep unique styling */
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px; /* Keep unique radius */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); /* Keep unique shadow */
 }
 
 .stat-card.pending { border-left: 4px solid #f59e0b; }
@@ -723,37 +778,105 @@ onMounted(() => {
   justify-content: center;
   width: 48px;
   height: 48px;
-  border-radius: 12px;
+  border-radius: 12px; /* Keep unique radius */
   font-size: 24px;
+  margin-right: 16px;
+  color: #fff; /* White icon color */
 }
 
-.pending .stat-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.approved .stat-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.rejected .stat-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-.total .stat-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.pending .stat-icon { background: linear-gradient(45deg, #f59e0b, #ffcf96); } /* Keep unique gradient */
+.approved .stat-icon { background: linear-gradient(45deg, #10b981, #6ee7b7); }
+.rejected .stat-icon { background: linear-gradient(45deg, #ef4444, #fca5a5); }
+.total .stat-icon { background: linear-gradient(45deg, #3b82f6, #93c5fd); }
+
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+
+/* Filter and Search Area - Adjust to match UserManagementView */
+.filter-card {
+  margin-bottom: 24px;
+  border-radius: 12px; /* Match UserManagementView radius */
+  background: #FFFFFF; /* White background for filter card */
+  /* Updated box-shadow to match UserManagementView filter card */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  /* Remove backdrop-filter if not needed */
+  /* backdrop-filter: blur(10px); */
+}
+
+.filter-card :deep(.el-card__body) {
+  padding: 24px;
+}
 
 .filter-content {
-  padding: 8px 0;
+  padding: 0;
 }
 
 .filter-row {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
+  display: grid; /* Use grid layout */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive grid */
+  gap: 20px; /* Consistent gap */
+  margin-bottom: 20px; /* Space below filter items */
+  align-items: center; /* Vertically align items */
 }
 
-.search-input {
+.filter-item {
+   display: flex;
+   flex-direction: column;
+}
+
+.filter-item label {
+   font-size: 14px;
+   color: #606266;
+   margin-bottom: 8px;
+   font-weight: bold;
+}
+
+.filter-item .el-input,
+.filter-item .el-select,
+.filter-item .el-date-editor {
+  width: 100%; /* Ensure inputs take full width of grid item */
+}
+
+
+.search-input :deep(.el-input__inner) {
   flex: 1;
   min-width: 300px;
 }
 
-.filter-select {
-  width: 140px;
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
-.date-picker {
-  width: 240px;
+/* Product List Table - Adjust to match UserManagementView */
+.table-card {
+  border-radius: 12px; /* Match UserManagementView radius */
+  background: #FFFFFF; /* White background for table card */
+   /* Updated box-shadow to match UserManagementView table card */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+   /* Remove backdrop-filter if not needed */
+   /* backdrop-filter: blur(10px); */
+}
+
+.table-card :deep(.el-card__body) {
+  padding: 24px;
 }
 
 .table-header {
@@ -776,26 +899,46 @@ onMounted(() => {
   margin-left: 12px;
 }
 
+.products-table {
+  /* ... existing styles ... */
+}
+
+.products-table :deep(.el-table__header th) {
+  /* ... existing styles ... */
+}
+
+.products-table :deep(.el-table__cell) {
+  /* ... existing styles ... */
+}
+
+/* Product Info Column */
 .product-info {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
+   display: flex;
+   gap: 16px;
+   align-items: flex-start;
+   /* Remove column and alignment for consistency */
+   /* flex-direction: column; */
+   /* align-items: flex-start; */
 }
 
 .product-images {
   flex-shrink: 0;
+  /* Remove width and centering */
+  /* width: 100%; */
+  /* display: flex; */
+  /* justify-content: center; */
 }
 
 .product-image {
-  width: 80px;
-  height: 80px;
+  width: 80px; /* Revert to larger size */
+  height: 80px; /* Revert to larger size */
   border-radius: 8px;
   object-fit: cover;
 }
 
 .no-image {
-  width: 80px;
-  height: 80px;
+  width: 80px; /* Revert to larger size */
+  height: 80px; /* Revert to larger size */
   border-radius: 8px;
   background: #f3f4f6;
   display: flex;
@@ -808,6 +951,8 @@ onMounted(() => {
 .product-details {
   flex: 1;
   min-width: 0;
+  /* Remove width */
+  /* width: 100%; */
 }
 
 .product-title {
@@ -844,14 +989,17 @@ onMounted(() => {
 }
 
 .user-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   /* Remove column and alignment */
+   /* flex-direction: column; */
+   /* align-items: flex-start; */
 }
 
 .user-details {
-  display: flex;
-  flex-direction: column;
+   /* Remove alignment */
+   /* align-items: flex-start; */
 }
 
 .username {
@@ -871,6 +1019,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+   /* Remove alignment */
+   /* align-items: flex-start; */
 }
 
 .date,
@@ -934,9 +1084,11 @@ onMounted(() => {
 }
 
 :deep(.products-table .el-table__cell) {
-  padding: 8px;
+  padding: 12px 0; /* Match UserManagementView cell padding */
 }
 
+/* Removed redundant/conflicting responsive styles */
+/*
 .product-info {
   flex-direction: column;
   align-items: flex-start;
@@ -975,4 +1127,5 @@ onMounted(() => {
 .time-info {
   align-items: flex-start;
 }
+*/
 </style>

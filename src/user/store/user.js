@@ -172,7 +172,21 @@ const actions = {
 
 const getters = {
   // 用户模块的 getters (从 state 计算派生数据)
-  isAuthenticated: state => state.isLoggedIn,
+  isAuthenticated: state => !!state.token, // Check if token exists
+  // New getter to check if the user is a regular admin (based on is_staff)
+  isAdmin: (state) => state.userInfo?.is_staff === true,
+  // New getter to check if the user is the super admin (based on email)
+  isSuperAdmin: (state) => state.userInfo?.email === '23301132@bjtu.edu.cn',
+  // You might want a combined role getter for menu filtering
+  userRole: (state, getters) => {
+    if (getters.isSuperAdmin) {
+      return 'super_admin';
+    } else if (getters.isAdmin) {
+      return 'admin';
+    } else {
+      return 'user'; // Or null, depending on your needs for non-admin users
+    }
+  },
   getUserInfo: state => state.userInfo,
   getNotifications: state => state.notifications,
   getUnreadNotificationCount: state => state.unreadNotificationCount,

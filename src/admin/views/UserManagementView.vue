@@ -746,12 +746,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 页面背景和内边距 - 保留特定背景 */
+/* 页面背景和内边距 */
 .users-management-container {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 保留特定背景 */
+  /* Use the overall light gray background from AdminLayout */
+  background: #F8F9FA; /* Match AdminLayout background */
 }
 
-/* 页面头部 - 移除大部分，保留特定样式 */
+/* 页面头部 - Keep unique styling */
 .page-header {
   margin-bottom: 24px;
 }
@@ -763,14 +764,14 @@ onMounted(() => {
   padding: 32px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-radius: 20px; /* Keep unique larger radius */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Keep unique larger shadow */
 }
 
 .title-section h1 {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea, #764ba2); /* 保留特定颜色渐变 */
+  background: linear-gradient(135deg, #667eea, #764ba2); /* Keep unique gradient */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 8px 0;
@@ -787,7 +788,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-/* 统计卡片 - 移除大部分，保留特定颜色 */
+/* 统计卡片 - Keep unique styling */
 .stats-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -801,8 +802,8 @@ onMounted(() => {
   padding: 24px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-radius: 12px; /* Keep unique radius */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); /* Keep unique shadow */
 }
 
 .stat-icon {
@@ -817,7 +818,7 @@ onMounted(() => {
 }
 
 .stat-icon.total {
-  background: linear-gradient(45deg, #4a90e2, #81c784);
+  background: linear-gradient(45deg, #4A90E2, #81c784); /* Keep unique gradient */
 }
 
 .stat-icon.active {
@@ -853,13 +854,13 @@ onMounted(() => {
   color: #606266;
 }
 
-/* 筛选区域 - 保留特定样式 */
+/* 筛选区域 */
 .filter-card {
   margin-bottom: 24px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px; /* Keep unique radius for filter card */
+  background: rgba(255, 255, 255, 0.95); /* Keep unique background */
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Keep unique shadow */
 }
 
 .filter-card :deep(.el-card__body) {
@@ -905,12 +906,12 @@ onMounted(() => {
   gap: 12px;
 }
 
-/* 用户列表 - 保留特定样式 */
+/* 用户列表 */
 .table-card {
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px; /* Keep unique radius for table card */
+  background: rgba(255, 255, 255, 0.95); /* Keep unique background */
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Keep unique shadow */
 }
 
 .table-card :deep(.el-card__body) {
@@ -949,7 +950,7 @@ onMounted(() => {
   padding: 12px 0;
 }
 
-/* 用户信息列样式 - 保留特定样式 */
+/* 用户信息列样式 */
 .user-info {
   display: flex;
   align-items: center;
@@ -982,12 +983,12 @@ onMounted(() => {
   color: #606266;
 }
 
-/* 状态标签样式 - 保留特定样式 */
+/* 状态标签样式 */
 .status-tag {
   font-weight: bold;
 }
 
-/* 认证状态样式 - 保留特定样式 */
+/* 认证状态样式 */
 .verification-status {
   display: flex;
   align-items: center;
@@ -1003,7 +1004,7 @@ onMounted(() => {
   color: #f56c6c;
 }
 
-/* 信用分样式 - 保留特定样式 */
+/* 信用分样式 */
 .credit-score {
   display: flex;
   align-items: center;
@@ -1018,7 +1019,7 @@ onMounted(() => {
   font-weight: bold;
 }
 
-/* 注册时间样式 - 保留特定样式 */
+/* 注册时间样式 */
 .join-time {
   font-size: 13px;
   color: #606266;
@@ -1029,7 +1030,7 @@ onMounted(() => {
   color: #909399;
 }
 
-/* 操作按钮样式 - 保留特定样式 */
+/* 操作按钮样式 */
 .action-buttons .el-button {
   padding: 0;
   height: auto;
@@ -1042,7 +1043,7 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
-/* 用户详情对话框样式 - 保留特定样式 */
+/* 用户详情对话框样式 */
 .user-detail-content {
   padding: 20px;
 }
@@ -1090,7 +1091,7 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-/* 信用分调整对话框样式 - 保留特定样式 */
+/* 信用分调整对话框样式 */
 .credit-adjust-content {
   padding: 20px;
 }

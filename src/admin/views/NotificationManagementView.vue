@@ -778,300 +778,424 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 使用公共样式变量 */
 .notifications-container {
   padding: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 保留特定背景 */
+  /* Use the overall light gray background from AdminLayout */
+  background: #F8F9FA; /* Match AdminLayout background */
   min-height: calc(100vh - 60px);
 }
 
-/* 页面头部 */
+/* Page Header - Adjust to match UserManagementView */
 .page-header {
-   margin-bottom: 24px;
+  margin-bottom: 24px;
 }
 
 .header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 32px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 32px; /* Match UserManagementView header padding */
+   background: rgba(255, 255, 255, 0.95); /* Match UserManagementView header background */
+   backdrop-filter: blur(10px); /* Keep backdrop-filter if desired */
+   border-radius: 20px; /* Match UserManagementView header radius */
+   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Match UserManagementView header shadow */
 }
 
 .header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
 }
 
 .page-title {
-  font-size: 28px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea, #764ba2); /* 保留特定颜色渐变 */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0 0 8px 0;
-  display: flex; /* Align icon and text */
-  align-items: center;
-  gap: 8px;
+   font-size: 28px; /* Match UserManagementView */
+   font-weight: 700;
+   background: linear-gradient(135deg, #667eea, #764ba2); /* Keep unique gradient */
+   -webkit-background-clip: text;
+   -webkit-text-fill-color: transparent;
+   margin: 0 0 8px 0;
 }
 
 .page-subtitle {
-  font-size: 14px;
-  color: #64748b;
+   font-size: 16px; /* Match UserManagementView */
+   color: #64748b; /* Match UserManagementView */
+   margin: 0;
+}
+
+.header-actions {
+   display: flex;
+   gap: 12px;
+}
+
+
+/* Stats Grid - Adjust to match UserManagementView */
+.stats-grid {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+   gap: 20px;
+   margin-bottom: 24px;
+}
+
+.stat-card {
+   display: flex;
+   align-items: center;
+   padding: 24px;
+   background: rgba(255, 255, 255, 0.95); /* Match UserManagementView */
+   backdrop-filter: blur(10px); /* Keep backdrop-filter if desired */
+   border-radius: 12px; /* Match UserManagementView */
+   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); /* Match UserManagementView */
+}
+
+.stat-icon {
+   width: 48px;
+   height: 48px;
+   border-radius: 12px; /* Match UserManagementView */
+   display: flex;
+   justify-content: center;
+   align-items: center;
+   margin-right: 16px;
+   color: #fff; /* White icon color */
+}
+
+/* Keep unique stat icon colors/gradients */
+.stat-card.primary .stat-icon { background: linear-gradient(45deg, #3b82f6, #93c5fd); } /* Keep unique gradient */
+.stat-card.success .stat-icon { background: linear-gradient(45deg, #10b981, #6ee7b7); }
+.stat-card.warning .stat-icon { background: linear-gradient(45deg, #f59e0b, #ffcf96); }
+.stat-card.info .stat-icon { background: linear-gradient(45deg, #64748b, #94a3b8); }
+
+.stat-icon .el-icon {
+   font-size: 28px; /* Match UserManagementView */
+}
+
+.stat-content h3 {
+   font-size: 24px; /* Match UserManagementView */
+   font-weight: bold; /* Match UserManagementView */
+   color: #303133; /* Match UserManagementView */
+   margin: 0 0 4px 0; /* Adjust margin */
+}
+
+.stat-content p {
+   font-size: 14px; /* Match UserManagementView */
+   color: #606266; /* Match UserManagementView */
+   margin: 0;
+}
+
+.stat-change {
+  font-size: 12px; /* Adjust font size */
+  color: #909399; /* Adjust color */
+}
+
+
+/* Filter and Search Area - Adjust to match UserManagementView */
+.main-content {
+  /* Remove main-content specific styles if they conflict */
+  /* background-color: #ffffff; */
+  /* padding: 20px; */
+  /* border-radius: 8px; */
+  /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); */
+}
+
+.filter-card {
+  margin-bottom: 24px; /* Match UserManagementView */
+  border-radius: 12px; /* Match UserManagementView radius */
+  background: #FFFFFF; /* White background for filter card */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Match UserManagementView shadow */
+}
+
+.filter-card :deep(.el-card__body) {
+  padding: 24px; /* Match UserManagementView padding */
+}
+
+.filter-section {
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack filter rows vertically */
+  gap: 20px; /* Space between filter rows */
+}
+
+.filter-left,
+.filter-right {
+   display: flex;
+   align-items: center;
+   gap: 12px; /* Consistent gap */
+   /* Remove flex-wrap if not intended */
+   /* flex-wrap: wrap; */
+}
+
+.filter-left > *, .filter-right > * {
+    /* Ensure elements within flex containers dont stretch unnecessarily */
+     flex-shrink: 0;
+}
+
+.search-input {
+  flex-grow: 1; /* Allow search input to grow */
+  min-width: 250px; /* Ensure minimum width */
+}
+
+.filter-select,
+.date-picker {
+  width: auto; /* Allow select/date picker to size based on content or flex */
+  min-width: 150px; /* Ensure minimum width */
+}
+
+.filter-right {
+  justify-content: flex-end; /* Align actions to the right */
+  width: 100%; /* Take full width */
+}
+
+
+/* Notification List Table - Adjust to match UserManagementView Table Card */
+.table-card {
+  border-radius: 12px; /* Match UserManagementView radius */
+  background: #FFFFFF; /* White background for table card */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Match UserManagementView shadow */
+}
+
+.table-card :deep(.el-card__body) {
+  padding: 24px; /* Match UserManagementView padding */
+}
+
+.table-header {
+}
+
+.table-header h3 {
+  font-size: 18px; /* Match UserManagementView table header */
+  font-weight: 600;
+  color: #1e293b;
   margin: 0;
 }
 
-/* 统计卡片网格 (使用公共样式) */
-/* .stats-grid { ... } */
+.table-actions {
+}
 
-/* 统计卡片颜色 (根据需要保留或提取) */
-.stat-card.primary .stat-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.stat-card.success .stat-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.stat-card.warning .stat-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.stat-card.info .stat-icon { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+.el-table {
+}
 
-.stat-change {
+.el-table :deep(.el-table__header th) {
+   background-color: #f8f8f8 !important; /* Match UserManagementView */
+   color: #606266; /* Match UserManagementView */
+   font-weight: bold; /* Match UserManagementView */
+}
+
+.el-table :deep(.el-table__cell) {
+   padding: 12px 0; /* Match UserManagementView padding */
+}
+
+/* Specific column styles to match UserManagementView */
+.notification-title {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+}
+
+.title-text {
+   font-weight: bold;
+   color: #303133;
+}
+
+.notification-content {
+   display: flex;
+   flex-direction: column;
+}
+
+.content-preview {
+   font-size: 14px;
+   color: #606266;
+   line-height: 1.5;
+   margin-bottom: 8px; /* Space below preview */
+   display: -webkit-box; /* Limit lines */
+   -webkit-line-clamp: 2;
+   -webkit-box-orient: vertical;
+   overflow: hidden;
+   text-overflow: ellipsis;
+}
+
+.user-info {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+}
+
+.username {
+   font-size: 14px;
+   color: #303133;
+}
+
+.time-info {
+   font-size: 13px;
+   color: #606266;
+   display: flex;
+   flex-direction: column;
+   gap: 4px;
+}
+
+.time,
+.time-ago {
+   white-space: nowrap;
+}
+
+.action-buttons .el-button {
+   padding: 4px 8px; /* Adjust padding */
+   font-size: 12px; /* Adjust font size */
+}
+
+/* Pagination Wrapper - Match UserManagementView */
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+
+/* Create Dialog - Keep specific styles but align padding/margins */
+.create-dialog :deep(.el-dialog__body) {
+   padding: 20px; /* Consistent dialog body padding */
+}
+
+.create-form .el-form-item {
+   margin-bottom: 20px; /* Consistent spacing */
+}
+
+.recipient-selector {
+   margin-top: 10px; /* Space below radio buttons */
+}
+
+.recipient-selector .el-select {
+   width: 100%; /* Ensure select takes full width */
+}
+
+/* Content Dialog - Keep specific styles but align padding/margins */
+.content-dialog :deep(.el-dialog__body) {
+   padding: 20px; /* Consistent dialog body padding */
+}
+
+.content-dialog .notification-full-content {
+   white-space: pre-wrap; /* Preserve whitespace and wrap text */
+   word-break: break-word; /* Break long words */
+   font-size: 14px;
+   color: #606266;
+   line-height: 1.6;
+}
+
+
+/* Removed unused styles from previous version */
+/*
+.notifications-container h1 {
+  margin-bottom: 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.stat-card .stat-icon {
+  font-size: 30px;
+  margin-right: 15px;
+  color: #409eff;
+}
+
+.stat-card h3 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: bold;
+}
+
+.stat-card p {
   font-size: 12px;
-  color: #64748b;
+  color: #666;
+  margin: 0;
 }
 
-/* 主要内容区域 */
+.stat-card .stat-change {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+}
+
 .main-content {
-  /* styles */
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
-
-/* 筛选和搜索区域卡片 (使用公共样式) */
-/* .filter-card { ... } */
 
 .filter-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
-.filter-left {
-  display: flex;
-  gap: 12px;
-  flex: 1; /* Take remaining space */
-  min-width: 300px; /* Ensure search input has enough space */
-}
-
+.filter-left,
 .filter-right {
-   display: flex;
-   gap: 12px;
-   align-items: center;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .search-input {
-  width: 100%; /* Make search input fill its container */
-}
-
-.filter-select {
-  width: 150px;
-}
-
-.date-picker {
-  width: 240px;
-}
-
-
-/* 通知列表卡片 (使用公共样式) */
-/* .table-card { ... } */
-
-/* 表头 (使用公共样式) */
-/* .table-header { ... } */
-/* .table-header h3 { ... } */
-/* .table-actions { ... } */
-
-
-/* 通用表格样式 (使用公共样式) */
-/* .el-table { ... } */
-/* .el-table__header th { ... } */
-/* .el-table__cell { ... } */
-
-.unread-row {
-    font-weight: bold;
-    background-color: #f9f9eb; /* Light yellow background for unread */
-}
-
-/* 通知标题列 */
-.notification-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.title-text {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 200px;
 }
 
-/* 通知内容列 */
-.notification-content {
+.table-header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.content-preview {
-  margin: 0;
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2; /* Limit to 2 lines */
-  -webkit-box-orient: vertical;
-}
-
-/* 接收用户列 (使用公共样式 .user-info, .username) */
-/* .user-info { ... } */
-/* .user-info .el-avatar { ... } */
-/* .username { ... } */
-
-
-/* 发送时间列 */
-.time-info {
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
-  color: #606266;
-}
-
-.time-ago {
-  font-size: 12px;
-  color: #909399;
-}
-
-/* 状态标签 (使用公共样式) */
-/* .el-tag { ... } */
-
-/* 操作按钮 (使用公共样式 .action-buttons) */
-/* .action-buttons { ... } */
-
-
-/* 分页样式 (使用公共样式) */
-/* .pagination-wrapper { ... } */
-
-
-/* 创建通知对话框 */
-.create-dialog .el-dialog__body {
-    padding-bottom: 0; /* Adjust padding */
-}
-
-.create-form {
-  /* styles */
-}
-
-.create-form .el-form-item {
-  margin-bottom: 20px; /* Adjust spacing */
-}
-
-.recipient-selector, .filter-selector {
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  padding: 15px;
-  margin-top: 15px;
-  background-color: #f9fafc;
-}
-
-.recipient-selector .el-select,
-.filter-selector .el-row {
-    margin-top: 0 !important; /* Override default row margin */
-}
-
-.estimated-recipients {
-  font-size: 14px;
-  color: #606266;
-}
-
-/* 通知内容详情对话框 */
-.content-dialog .el-dialog__body {
-    padding-top: 10px;
-}
-
-.notification-detail {
-  /* styles */
-}
-
-.notification-detail .detail-item {
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 15px;
-  font-size: 14px;
-  color: #303133;
 }
 
-.notification-detail .detail-item label {
-  font-weight: bold;
-  color: #606266;
+.table-header h3 {
+  margin: 0;
+}
+
+.notification-title .el-tag {
   margin-right: 8px;
 }
 
-.detail-content label {
-   display: block;
-   margin-bottom: 8px;
+.notification-content .content-preview {
+  margin-bottom: 5px;
 }
 
-.content-text {
-  font-size: 14px;
-  color: #303133;
-  line-height: 1.6;
-  white-space: pre-wrap; /* Preserve line breaks */
-  word-break: break-word; /* Break long words */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-/* 响应式调整 (使用公共样式) */
-@media (max-width: 768px) {
-  /* .notifications-container { padding: 16px; } */
-  /* .page-header { flex-direction: column; align-items: flex-start; } */
-  /* .header-actions { width: 100%; justify-content: space-around; margin-top: 16px; } */
-  /* .header-left { gap: 8px; } */
-  /* .page-title { font-size: 24px; gap: 4px; } */
-   .filter-section {
-       flex-direction: column;
-       align-items: stretch;
-       gap: 12px;
-   }
-   
-   .filter-left, .filter-right {
-       width: 100%;
-       flex-direction: column;
-       gap: 8px;
-   }
-
-   .filter-left > *, .filter-right > * {
-       width: 100% !important;
-   }
-
-   .notification-title {
-       flex-direction: column;
-       align-items: flex-start;
-       gap: 4px;
-   }
-
-   .title-text {
-       white-space: normal; /* Allow wrapping on smaller screens */
-       overflow: visible;
-       text-overflow: clip;
-   }
-   
-   .user-info {
-      flex-direction: row; /* Keep row layout for user info */
-      align-items: center;
-   }
-
-   .time-info {
-       flex-direction: row; /* Keep row layout for time info */
-       gap: 8px;
-   }
+.user-info .el-avatar {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  font-size: 10px;
 }
 
+.username {
+  font-size: 13px;
+}
+
+.time-info span {
+  display: block;
+}
+
+.action-buttons .el-button {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.create-dialog .el-form-item {
+  margin-bottom: 15px;
+}
+*/
 </style>

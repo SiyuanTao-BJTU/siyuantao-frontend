@@ -228,7 +228,7 @@ const unreadNotificationCount = ref(0);
   display: flex;
   align-items: center;
   background-color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.04);
   position: fixed;
   width: 100%;
   top: 0;
@@ -257,7 +257,7 @@ const unreadNotificationCount = ref(0);
 .site-name {
   font-size: 20px;
   font-weight: bold;
-  color: #4A90E2;
+  color: #357ABD;
 }
 
 .navbar-center {
@@ -292,7 +292,7 @@ const unreadNotificationCount = ref(0);
 }
 
 .nav-link-button:hover {
-    color: #6FA8DC;
+    color: #357ABD;
 }
 
 .nav-register-button {
@@ -302,8 +302,8 @@ const unreadNotificationCount = ref(0);
 }
 
 .nav-register-button:hover {
-    background-color: #6FA8DC;
-    border-color: #6FA8DC;
+    background-color: #357ABD;
+    border-color: #357ABD;
 }
 
 .publish-button {
@@ -329,7 +329,7 @@ const unreadNotificationCount = ref(0);
 }
 
 .nav-icon:hover {
-    color: #4A90E2;
+    color: #357ABD;
 }
 
 .message-badge,
@@ -378,8 +378,8 @@ const unreadNotificationCount = ref(0);
 
 .top-navigation-bar.el-menu--horizontal > .el-menu-item:not(.is-disabled):hover,
 .top-navigation-bar.el-menu--horizontal > .el-menu-item:not(.is-disabled):focus {
-    background-color: #f0f0f0;
-    color: #4A90E2;
+    background-color: #F8F9FA;
+    color: #357ABD;
 }
 
 .top-navigation-bar .el-menu-item,

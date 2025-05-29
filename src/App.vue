@@ -102,16 +102,19 @@ const handleLogout = () => {
   color: #2c3e50; /* 默认文字颜色，后续在组件中覆盖 */
 }
 
-/* 整个布局容器 */
+/* Overall container */
 .common-layout-container {
   min-height: 100vh;
+  /* Use a very light gray background for the overall app */
+  background-color: #F8F9FA; /* Or #F5F7FA */
 }
 
 /* 顶部 Header 样式 */
 .common-header {
   height: 60px;
   padding: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* Updated box-shadow for a more subtle effect */
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.04);
   z-index: 1000;
   background-color: #ffffff;
   position: fixed;
@@ -128,11 +131,22 @@ const handleLogout = () => {
 
 /* 左侧 Aside 侧边导航样式 */
 .common-aside {
-  background-color: #ffffff;
-  border-right: 1px solid #e6e6e6;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  /* Use a light gray background for the sidebar */
+  background-color: #F8F9FA; /* Or #F5F7FA */
+  border-right: 1px solid #e6e6e6; /* Keep a subtle border */
+  /* Updated box-shadow for a more subtle effect */
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.03);
   padding-top: 20px;
   overflow-x: hidden;
+  /* Ensure fixed positioning and full height from top 0 */
+  position: fixed; /* Should be fixed to stay in place */
+  top: 0; /* Starts from the top edge */
+  left: 0; /* Starts from the left edge */
+  /* Adjust height to be viewport height minus header height */
+  height: 100vh; /* Full viewport height */
+  /* Add transition for width changes */
+  transition: width 0.3s ease-in-out;
+  z-index: 999; /* Below the fixed header */
 }
 
 .el-menu-vertical-demo:not(.el-menu--collapse) {
@@ -142,6 +156,8 @@ const handleLogout = () => {
 
 .el-menu-vertical-demo {
   border-right: none;
+  /* Remove default Element Plus menu background if common-aside has one */
+  background-color: transparent; /* Ensure menu background is transparent */
 }
 
 .el-menu-item {
@@ -152,25 +168,25 @@ const handleLogout = () => {
 }
 
 .el-menu-item.is-active {
-  /* 调整选中项背景色和文字颜色，与强调蓝色更协调 */
-  background-color: #E6F0FF !important; /* 浅蓝色背景 */
-  color: #4A90E2 !important; /* 强调蓝色文字 */
-  border-right: 3px solid #4A90E2; /* 强调蓝色边框 */
+  /* Adjust selected item background color and text color */
+  background-color: #E6F2FF !important; /* Very light primary blue background */
+  color: #357ABD !important; /* Slightly darker Primary Blue text */
+  border-right: 3px solid #357ABD; /* Slightly darker Primary Blue border */
 }
 
 .el-menu-item:hover {
-  background-color: #F5F5F5 !important;
-  color: #4A90E2 !important;
+  background-color: #F0F4F8 !important; /* Slightly darker light gray on hover */
+  color: #357ABD !important;
 }
 
 .el-menu-item .el-icon {
   margin-right: 10px;
   font-size: 20px;
-  color: #606266; /* 默认图标颜色 */
+  color: #606266; /* Default icon color */
 }
 
 .el-menu-item.is-active .el-icon {
-  color: #4A90E2; /* 选中时图标颜色为强调蓝色 */
+  color: #357ABD; /* Selected icon color */
 }
 
 .sidebar-header {
@@ -188,12 +204,18 @@ const handleLogout = () => {
   color: #4A90E2;
 }
 
-/* Main 内容区域样式 */
+/* Main Content Area - wrapper for router-view */
 .common-main-content {
-  background-color: #f5f7fa; /* 浅灰色背景 */
-  padding: 20px;
+  background-color: #ffffff; /* White background for content inside cards/views */
+  padding: 24px; /* Consistent padding around content */
   overflow-y: auto;
   width: 100%;
   box-sizing: border-box;
+  /* Add margin-left to make space for the fixed sidebar */
+  margin-left: 200px; /* Initial margin matching sidebar width */
+  /* Add transition for margin-left when sidebar collapses */
+  transition: margin-left 0.3s ease-in-out;
+  /* Adjust margin-top to be below the fixed header */
+  margin-top: 60px;
 }
 </style>

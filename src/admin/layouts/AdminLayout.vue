@@ -8,7 +8,7 @@
         <span class="admin-title">思源淘 管理后台</span>
       </div>
       <div class="header-right">
-        <span class="admin-info">当前权限：{{ isAdmin ? '超级管理员' : '管理员' }}</span>
+        <span class="admin-info">当前权限：{{ userRole === 'super_admin' ? '超级管理员' : '管理员' }}</span>
         <el-dropdown trigger="click" @command="handleCommand">
           <span class="el-dropdown-link admin-user-name">
             {{ adminUserName }}<el-icon class="el-icon--right"><arrow-down /></el-icon>
@@ -79,7 +79,7 @@ export default defineComponent({
     // 请根据你的 Vuex Store 结构调整这里的 getter
     // 假设用户信息在 store.state.user.userInfo，isAdmin 在 store.getters.isAdmin
     const adminUserName = computed(() => store.state.user.userInfo?.username || '管理员');
-    const isAdmin = computed(() => store.getters['user/isAdmin']); // 假设 isAdmin 是 user 模块的 getter
+    const userRole = computed(() => store.getters['user/userRole']); // Get the user's role
 
     // 控制侧边栏选中状态
     // 使用 computed 属性动态计算当前激活的菜单项
@@ -100,9 +100,9 @@ export default defineComponent({
 
     // 根据权限过滤菜单项
     const filteredAdminMenus = computed(() => {
-      // 假设 isAdmin.value 为 true 表示超级管理员
-      const userRole = isAdmin.value ? 'super_admin' : 'admin';
-      return adminMenus.filter(item => item.roles.includes(userRole));
+      // Use the userRole getter to determine the current user's role
+      const currentUserRole = userRole.value; // Get the computed role
+      return adminMenus.filter(item => item.roles.includes(currentUserRole));
     });
 
     // 处理顶部下拉菜单命令
@@ -142,7 +142,7 @@ export default defineComponent({
 
     return {
       adminUserName,
-      isAdmin,
+      userRole, // Expose userRole for template
       activeMenu,
       filteredAdminMenus,
       handleCommand,
@@ -157,17 +157,26 @@ export default defineComponent({
 <style scoped>
 .admin-layout-container {
   min-height: 100vh;
+  /* Set the overall background color for the admin area */
+  background-color: #F8F9FA; /* Light gray background */
 }
 
 .admin-header {
-  background-color: #fff; /* 白色背景 */
+  background-color: #fff; /* White background */
   color: var(--el-text-color-primary);
   line-height: 60px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  padding: 0 20px; /* 调整内边距 */
+  /* Updated box-shadow for a more subtle effect */
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 0 20px; /* Adjust padding */
+  height: 60px; /* Explicit height */
+  position: fixed; /* Keep header fixed */
+  width: 100%; /* Full width */
+  top: 0;
+  left: 0;
+  z-index: 1000; /* Ensure it's above other content */
 }
 
 .header-left {
@@ -206,36 +215,84 @@ export default defineComponent({
 
 .admin-content-wrapper {
   flex-grow: 1;
+  /* Add margin-top to be below the fixed header */
+  margin-top: 60px;
+  display: flex; /* Use flexbox for aside and main content */
 }
 
 .admin-aside {
-  background-color: #304156; /* 侧边栏背景颜色 */
-  color: #bfcbd9;
-  transition: width 0.3s;
-  box-shadow: 2px 0 6px rgba(0,0,0,0.1);
+  background-color: #304156; /* Sidebar background color - keep dark for admin? or change based on plan? Plan says light gray. */
+  /* Changing to light gray as per plan */
+   background-color: #F8F9FA; /* Or #F5F7FA */
+  color: #bfcbd9; /* Text color - will need adjustment for light background */
+  /* Adjusting text/icon colors for light background */
+   color: #303133; /* Dark text */
+  transition: width 0.3s ease-in-out; /* Add width transition */
+  box-shadow: 2px 0 6px rgba(0,0,0,0.05); /* Subtle shadow */
+  position: fixed; /* Fixed position */
+  top: 60px; /* Position below header */
+  left: 0;
+  bottom: 0; /* Extend to bottom */
+  overflow-y: auto; /* Add scrolling if content exceeds height */
+  z-index: 999; /* Below header */
 }
 
 .el-menu-vertical-demo:not(.el-menu--collapse) {
-  width: 200px;
+  width: 200px; /* Default width */
   min-height: 400px;
 }
 
 .el-menu-vertical-demo {
-  border-right: none; /* 移除 Element Plus 默认边框 */
+  border-right: none; /* Remove Element Plus default border */
+  /* Ensure menu background is transparent if aside has background */
+  background-color: transparent;
 }
+
+/* Adjust menu item styles for light background */
+.el-menu-item {
+   color: #303133 !important; /* Default item text */
+}
+
+.el-menu-item i { /* Targeting icons */
+   color: #606266 !important; /* Default icon color */
+}
+
 
 .el-menu-item.is-active {
-  background-color: #4a5b72 !important; /* 激活菜单项背景色 */
+  background-color: #E6F2FF !important; /* Very light primary blue background */
+  color: #357ABD !important; /* Slightly darker Primary Blue text */
 }
+
+.el-menu-item.is-active i { /* Targeting active icons */
+   color: #357ABD !important; /* Active icon color */
+}
+
 
 .el-menu-item:hover {
-  background-color: #263445 !important; /* 菜单项 hover 背景色 */
+  background-color: #F0F4F8 !important; /* Slightly darker light gray on hover */
+  color: #357ABD !important;
 }
 
-.admin-main-content {
-  background-color: #f0f2f5; /* 主内容区域背景 */
-  padding: 20px; /* 主内容区域内边距 */
+.el-menu-item:hover i { /* Targeting hover icons */
+   color: #357ABD !important;
 }
+
+
+.admin-main-content {
+  background-color: #ffffff; /* White background for main content */
+  padding: 24px; /* Consistent padding */
+  flex-grow: 1; /* Allows content to take available space */
+  overflow-y: auto; /* Add scrolling */
+  /* Add margin-left to make space for the fixed sidebar */
+  margin-left: 200px; /* Initial margin matching sidebar width */
+  /* Add transition for margin-left */
+  transition: margin-left 0.3s ease-in-out;
+}
+
+/* Style adjustment when sidebar is collapsed */
+/* You will need JS to toggle a class on the parent container or body */
+/* Example: .admin-layout-container.collapsed .admin-aside { width: 64px; } */
+/* Example: .admin-layout-container.collapsed .admin-main-content { margin-left: 64px; } */
 
 /* 可选：侧边栏折叠按钮样式 */
 /*
@@ -247,6 +304,20 @@ export default defineComponent({
 </style>
 
 <style>
-/* 导入公共样式 */
-@import '../styles/admin-common.css';
+/* 导入公共样式 - Ensure common card styles are handled */
+/* @import '../styles/admin-common.css'; */ /* Keep existing imports */
+
+/* Adding global card styles that apply within this layout scope */
+/* These might ideally go into a global theme file or admin-common.css */
+.el-card {
+  background-color: #FFFFFF; /* White background */
+  border-radius: 8px; /* Rounded corners */
+  /* Subtle box-shadow */
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.04);
+  border: none; /* Remove default border */
+}
+
+.el-card__body {
+  padding: 20px; /* Generous internal padding */
+}
 </style> 
