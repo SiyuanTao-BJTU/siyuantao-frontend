@@ -22,7 +22,7 @@ const form = reactive({
   confirmPassword: "",
   major: "",
   phoneNumber: "", // 手机号字段
-  email: "", // Added email field
+  verificationCode: "" // Added verification code field
 });
 const passwordVisible = ref(false);
 const confirmPasswordVisible = ref(false);
@@ -51,17 +51,34 @@ const rules = {
     // 根据需求可以调整是否必填
   ],
   phoneNumber: [
-    { required: true, message: '请输入手机号', trigger: 'blur' }, // 手机号必填
+    { required: true, message: '请输入手机号', trigger: 'blur' },
     // TODO: Add phone number format validation
   ],
-  email: [
-    { required: true, message: '请输入校园邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] },
-    { pattern: /.+@bjtu\.edu\.cn$/, message: '请使用北京交通大学校园邮箱 (@bjtu.edu.cn)', trigger: ['blur', 'change'] }
+  verificationCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { len: 6, message: '验证码长度应为 6 位', trigger: 'blur' }
   ]
 };
 
 const registerFormRef = ref(null); // Ref for the form element
+
+// Added function to request SMS code
+const requestSmsCode = async () => {
+  // TODO: Implement logic to call backend API to send SMS code
+  if (!form.phoneNumber) {
+    ElMessage.warning("请输入手机号码");
+    return;
+  }
+  console.log("Requesting SMS code for phone number:", form.phoneNumber);
+  ElMessage.info("发送验证码功能待实现");
+  // try {
+  //   await api.requestSmsCode({ phone_number: form.phoneNumber }); // Assuming such an API exists
+  //   ElMessage.success("验证码已发送，请查收短信。");
+  // } catch (error) {
+  //   console.error("请求验证码失败:", error);
+  //   ElMessage.error(error.response?.data?.detail || "请求验证码失败");
+  // }
+};
 
 // 组件全局函数定义
 const handleRegisterClick = async () => {
@@ -82,7 +99,7 @@ const handleRegisterClick = async () => {
           password: form.password,
           major: form.major || null, // 确保空字符串转换为 null
           phone_number: form.phoneNumber, // 发送手机号字段
-          email: form.email // Include email in registration data
+          verification_code: form.verificationCode // Include verification code
         });
 
         // 注册成功由 store 中的 ElMessage 提示，这里只需处理成功后的逻辑
@@ -114,7 +131,7 @@ const resetForm = () => {
   form.confirmPassword = "";
   form.major = "";
   form.phoneNumber = ""; // 重置手机号字段
-  form.email = ""; // Reset email field
+  form.verificationCode = ""; // Reset verification code field
 };
 
 // 切换密码可见性
@@ -169,13 +186,17 @@ const toggleConfirmPasswordVisibility = () => {
       </el-input>
     </el-form-item>
     <el-form-item label="手机号" prop="phoneNumber">
-      <el-input v-model="form.phoneNumber" placeholder="请输入手机号"/>
+      <el-input v-model="form.phoneNumber" placeholder="请输入手机号">
+        <template #append>
+          <el-button @click="requestSmsCode">发送验证码</el-button>
+        </template>
+      </el-input>
+    </el-form-item>
+    <el-form-item label="验证码" prop="verificationCode">
+      <el-input v-model="form.verificationCode" placeholder="请输入短信验证码"/>
     </el-form-item>
     <el-form-item label="专业" prop="major">
       <el-input v-model="form.major" placeholder="请输入专业 (选填)"/>
-    </el-form-item>
-    <el-form-item label="邮箱" prop="email">
-      <el-input v-model="form.email" placeholder="请输入校园邮箱"/>
     </el-form-item>
     <el-form-item>
       <el-button type="primary" @click="handleRegisterClick" class="register-button">注册</el-button>
