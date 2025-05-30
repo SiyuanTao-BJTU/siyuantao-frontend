@@ -246,6 +246,18 @@ const deleteUser = (userId) => {
   return apiRequest('DELETE', `/v1/users/${userId}`);
 };
 
+/**
+ * @summary 管理员根据用户 ID 切换用户管理员状态
+ * @method PUT
+ * @path /api/v1/users/{user_id}/toggle_staff
+ * @param {string} userId - 用户的UUID
+ * @returns {Promise<any>} - API 响应数据 (此接口通常返回 204 No Content)
+ */
+const toggleUserStaffStatus = (userId) => {
+  // This endpoint does not require a request body
+  return apiRequest('PUT', `/v1/users/${userId}/toggle_staff`);
+};
+
 // ========================================================================
 // Product Management (来自 itemTrade/urls/item.py)
 // ========================================================================
@@ -552,6 +564,7 @@ export default {
   updateUserStatus,
   adjustUserCredit,
   deleteUser,
+  toggleUserStaffStatus,
 
   // Product
   getProductList,

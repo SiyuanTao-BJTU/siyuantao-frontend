@@ -29,6 +29,11 @@ const handleLoginClick = async () => {
   /**
    * 处理登录按钮点击事件
    */
+  // Clear any existing redirect query parameter from the URL
+  if (router.currentRoute.value.query.redirect) {
+    router.replace({ query: {} });
+  }
+
   if(form.username === "" || form.password === ""){
     // 如果用户名或密码为空，则提示用户请输入账号密码
     ElMessage.error("请输入账号密码")
@@ -59,6 +64,7 @@ const handleLoginClick = async () => {
     // 这里只需处理页面跳转
 
     const userId = localStorage.getItem('userId');
+    // 初始化 WebSocket
     if (userId) {
         WebSocketService.init(userId);
     } else {
@@ -66,14 +72,12 @@ const handleLoginClick = async () => {
     }
 
     // 在跳转到主页前，确保 Vuex store 中的登录状态已更新
-    if (store.getters['user/isAuthenticated']) {
-        router.push("/products");
-    } else {
-        // 如果状态未更新，可能是同步问题或登录流程有误
-        console.error("Login successful, but Vuex state not updated.");
-        // 可以选择留在此页，或者给用户一个提示
-        ElMessage.error("登录成功但状态异常，请尝试刷新页面。");
-    }
+    // If the state is not updated, it might be a synchronization issue or an error in the login flow.
+    // You might choose to stay on this page or provide a user message.
+    // ElMessage.error("登录成功但状态异常，请尝试刷新页面。");
+
+    // Always push to the products page after successful login, relying on route guard for auth check
+    router.push("/products");
 
   } catch (error) {
     console.error("Login failed in component:", error);

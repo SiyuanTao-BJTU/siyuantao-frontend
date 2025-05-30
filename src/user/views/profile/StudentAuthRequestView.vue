@@ -4,7 +4,9 @@
     <p>请输入您的校园邮箱，我们将发送一封验证邮件给您。</p>
     <el-form :model="form" @submit.prevent="requestVerification">
       <el-form-item label="校园邮箱">
-        <el-input v-model="form.email" placeholder="请输入校园邮箱"></el-input>
+        <el-input v-model="form.email" placeholder="请输入校园邮箱">
+          <template #append>@bjtu.edu.cn</template>
+        </el-input>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="requestVerification">发送验证邮件</el-button>

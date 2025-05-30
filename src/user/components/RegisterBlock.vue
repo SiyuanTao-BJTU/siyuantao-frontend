@@ -22,6 +22,7 @@ const form = reactive({
   confirmPassword: "",
   major: "",
   phoneNumber: "", // 手机号字段
+  email: "", // Added email field
 });
 const passwordVisible = ref(false);
 const confirmPasswordVisible = ref(false);
@@ -52,6 +53,11 @@ const rules = {
   phoneNumber: [
     { required: true, message: '请输入手机号', trigger: 'blur' }, // 手机号必填
     // TODO: Add phone number format validation
+  ],
+  email: [
+    { required: true, message: '请输入校园邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] },
+    { pattern: /.+@bjtu\.edu\.cn$/, message: '请使用北京交通大学校园邮箱 (@bjtu.edu.cn)', trigger: ['blur', 'change'] }
   ]
 };
 
@@ -76,6 +82,7 @@ const handleRegisterClick = async () => {
           password: form.password,
           major: form.major || null, // 确保空字符串转换为 null
           phone_number: form.phoneNumber, // 发送手机号字段
+          email: form.email // Include email in registration data
         });
 
         // 注册成功由 store 中的 ElMessage 提示，这里只需处理成功后的逻辑
@@ -107,6 +114,7 @@ const resetForm = () => {
   form.confirmPassword = "";
   form.major = "";
   form.phoneNumber = ""; // 重置手机号字段
+  form.email = ""; // Reset email field
 };
 
 // 切换密码可见性
@@ -165,6 +173,9 @@ const toggleConfirmPasswordVisibility = () => {
     </el-form-item>
     <el-form-item label="专业" prop="major">
       <el-input v-model="form.major" placeholder="请输入专业 (选填)"/>
+    </el-form-item>
+    <el-form-item label="邮箱" prop="email">
+      <el-input v-model="form.email" placeholder="请输入校园邮箱"/>
     </el-form-item>
     <el-form-item>
       <el-button type="primary" @click="handleRegisterClick" class="register-button">注册</el-button>

@@ -77,6 +77,12 @@ const actions = {
         commit("SET_LOGIN_STATUS", true);
 
         ElMessage.success("登录成功");
+        
+        // Navigate to the products page after successful login and state update
+        // Add a small delay to mitigate potential race conditions
+        await new Promise(resolve => setTimeout(resolve, 50)); // Add a 50ms delay
+        router.push("/products");
+
         return loginData; // 返回登录成功的数据
       } else {
         throw new Error("获取 token 失败或登录未成功");

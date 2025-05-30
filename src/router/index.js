@@ -198,37 +198,37 @@ router.beforeEach(async (to, from, next) => {
 
   const token = localStorage.getItem('token');
   let userInfo = store.state.user.userInfo;
-  let currentIsAuthenticated = store.getters['user/isAuthenticated']; // Get initial auth state
+  let currentIsAuthenticated = !!token; // Start by checking token presence
 
-  // 尝试获取用户信息，如果 token 存在但 store 中没有用户信息
+  // 如果 token 存在但 store 中没有用户信息，则尝试获取
   if (token && !userInfo) {
     try {
       // 使用 dispatch 并 await 确保获取用户信息完成后再继续
       userInfo = await store.dispatch('user/fetchUserInfo');
       // fetchUserInfo 成功后，userInfo 和 isLoggedIn 状态会在 store 中更新
-      currentIsAuthenticated = store.getters['user/isAuthenticated'];
+      currentIsAuthenticated = store.getters['user/isAuthenticated']; // Re-evaluate after fetch
     } catch (error) {
       console.warn('路由守卫: fetchUserInfo 失败', error);
       // fetchUserInfo 失败通常意味着 token 无效或过期，执行登出
       // logout action 会清除状态并重定向到登录页
       await store.dispatch('user/logout', { inStoreLogout: false });
-      // 在登出后，如果目标页面需要认证，则中断当前导航，让 logout 的重定向接管
+      // After logout, the user is definitely not authenticated
+      currentIsAuthenticated = false;
+      userInfo = null; // Ensure userInfo is null after failed fetch/logout
+
+      // If the target route requires auth, the logout redirect will handle it.
+      // If it doesn't require auth, proceed.
       if (to.meta.requiresAuth) {
-        NProgress.done();
-        // router.push('/login') is handled by logout action
-        return; // Stop navigation
+         NProgress.done();
+         return; // Stop navigation here, logout handles redirect
       }
-       // 如果目标页面不需要认证 (例如 /login, /verify-email), 继续正常导航
-       currentIsAuthenticated = false; // Update state after failed fetch/logout
-       userInfo = null;
     }
   }
 
-  // 重新获取 isAdmin 状态，以防 fetchUserInfo 改变了它
-  const isAdmin = userInfo?.is_staff || localStorage.getItem('is_staff') === 'true';
-
+  // Now, after potentially fetching user info, check authentication status for protected routes
   if (to.meta.requiresAuth) {
     if (currentIsAuthenticated) {
+      // User is authenticated, proceed with further checks (verified, admin, etc.)
       // 用户已认证，检查是否需要邮箱验证
       if (to.meta.requiresVerified && !userInfo?.is_verified) {
           ElMessage.warning('请先完成邮箱验证以访问此页面');
@@ -236,7 +236,8 @@ router.beforeEach(async (to, from, next) => {
           next({ name: 'StudentAuthRequest', query: { redirect: to.fullPath } });
       } else if (to.meta.requiresAdmin) {
            // 检查是否需要管理员权限
-           if (isAdmin) {
+           const isAdmin = userInfo?.is_staff || localStorage.getItem('is_staff') === 'true';
+           if (isAdmin || store.getters['user/isSuperAdmin']) {
                next();
            } else {
                ElMessage.warning('您没有访问此页面的权限');
@@ -247,13 +248,12 @@ router.beforeEach(async (to, from, next) => {
            next();
       }
     } else {
-      // This case should ideally be handled by the initial fetchUserInfo check,
-      // but keeping it as a fallback.
+      // User is not authenticated, redirect to login
       ElMessage.warning('请先登录以访问此页面');
       next({ name: 'login', query: { redirect: to.fullPath } });
     }
   } else {
-    // 公开路由
+    // Public routes
     // 如果已认证用户尝试访问登录或注册页面，重定向到商品列表
     if ((to.name === 'login' || to.name === 'register') && currentIsAuthenticated) {
       next({ name: 'ProductList' });

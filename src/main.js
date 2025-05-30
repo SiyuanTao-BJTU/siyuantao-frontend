@@ -20,7 +20,7 @@ app.use(i18n);
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  const publicPaths = ['/login', '/register']; // 添加注册页到白名单
+  const publicPaths = ['/login', '/register', '/admin/login']; // 添加注册页到白名单
   const isAuthenticated = localStorage.getItem("token");
 
   // 如果没有token，并且当前目标页面不是登录页或注册页

@@ -20,6 +20,7 @@
   import WebSocketService from "@/socket_client/socket.js";
   import router from "@/router/index.js";
   import {ElMessage} from "element-plus";
+  import store from "@/store/index.js";
 
   // 组件全局变量定义
   let username = ref("");
@@ -40,6 +41,15 @@
   let componentKey = ref(0); // 用于强制刷新子组件
   let passwordDialogVisible = ref(false); // 控制修改密码对话框的显示
   let profileEditDialogVisible = ref(false); // 控制编辑个人信息对话框的显示
+
+  // 计算属性
+  const isEditingProfile = ref(false);
+  const isEditingPassword = ref(false);
+
+  // Add computed property for isSuperAdmin getter
+  const isSuperAdmin = computed(() => {
+    return store.getters['user/isSuperAdmin'];
+  });
 
   const fetchUserProfile = () => {
     api.getUserProfile()
@@ -221,7 +231,7 @@
              <span>学生身份认证</span>
            </el-card>
            <!-- 管理员后台入口 (如果是管理员) -->
-           <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && userProfileResponseData.is_staff" @click="handleAdminCardClick">
+           <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && (userProfileResponseData.is_staff || isSuperAdmin)" @click="handleAdminCardClick">
              <el-icon><Setting /></el-icon>
              <span>管理员后台</span>
            </el-card>
