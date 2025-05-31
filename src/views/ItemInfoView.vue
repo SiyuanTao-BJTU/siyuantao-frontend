@@ -1,5 +1,5 @@
 <script setup>
-import ItemInfoBlock from "@/components/iteminfo/ItemInfoBlock.vue";
+import ItemInfoBlock from "@/product/components/ItemInfoBlock.vue";
 import { useRoute } from "vue-router";
 import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";

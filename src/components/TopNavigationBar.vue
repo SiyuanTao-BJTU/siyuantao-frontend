@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { Search, ChatLineRound, Bell, Plus, UserFilled, Setting, Goods, List, Star, Lock, Switch, HomeFilled, Box, ArrowDown, Expand, Fold, User } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import api from '@/API_PRO.js';
+import BackendConfig from "../../backend.config"; // Import BackendConfig
 import WebSocketService from "@/socket_client/socket.js";
 import { useStore } from 'vuex';
 
@@ -41,7 +42,9 @@ const fetchUserInfo = async () => {
       if (response && (response.user_id || response.username)) {
         const userInfo = response; // API 直接返回用户信息对象
         username.value = userInfo.username;
-        avatarUrl.value = userInfo.avatar_url || null;
+        // Construct full avatar URL if avatarUrl is a relative path
+        avatarUrl.value = userInfo.avatar_url ? 
+          BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + userInfo.avatar_url : null;
         isAdmin.value = userInfo.is_staff || false; // 假设 is_staff 字段表示管理员
         isLoggedIn.value = true; // 成功获取用户信息即视为登录
         localStorage.setItem('username', userInfo.username);

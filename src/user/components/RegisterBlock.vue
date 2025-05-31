@@ -5,7 +5,7 @@ import { View, Hide } from '@element-plus/icons-vue';
 import { useStore } from 'vuex'; // 导入 useStore
 
 // Assuming pattern.js exists and has necessary validation
-// import PatternCheck from "@/utils/pattern.js";
+import PatternCheck from "@/utils/pattern.js";
 // Assuming API_PRO.js exists and has register method
 // import api from '@/API_PRO.js';
 
@@ -52,12 +52,19 @@ const rules = {
   ],
   phoneNumber: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    // TODO: Add phone number format validation
+    { validator: (rule, value, callback) => {
+      const phone_res = PatternCheck.phone_check(value);
+      if (!phone_res.valid) {
+        callback(new Error(phone_res.error));
+      } else {
+        callback();
+      }
+    }, trigger: 'blur' }
   ],
-  verificationCode: [
-    { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 6, message: '验证码长度应为 6 位', trigger: 'blur' }
-  ]
+  // verificationCode: [
+  //   { required: true, message: '请输入验证码', trigger: 'blur' },
+  //   { len: 6, message: '验证码长度应为 6 位', trigger: 'blur' }
+  // ]
 };
 
 const registerFormRef = ref(null); // Ref for the form element
@@ -69,6 +76,12 @@ const requestSmsCode = async () => {
     ElMessage.warning("请输入手机号码");
     return;
   }
+  const phone_res = PatternCheck.phone_check(form.phoneNumber);
+  if (!phone_res.valid) {
+    ElMessage.error(phone_res.error);
+    return;
+  }
+
   console.log("Requesting SMS code for phone number:", form.phoneNumber);
   ElMessage.info("发送验证码功能待实现");
   // try {
@@ -98,8 +111,8 @@ const handleRegisterClick = async () => {
           username: form.username,
           password: form.password,
           major: form.major || null, // 确保空字符串转换为 null
-          phone_number: form.phoneNumber, // 发送手机号字段
-          verification_code: form.verificationCode // Include verification code
+          phone_number: form.phoneNumber, // 发送手机号字段，现在是必填且已验证
+          verification_code: form.verificationCode || null // Include verification code, if empty then null
         });
 
         // 注册成功由 store 中的 ElMessage 提示，这里只需处理成功后的逻辑
@@ -113,7 +126,7 @@ const handleRegisterClick = async () => {
 
     } else {
       console.log('Form validation failed');
-      ElMessage.error('表单验证失败，请检查输入');
+      // ElMessage.error('表单验证失败，请检查输入'); // Removed general error as specific field errors will show
       return false;
     }
   });
@@ -187,14 +200,14 @@ const toggleConfirmPasswordVisibility = () => {
     </el-form-item>
     <el-form-item label="手机号" prop="phoneNumber">
       <el-input v-model="form.phoneNumber" placeholder="请输入手机号">
-        <template #append>
+        <!-- <template #append>
           <el-button @click="requestSmsCode">发送验证码</el-button>
-        </template>
+        </template> -->
       </el-input>
     </el-form-item>
-    <el-form-item label="验证码" prop="verificationCode">
+    <!-- <el-form-item label="验证码" prop="verificationCode">
       <el-input v-model="form.verificationCode" placeholder="请输入短信验证码"/>
-    </el-form-item>
+    </el-form-item> -->
     <el-form-item label="专业" prop="major">
       <el-input v-model="form.major" placeholder="请输入专业 (选填)"/>
     </el-form-item>

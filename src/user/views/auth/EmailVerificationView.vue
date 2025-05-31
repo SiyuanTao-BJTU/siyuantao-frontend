@@ -1,66 +1,186 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { Check, CircleClose } from '@element-plus/icons-vue';
-import axios from 'axios'; // Use axios directly
+import { ref, reactive, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { Check, CircleClose, Loading } from '@element-plus/icons-vue';
+import api from '@/API_PRO.js';
+import { useStore } from 'vuex';
 
 const router = useRouter();
-const route = useRoute();
+const store = useStore();
 
-const verificationStatus = ref('verifying'); // 'verifying', 'success', 'error'
-const statusMessage = ref('正在验证您的邮箱...');
-
-onMounted(async () => {
-  const token = route.query.token;
-  if (!token) {
-    verificationStatus.value = 'error';
-    statusMessage.value = '验证令牌缺失。';
-    ElMessage.error('验证令牌缺失。');
-    return;
-  }
-
-  try {
-    const response = await axios.post('/api/v1/auth/verify-email', { token: token });
-    // Assuming backend returns a success status or message upon successful verification
-    if (response.status === 200) { // Or check a specific field in response.data
-      verificationStatus.value = 'success';
-      statusMessage.value = '邮箱验证成功！'; // This message will appear for both regular and student verification
-      ElMessage.success('邮箱验证成功！');
-      // Optionally redirect after a delay or show a button to go to profile/dashboard
-      setTimeout(() => {
-        router.push('/profile'); // Redirect to profile or dashboard after success
-      }, 3000);
-    } else {
-        verificationStatus.value = 'error';
-        statusMessage.value = response.data.message || '邮箱验证失败。';
-        ElMessage.error(statusMessage.value);
-    }
-  } catch (error) {
-    console.error('Email verification failed:', error);
-    verificationStatus.value = 'error';
-    statusMessage.value = error.response?.data?.detail || '邮箱验证过程中发生错误。';
-    ElMessage.error(statusMessage.value);
-  }
+const formRef = ref(null); // Reference to the form component
+const form = reactive({
+  email: '',
+  otp: '',
 });
 
-const goToLogin = () => {
-  router.push('/login');
+const verificationStep = ref('request_otp'); // 'request_otp', 'verify_otp', 'success', 'error'
+const errorMessage = ref('');
+
+const isSendingOtp = ref(false);
+const isVerifyingOtp = ref(false);
+
+const countdown = ref(60); // OTP countdown in seconds
+const isCounting = ref(false);
+let countdownTimer = null;
+
+const rules = reactive({
+  email: [
+    { required: true, message: '请输入校园邮箱地址', trigger: 'blur' },
+    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' },
+    { pattern: /[^@]+@bjtu\.edu\.cn$/, message: '只允许使用北京交通大学邮箱地址 (@bjtu.edu.cn)', trigger: 'blur' },
+  ],
+  otp: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { min: 6, max: 6, message: '验证码必须是6位数字', trigger: 'blur' },
+    { pattern: /^[0-9]{6}$/, message: '验证码必须是6位数字', trigger: 'blur' },
+  ],
+});
+
+const startCountdown = () => {
+  isCounting.value = true;
+  countdown.value = 60; // Reset countdown
+  countdownTimer = setInterval(() => {
+    if (countdown.value > 0) {
+      countdown.value--;
+    } else {
+      clearInterval(countdownTimer);
+      isCounting.value = false;
+    }
+  }, 1000);
 };
+
+const requestOtp = async () => {
+  if (!formRef.value) return;
+
+  await formRef.value.validateField('email', async (valid) => {
+    if (valid) {
+      isSendingOtp.value = true;
+      try {
+        await api.requestStudentVerificationOtp({ email: form.email + '@bjtu.edu.cn' });
+        ElMessage.success('验证码已发送到您的邮箱，请查收！');
+        verificationStep.value = 'verify_otp';
+        startCountdown();
+      } catch (error) {
+        console.error('请求验证码失败:', error);
+        errorMessage.value = error.response?.data?.detail || '请求验证码失败，请稍后重试。';
+        verificationStep.value = 'error';
+        ElMessage.error(errorMessage.value);
+      } finally {
+        isSendingOtp.value = false;
+      }
+    }
+  });
+};
+
+const verifyOtp = async () => {
+  if (!formRef.value) return;
+
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      isVerifyingOtp.value = true;
+      try {
+        const response = await api.verifyStudentVerificationOtp({ email: form.email + '@bjtu.edu.cn', otp: form.otp });
+        if (response.is_verified) {
+          ElMessage.success('邮箱验证成功！');
+          verificationStep.value = 'success';
+          // Re-fetch user info to update is_verified status in store
+          await store.dispatch('user/fetchUserInfo');
+        } else {
+          errorMessage.value = response.message || '邮箱验证失败：未知错误。';
+          verificationStep.value = 'error';
+          ElMessage.error(errorMessage.value);
+        }
+      } catch (error) {
+        console.error('验证码验证失败:', error);
+        errorMessage.value = error.response?.data?.detail || '验证码验证失败，请稍后重试。';
+        verificationStep.value = 'error';
+        ElMessage.error(errorMessage.value);
+      } finally {
+        isVerifyingOtp.value = false;
+      }
+    }
+  });
+};
+
+const resetToRequest = () => {
+  verificationStep.value = 'request_otp';
+  form.otp = ''; // Clear OTP field
+  errorMessage.value = '';
+  clearInterval(countdownTimer);
+  isCounting.value = false;
+  countdown.value = 60;
+};
+
+const goToProfile = () => {
+  router.push('/profile');
+};
+
+// No longer needed since we are not using URL tokens
+// onMounted(async () => {
+//   const token = route.query.token;
+//   if (token) {
+//     // If a token is in the URL, assume it's an old magic link and throw an error
+//     errorMessage.value = '此验证链接已过期或无效，请使用最新的 OTP 验证流程。\n请前往个人中心重新请求学生身份验证OTP。'
+//     verificationStep.value = 'error';
+//     ElMessage.error(errorMessage.value);
+//   }
+// });
+
 </script>
 
 <template>
   <div class="verification-container">
     <el-card class="verification-card">
-      <div class="icon-container">
-        <el-icon v-if="verificationStatus === 'verifying'" class="is-loading"><Loading /></el-icon> <!-- Assuming Loading icon exists or use a spinner -->
-        <el-icon v-else-if="verificationStatus === 'success'" class="success-icon"><Check /></el-icon>
-        <el-icon v-else-if="verificationStatus === 'error'" class="error-icon"><CircleClose /></el-icon>
+      <h2>学生邮箱验证</h2>
+      
+      <div v-if="verificationStep === 'request_otp'">
+        <p>请输入您的校园邮箱，我们将发送验证码。</p>
+        <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="requestOtp">
+          <el-form-item prop="email">
+            <el-input v-model="form.email" placeholder="请输入校园邮箱">
+              <template #append>@bjtu.edu.cn</template>
+            </el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="requestOtp" :loading="isSendingOtp" :disabled="isCounting">
+              {{ isCounting ? `${countdown}秒后重新发送` : '获取验证码' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
       </div>
-      <h2>邮箱验证</h2>
-      <p>{{ statusMessage }}</p>
-      <el-button v-if="verificationStatus !== 'verifying'" type="primary" @click="goToLogin" class="login-button">返回登录</el-button>
-       <el-button v-if="verificationStatus === 'success'" type="success" @click="() => router.push('/profile')" class="profile-button">前往个人中心</el-button>
+
+      <div v-else-if="verificationStep === 'verify_otp'">
+        <p style="margin-bottom: 20px;">验证码已发送至 <strong>{{ form.email }}</strong>。请检查您的邮箱。</p>
+        <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="verifyOtp">
+          <el-form-item prop="otp">
+            <el-input v-model="form.otp" placeholder="请输入6位验证码"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="verifyOtp" :loading="isVerifyingOtp">验证邮箱</el-button>
+            <el-button @click="resetToRequest" :disabled="isCounting">重新获取邮箱</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <div v-else-if="verificationStep === 'success'">
+        <div class="icon-container">
+          <el-icon class="success-icon"><Check /></el-icon>
+        </div>
+        <h3>邮箱验证成功！</h3>
+        <p>您的学生身份已成功验证。</p>
+        <el-button type="primary" @click="goToProfile" class="profile-button">前往个人中心</el-button>
+      </div>
+
+      <div v-else-if="verificationStep === 'error'">
+        <div class="icon-container">
+          <el-icon class="error-icon"><CircleClose /></el-icon>
+        </div>
+        <h3>邮箱验证失败</h3>
+        <p>{{ errorMessage }}</p>
+        <el-button type="primary" @click="resetToRequest" class="retry-button">重新验证</el-button>
+      </div>
     </el-card>
   </div>
 </template>
