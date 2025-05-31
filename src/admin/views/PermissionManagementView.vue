@@ -36,7 +36,7 @@
             <div class="user-info">
               <el-avatar
                 :size="40"
-                :src="row.avatar_url"
+                :src="row.avatar_url ? BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + row.avatar_url : ''"
                 class="user-avatar"
               >
                 {{ row.username.charAt(0).toUpperCase() }}
@@ -87,6 +87,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Refresh, User } from '@element-plus/icons-vue';
 import api from '@/API_PRO.js'; // Adjust import path as needed
 import store from '@/store/index.js'; // Import the store
+import BackendConfig from "../../../backend.config"
 
 const loading = ref(false);
 const users = ref([]);
@@ -107,7 +108,8 @@ const fetchUsers = async () => {
   try {
     // Call the API to get all users (requires admin privileges)
     const response = await api.getAllUsersApi(); // Corresponds to GET /api/v1/users/
-    users.value = response;
+    users.value = response || []; // Ensure users.value is always an array
+    console.log('Fetched users:', users.value);
     ElMessage.success('用户列表加载成功');
   } catch (error) {
     console.error('获取用户列表失败:', error);
