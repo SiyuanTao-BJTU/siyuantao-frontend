@@ -111,13 +111,13 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('@/user/views/auth/LoginView.vue'),
-      meta: { hideNavbar: true }
+      meta: { requiresAuth: false, title: '思源淘 - 登录/注册', hideNavbar: true }
     },
     {
-      path: '/verify-email',
-      name: 'verify-email',
-      component: EmailVerificationView,
-      meta: { hideNavbar: true }
+      path: '/email-verification',
+      name: 'email-verification',
+      component: () => import('@/user/views/auth/EmailVerificationView.vue'),
+      meta: { requiresAuth: false, title: '思源淘 - 邮箱验证' }
     },
 
     // 管理员后台布局 (requiresAdminLayout: true)

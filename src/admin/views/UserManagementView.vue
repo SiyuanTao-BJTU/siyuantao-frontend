@@ -128,17 +128,17 @@
             <div class="user-info">
               <el-avatar
                 :size="40"
-                :src="row.avatar_url"
+                :src="row.avatar_url ? BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + row.avatar_url : ''"
                 class="user-avatar"
               >
-                {{ row.username.charAt(0).toUpperCase() }}
+                {{ row.username ? row.username.slice(0, 2).toUpperCase() : '??' }}
               </el-avatar>
               <div class="user-details">
                 <div class="user-name">
                   {{ row.username }}
-                  <el-tag v-if="row.is_staff" type="warning" size="small">管理员</el-tag>
+                  <el-tag v-if="row.is_staff" type="warning" size="small" class="admin-tag">管理员</el-tag>
                 </div>
-                <div class="user-email">{{ row.email }}</div>
+                <div class="user-email">{{ row.email || 'N/A' }}</div>
                 <div class="user-phone" v-if="row.phone_number">{{ row.phone_number }}</div>
               </div>
             </div>
@@ -174,16 +174,9 @@
 
         <el-table-column label="信用分" width="120" sortable>
           <template #default="{ row }">
-            <div class="credit-score">
-              <el-progress
-                :percentage="Math.min(row.credit, 100)"
-                :color="getCreditColor(row.credit)"
-                :stroke-width="8"
-                text-inside
-                class="credit-progress"
-              />
-              <span class="credit-number">{{ row.credit }}</span>
-            </div>
+            <el-tag :color="getCreditColor(row.credit)" effect="dark">
+              {{ row.credit }}
+            </el-tag>
           </template>
         </el-table-column>
 
@@ -198,7 +191,15 @@
 
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <div class="action-buttons">
+            <el-space>
+              <el-button
+                type="primary"
+                size="small"
+                @click="handleEditProfile(row)"
+                link
+              >
+                编辑资料
+              </el-button>
               <el-button
                 type="primary"
                 size="small"
@@ -213,18 +214,23 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="edit">编辑资料</el-dropdown-item>
                     <el-dropdown-item command="credit">调整信用分</el-dropdown-item>
                     <el-dropdown-item
                       :command="row.status === 'Active' ? 'disable' : 'enable'"
                     >
                       {{ row.status === 'Active' ? '禁用用户' : '启用用户' }}
                     </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>删除用户</el-dropdown-item>
+                    <el-dropdown-item
+                      command="delete"
+                      divided
+                      :disabled="!isSuperAdminUser || row.user_id === currentUserId"
+                    >
+                      删除用户
+                    </el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
-            </div>
+            </el-space>
           </template>
         </el-table-column>
       </el-table>
@@ -246,121 +252,132 @@
 
     <!-- 用户详情对话框 -->
     <el-dialog
-      v-model="userDetailVisible"
+      v-model="userDetailDialogVisible"
       title="用户详情"
-      width="800px"
-      :close-on-click-modal="false"
+      width="600px"
+      destroy-on-close
+      @close="() => { selectedUserDetail = null; userDetailError = null; }"
     >
-      <div v-if="selectedUser" class="user-detail-content">
-        <div class="detail-header">
-          <el-avatar :size="80" :src="selectedUser.avatar_url">
-            {{ selectedUser.username.charAt(0).toUpperCase() }}
-          </el-avatar>
-          <div class="detail-info">
-            <h3>{{ selectedUser.username }}</h3>
-            <p>{{ selectedUser.email }}</p>
-            <div class="detail-tags">
-              <el-tag v-if="selectedUser.is_staff" type="warning">管理员</el-tag>
-              <el-tag :type="getStatusType(selectedUser.status)">
-                {{ getStatusText(selectedUser.status) }}
-              </el-tag>
-              <el-tag v-if="selectedUser.is_verified" type="success">已认证</el-tag>
-            </div>
-          </div>
+      <div v-loading="loadingUserDetail">
+        <div v-if="selectedUserDetail">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="用户ID">{{ selectedUserDetail.user_id }}</el-descriptions-item>
+            <el-descriptions-item label="用户名">{{ selectedUserDetail.username }}</el-descriptions-item>
+            <el-descriptions-item label="邮箱">{{ selectedUserDetail.email || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="手机号">{{ selectedUserDetail.phone_number || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="getStatusType(selectedUserDetail.status)">{{ getStatusText(selectedUserDetail.status) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="信用分">{{ selectedUserDetail.credit }}</el-descriptions-item>
+            <el-descriptions-item label="管理员">{{ selectedUserDetail.is_staff ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="超级管理员">{{ selectedUserDetail.is_super_admin ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="已认证">{{ selectedUserDetail.is_verified ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="专业" :span="2">{{ selectedUserDetail.major || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="个人简介" :span="2">{{ selectedUserDetail.bio || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="注册时间" :span="2">{{ formatDate(selectedUserDetail.join_time) }} ({{ getTimeAgo(selectedUserDetail.join_time) }})</el-descriptions-item>
+          </el-descriptions>
         </div>
-        
-        <el-descriptions :column="2" border class="detail-descriptions">
-          <el-descriptions-item label="用户ID">{{ selectedUser.user_id }}</el-descriptions-item>
-          <el-descriptions-item label="专业">{{ selectedUser.major || '未填写' }}</el-descriptions-item>
-          <el-descriptions-item label="手机号">{{ selectedUser.phone_number || '未填写' }}</el-descriptions-item>
-          <el-descriptions-item label="信用分">{{ selectedUser.credit }}</el-descriptions-item>
-          <el-descriptions-item label="注册时间">{{ formatDateTime(selectedUser.join_time) }}</el-descriptions-item>
-          <el-descriptions-item label="最后活跃">{{ getTimeAgo(selectedUser.join_time) }}</el-descriptions-item>
-        </el-descriptions>
-
-        <div v-if="selectedUser.bio" class="user-bio">
-          <h4>个人简介</h4>
-          <p>{{ selectedUser.bio }}</p>
+        <div v-else-if="userDetailError">
+          <p class="error-message">{{ userDetailError }}</p>
         </div>
+        <div v-else style="text-align: center; padding: 20px;">请选择用户查看详情。</div>
       </div>
-      
       <template #footer>
-        <el-button @click="userDetailVisible = false">关闭</el-button>
-        <el-button type="primary" @click="editUser(selectedUser)">编辑用户</el-button>
+        <div class="dialog-footer">
+          <el-button @click="userDetailDialogVisible = false">关闭</el-button>
+        </div>
       </template>
     </el-dialog>
 
-    <!-- 信用分调整对话框 -->
+    <!-- 编辑资料对话框 -->
+    <ProfileEdit
+      :isProfileEditDialogVisible="isProfileEditDialogVisible"
+      :userInfo="selectedUser" 
+      @updateCancel="isProfileEditDialogVisible = false; selectedUser = null"
+      @updateSuccess="handleProfileEditSuccess"
+    />
+
+    <!-- 调整信用分对话框 -->
     <el-dialog
-      v-model="creditAdjustVisible"
-      title="调整信用分"
-      width="500px"
-      :close-on-click-modal="false"
+      v-model="adjustCreditDialogVisible"
+      title="调整用户信用分"
+      width="400px"
+      @close="cancelCreditAdjustment"
     >
-      <div v-if="selectedUser" class="credit-adjust-content">
-        <div class="current-credit">
-          <span>当前信用分：</span>
-          <el-tag type="info" size="large">{{ selectedUser.credit }}</el-tag>
-        </div>
-        
-        <el-form :model="creditForm" :rules="creditRules" ref="creditFormRef" label-width="100px">
-          <el-form-item label="调整类型" prop="type">
-            <el-radio-group v-model="creditForm.type">
-              <el-radio value="add">增加</el-radio>
-              <el-radio value="subtract">减少</el-radio>
-              <el-radio value="set">设置为</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          
-          <el-form-item label="调整数值" prop="amount">
-            <el-input-number
-              v-model="creditForm.amount"
-              :min="1"
-              :max="creditForm.type === 'set' ? 1000 : 100"
-              controls-position="right"
-            />
-            <span class="credit-hint">
-              {{ creditForm.type === 'set' ? '将信用分设置为此值' : `${creditForm.type === 'add' ? '增加' : '减少'}此数值` }}
-            </span>
-          </el-form-item>
-          
-          <el-form-item label="调整原因" prop="reason">
-            <el-input
-              v-model="creditForm.reason"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入调整信用分的原因"
-            />
-          </el-form-item>
-          
-          <div class="preview-result">
-            <span>调整后信用分：</span>
-            <el-tag :type="getPreviewCreditType()" size="large">
-              {{ getPreviewCredit() }}
-            </el-tag>
-          </div>
-        </el-form>
-      </div>
-      
+      <el-form
+        :model="creditAdjustmentForm"
+        :rules="creditRules"
+        ref="creditFormRef"
+        label-width="auto"
+        class="credit-adjustment-form"
+      >
+        <el-form-item label="调整值" prop="credit_adjustment">
+          <el-input-number v-model="creditAdjustmentForm.credit_adjustment" :min="-1000" :max="1000" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="原因" prop="reason">
+          <el-input v-model="creditAdjustmentForm.reason" type="textarea" :rows="3" placeholder="请输入调整信用分的原因" />
+        </el-form-item>
+      </el-form>
+
       <template #footer>
-        <el-button @click="creditAdjustVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitCreditAdjustment">确认调整</el-button>
+        <div class="dialog-footer">
+          <el-button @click="cancelCreditAdjustment">取消</el-button>
+          <el-button type="primary" @click="saveCreditAdjustment">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 禁用/启用用户确认对话框 -->
+    <el-dialog
+      :title="currentChangeStatusAction === 'disable' ? '禁用用户' : '启用用户'"
+      v-model="isConfirmChangeStatusDialogVisible"
+      width="30%"
+      center
+    >
+      <span>确认要{{ currentChangeStatusAction === 'disable' ? '禁用' : '启用' }}用户 <strong>{{ selectedUser ? selectedUser.username : '' }}</strong> 吗？</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="isConfirmChangeStatusDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmChangeStatus">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 删除用户确认对话框 -->
+    <el-dialog
+      title="删除用户"
+      v-model="isConfirmDeleteDialogVisible"
+      width="30%"
+      center
+    >
+      <span>确认要删除用户 <strong>{{ selectedUser ? selectedUser.username : '' }}</strong> 吗？删除后数据不可恢复。</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="isConfirmDeleteDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="confirmDeleteUser">确认删除</el-button>
+        </span>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, computed, onMounted, watch, reactive, nextTick } from 'vue'
+import { useStore } from 'vuex'
+import { ElMessage, ElMessageBox, ElSpace, ElForm, ElDialog, ElDescriptions, ElDescriptionsItem, ElLoading } from 'element-plus'
 import {
   User, Search, Refresh, Download, CircleCheck, CircleClose,
   Select, ArrowDown
 } from '@element-plus/icons-vue'
+import ProfileEdit from '@/user/components/ProfileEdit.vue'
+import FormatObject from '@/utils/format.js'
+import api from '@/API_PRO.js'
+import BackendConfig from "../../../backend.config"
+import { formatDistanceToNow, parseISO } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
 
-import api from '@/API_PRO.js'; // 导入 API
+const store = useStore()
 
-// 响应式数据
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
@@ -370,35 +387,44 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const selectedUsers = ref([])
 
-// 对话框状态
-const userDetailVisible = ref(false)
-const creditAdjustVisible = ref(false)
+const userDetailDialogVisible = ref(false)
+const isProfileEditDialogVisible = ref(false)
+const adjustCreditDialogVisible = ref(false)
 const selectedUser = ref(null)
+const selectedUserDetail = ref(null)
+const isConfirmChangeStatusDialogVisible = ref(false)
+const currentChangeStatusAction = ref('')
+const isConfirmDeleteDialogVisible = ref(false)
 
-// 信用分调整表单
-const creditForm = ref({
-  type: 'add',
-  amount: 10,
-  reason: ''
+const creditAdjustmentForm = reactive({
+  credit_adjustment: 0,
+  reason: '',
 })
 
 const creditRules = {
-  amount: [
-    { required: true, message: '请输入调整数值', trigger: 'blur' },
-    { type: 'number', min: 1, message: '调整数值必须大于0', trigger: 'blur' }
+  credit_adjustment: [
+    { required: true, message: '请输入信用分调整值', trigger: 'blur' },
+    { type: 'number', message: '信用分调整值必须是数字', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        if (!Number.isInteger(value)) {
+            callback(new Error('信用分调整值必须是整数'));
+        } else if (value < -1000 || value > 1000) {
+            callback(new Error('信用分调整值范围为 -1000 到 1000'));
+        } else {
+            callback();
+        }
+    }, trigger: 'blur' }
   ],
   reason: [
     { required: true, message: '请输入调整原因', trigger: 'blur' },
-    { min: 5, message: '原因不能少于5个字符', trigger: 'blur' }
-  ]
+    { max: 200, message: '原因长度不能超过 200 个字符', trigger: 'blur' }
+  ],
 }
 
 const creditFormRef = ref(null)
 
-// 用户数据 (从 API 获取)
-const users = ref([]) // 初始化为空数组
+const users = ref([])
 
-// 计算属性
 const userStats = computed(() => ({
   total: users.value.length,
   active: users.value.filter(u => u.status === 'Active').length,
@@ -409,7 +435,6 @@ const userStats = computed(() => ({
 const filteredUsers = computed(() => {
   let filtered = users.value
 
-  // 搜索筛选
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(user =>
@@ -419,18 +444,15 @@ const filteredUsers = computed(() => {
     )
   }
 
-  // 状态筛选
   if (statusFilter.value) {
     filtered = filtered.filter(user => user.status === statusFilter.value)
   }
 
-  // 认证状态筛选
   if (verificationFilter.value !== '') {
     const isVerified = verificationFilter.value === 'true'
     filtered = filtered.filter(user => user.is_verified === isVerified)
   }
 
-  // 用户类型筛选
   if (typeFilter.value) {
     if (typeFilter.value === 'admin') {
       filtered = filtered.filter(user => user.is_staff)
@@ -448,24 +470,21 @@ const paginatedUsers = computed(() => {
   return filteredUsers.value.slice(start, end)
 })
 
-// 方法
 const refreshUsers = async () => {
   loading.value = true
   try {
-    // 调用实际的API获取用户列表
-    const response = await api.getAllUsersApi();
-    users.value = response;
-    ElMessage.success('用户数据已刷新');
+    const response = await api.getAllUsersApi()
+    users.value = response
+    ElMessage.success('用户数据已刷新')
   } catch (error) {
-    console.error('刷新用户数据失败:', error);
-    ElMessage.error('刷新用户数据失败');
+    console.error('刷新用户数据失败:', error)
+    ElMessage.error('刷新用户数据失败')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 const exportUsers = () => {
-  // 导出用户数据逻辑
   ElMessage.info('导出功能开发中...')
 }
 
@@ -487,8 +506,6 @@ const resetFilters = () => {
 
 const applyFilters = () => {
   currentPage.value = 1
-  // No need to call API again here, computed properties handle filtering
-  ElMessage.success('筛选条件已应用')
 }
 
 const handleSelectionChange = (selection) => {
@@ -504,137 +521,141 @@ const handleCurrentChange = (page) => {
   currentPage.value = page
 }
 
-const viewUserDetail = (user) => {
-  selectedUser.value = user
-  userDetailVisible.value = true
+const viewUserDetail = async (user) => {
+  selectedUserDetail.value = null
+  userDetailDialogVisible.value = true
+  try {
+    const detail = await api.getUserProfileById(user.user_id)
+    selectedUserDetail.value = detail
+  } catch (error) {
+    console.error('获取用户详情失败:', error)
+    ElMessage.error('获取用户详情失败')
+    userDetailDialogVisible.value = false
+  }
 }
 
-const editUser = (user) => {
-  // 编辑用户逻辑
-  ElMessage.info('编辑用户功能开发中...')
-  userDetailVisible.value = false
+const handleEditProfile = (user) => {
+  selectedUser.value = { ...user }
+  isProfileEditDialogVisible.value = true
 }
 
-const handleUserAction = async (command, user) => {
-  selectedUser.value = user
-  
+const handleProfileEditSuccess = () => {
+  isProfileEditDialogVisible.value = false
+  selectedUser.value = null
+  refreshUsers()
+  ElMessage.success('用户资料更新成功！')
+}
+
+const openAdjustCreditDialog = (user) => {
+  currentEditingUser.value = user;
+  creditAdjustmentForm.credit_adjustment = 0;
+  creditAdjustmentForm.reason = '';
+  adjustCreditDialogVisible.value = true;
+  nextTick(() => {
+    if (creditFormRef.value) {
+      creditFormRef.value.resetFields();
+    }
+  });
+};
+
+const saveCreditAdjustment = async () => {
+  if (!creditFormRef.value) return;
+
+  await creditFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await api.adjustUserCredit(
+          currentEditingUser.value.user_id,
+          {
+            credit_adjustment: creditAdjustmentForm.credit_adjustment,
+            reason: creditAdjustmentForm.reason,
+          }
+        );
+        ElMessage.success('信用分调整成功');
+        adjustCreditDialogVisible.value = false;
+        fetchUsers();
+      } catch (error) {
+        console.error('调整信用分失败:', error);
+        const errorMessage = error.response?.data?.detail || '调整信用分失败，请稍后重试';
+        ElMessage.error(errorMessage);
+      }
+    }
+  });
+};
+
+const cancelCreditAdjustment = () => {
+  adjustCreditDialogVisible.value = false;
+  currentEditingUser.value = null;
+  if (creditFormRef.value) {
+    creditFormRef.value.resetFields();
+  }
+};
+
+const handleUserAction = (command, row) => {
+  selectedUser.value = { ...row }
   switch (command) {
     case 'edit':
-      editUser(user)
+      handleEditProfile(row)
       break
     case 'credit':
-      creditAdjustVisible.value = true
+      openAdjustCreditDialog(row)
       break
     case 'disable':
     case 'enable':
-      await toggleUserStatus(user)
+      currentChangeStatusAction.value = command
+      isConfirmChangeStatusDialogVisible.value = true
       break
     case 'delete':
-      await deleteUser(user)
+      if (!isSuperAdminUser.value) {
+        ElMessage.error('您没有权限删除用户。')
+        return
+      }
+      if (row.user_id === currentUserId.value) {
+        ElMessage.warning('您不能删除您自己的账户。')
+        return
+      }
+      isConfirmDeleteDialogVisible.value = true
       break
+    default:
+      console.warn(`Unknown command: ${command}`);
   }
 }
 
-const toggleUserStatus = async (user) => {
-  const action = user.status === 'Active' ? '禁用' : '启用'
-  const newStatus = user.status === 'Active' ? 'Disabled' : 'Active'
-  
+const confirmChangeStatus = async () => {
+  if (!selectedUser.value) return
+  loading.value = true
   try {
-    await ElMessageBox.confirm(
-      `确定要${action}用户 "${user.username}" 吗？`,
-      `${action}用户`,
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    // 调用实际的API更新用户状态
-    await api.updateUserStatus(user.user_id, { status: newStatus });
-    
-    ElMessage.success(`用户已${action}`);
-    refreshUsers(); // 刷新用户列表
+    const newStatus = currentChangeStatusAction.value === 'disable' ? 'Disabled' : 'Active'
+    await api.updateUserStatus(selectedUser.value.user_id, { status: newStatus })
+    ElMessage.success(`用户已${currentChangeStatusAction.value === 'disable' ? '禁用' : '启用'}`)
+    isConfirmChangeStatusDialogVisible.value = false
+    selectedUser.value = null
+    refreshUsers()
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error(`${action}用户失败:`, error);
-      ElMessage.error(`${action}用户失败`);
-    }
+    console.error('更改用户状态失败:', error)
+    ElMessage.error(`更改用户 ${selectedUser.value.username} 状态失败: ${error.response?.data?.detail || error.message}`)
+  } finally {
+    loading.value = false
   }
 }
 
-const deleteUser = async (user) => {
+const confirmDeleteUser = async () => {
+  if (!selectedUser.value) return
+  loading.value = true
   try {
-    await ElMessageBox.confirm(
-      `确定要删除用户 "${user.username}" 吗？此操作不可撤销！`,
-      '删除用户',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'error'
-      }
-    )
-
-    // 调用实际的API删除用户
-    await api.deleteUser(user.user_id);
-    
-    ElMessage.success('用户已删除');
-    refreshUsers(); // 刷新用户列表
-
+    await api.deleteUser(selectedUser.value.user_id)
+    ElMessage.success('用户已删除')
+    isConfirmDeleteDialogVisible.value = false
+    selectedUser.value = null
+    refreshUsers()
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除用户失败:', error);
-      ElMessage.error('删除用户失败');
-    }
+    console.error('删除用户失败:', error)
+    ElMessage.error('删除用户失败')
+  } finally {
+    loading.value = false
   }
 }
 
-const submitCreditAdjustment = async () => {
-  try {
-    await creditFormRef.value.validate()
-    
-    const { type, amount, reason } = creditForm.value
-    let creditAdjustment = 0;
-
-    // 计算 credit_adjustment
-    if (type === 'add') {
-        creditAdjustment = amount;
-    } else if (type === 'subtract') {
-        creditAdjustment = -amount;
-    } else if (type === 'set') {
-         // Calculate the difference to reach the 'set' amount
-         if (selectedUser.value) {
-            creditAdjustment = amount - selectedUser.value.credit;
-         }
-    }
-
-    // 调用实际的API调整信用分
-    await api.adjustUserCredit(selectedUser.value.user_id, {
-      credit_adjustment: creditAdjustment,
-      reason: reason
-    });
-    
-    ElMessage.success('信用分调整成功');
-    creditAdjustVisible.value = false;
-    
-    // 刷新用户列表
-    refreshUsers();
-    
-    // 重置表单
-    creditForm.value = {
-      type: 'add',
-      amount: 10,
-      reason: ''
-    };
-  } catch (error) {
-    if (error !== false) { // 不是表单验证错误
-      console.error('调整信用分失败:', error);
-      ElMessage.error('调整信用分失败');
-    }
-  }
-}
-
-// 辅助方法
 const getStatusType = (status) => {
   return status === 'Active' ? 'success' : 'danger'
 }
@@ -650,221 +671,133 @@ const getCreditColor = (credit) => {
 }
 
 const formatDate = (dateString) => {
-  // Check if dateString is valid
-  if (!dateString) return 'N/A';
-  try {
-    const date = new Date(dateString);
-    // Check if the date is valid after parsing
-    if (isNaN(date.getTime())) return 'Invalid Date';
-    return date.toLocaleDateString('zh-CN');
-  } catch (e) {
-    console.error("Error formatting date:", e);
-    return 'Error';
-  }
-}
-
-const formatDateTime = (dateString) => {
-   // Check if dateString is valid
-  if (!dateString) return 'N/A';
-   try {
-    const date = new Date(dateString);
-    // Check if the date is valid after parsing
-     if (isNaN(date.getTime())) return 'Invalid Date';
-    return date.toLocaleString('zh-CN');
-   } catch (e) {
-    console.error("Error formatting datetime:", e);
-    return 'Error';
-   }
+  if (!dateString) return 'N/A'
+  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+  return new Date(dateString).toLocaleDateString('zh-CN', options)
 }
 
 const getTimeAgo = (dateString) => {
-   // Check if dateString is valid
-   if (!dateString) return 'N/A';
-   try {
+  if (!dateString) return 'N/A'
     const now = new Date()
-    const date = new Date(dateString)
-     if (isNaN(date.getTime())) return 'Invalid Date';
-    const diff = now - date
-    const seconds = Math.floor(diff / 1000);
+  const past = new Date(dateString)
+  const seconds = Math.floor((now - past) / 1000)
 
-    if (seconds < 60) return `${seconds}秒前`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}分钟前`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}小时前`;
+  if (seconds < 60) return `${seconds} 秒前`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} 小时前`
     const days = Math.floor(hours / 24)
-    
-    if (days === 0) return '今天'
-    if (days === 1) return '昨天'
-    if (days < 30) return `${days}天前`
-    if (days < 365) return `${Math.floor(days / 30)}个月前`
-    return `${Math.floor(days / 365)}年前`
-   } catch (e) {
-    console.error("Error calculating time ago:", e);
-    return 'Error';
-   }
-
+  if (days < 30) return `${days} 天前`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} 月前`
+  const years = Math.floor(months / 12)
+  return `${years} 年前`
 }
 
-const getPreviewCredit = () => {
-  if (!selectedUser.value) return 0
-  
-  const { type, amount } = creditForm.value
-  let newCredit = selectedUser.value.credit
-  
-  switch (type) {
-    case 'add':
-      newCredit += amount || 0
-      break
-    case 'subtract':
-      newCredit = Math.max(0, newCredit - (amount || 0))
-      break
-    case 'set':
-      newCredit = amount || 0
-      break
-  }
-  
-  return Math.min(1000, Math.max(0, newCredit))
-}
-
-const getPreviewCreditType = () => {
-  const credit = getPreviewCredit()
-  if (credit >= 80) return 'success'
-  if (credit >= 60) return 'warning'
-  return 'danger'
-}
+const isSuperAdminUser = computed(() => store.getters['user/isSuperAdmin'])
+const currentUserId = computed(() => store.getters['user/getUserInfo']?.user_id)
 
 onMounted(() => {
-  // 初始化数据时调用 API 获取用户列表
-  refreshUsers();
+  refreshUsers()
 })
-
-// Watch for filter changes and reset page (optional, handleFilter already does this)
-// watch([searchQuery, statusFilter, verificationFilter, typeFilter], () => {
-//   currentPage.value = 1;
-// });
 </script>
 
 <style scoped>
-/* 页面背景和内边距 */
 .users-management-container {
-  /* Use the overall light gray background from AdminLayout */
-  background: #F8F9FA; /* Match AdminLayout background */
+  padding: 20px;
+  background-color: #f0f2f5;
+  min-height: calc(100vh - 60px);
 }
 
-/* 页面头部 - Keep unique styling */
 .page-header {
-  margin-bottom: 24px;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 32px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px; /* Keep unique larger radius */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Keep unique larger shadow */
 }
 
-.title-section h1 {
-  font-size: 28px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea, #764ba2); /* Keep unique gradient */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0 0 8px 0;
+.title-section .page-title {
+  font-size: 24px;
+  color: #303133;
+  margin-bottom: 5px;
 }
 
-.page-subtitle {
-  font-size: 16px;
-  color: #64748b;
-  margin: 0;
+.title-section .page-subtitle {
+  font-size: 14px;
+  color: #909399;
 }
 
-.header-actions {
-  display: flex;
-  gap: 12px;
+.header-actions .el-button {
+  margin-left: 10px;
 }
 
-/* 统计卡片 - Keep unique styling */
 .stats-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px; /* Keep unique radius */
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); /* Keep unique shadow */
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  font-size: 36px;
+  margin-right: 15px;
+  padding: 10px;
+  border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-right: 16px;
-  color: #fff;
 }
 
 .stat-icon.total {
-  background: linear-gradient(45deg, #4A90E2, #81c784); /* Keep unique gradient */
+  background-color: #ecf5ff;
+  color: #409eff;
 }
 
 .stat-icon.active {
-  background: linear-gradient(45deg, #67c23a, #90ee90);
+  background-color: #f0f9eb;
+  color: #67c23a;
 }
 
 .stat-icon.disabled {
-  background: linear-gradient(45deg, #f56c6c, #ff99a0);
+  background-color: #fef0f0;
+  color: #f56c6c;
 }
 
 .stat-icon.verified {
-  background: linear-gradient(45deg, #e6a23c, #ffc107);
+  background-color: #fdf6ec;
+  color: #e6a23c;
 }
 
-.stat-icon .el-icon {
+.stat-content .stat-number {
   font-size: 28px;
-}
-
-.stat-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-number {
-  font-size: 24px;
   font-weight: bold;
   color: #303133;
-  margin-bottom: 4px;
 }
 
-.stat-label {
+.stat-content .stat-label {
   font-size: 14px;
-  color: #606266;
+  color: #909399;
 }
 
-/* 筛选区域 */
 .filter-card {
-  margin-bottom: 24px;
-  border-radius: 12px; /* Keep unique radius for filter card */
-  background: rgba(255, 255, 255, 0.95); /* Keep unique background */
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Keep unique shadow */
-}
-
-.filter-card :deep(.el-card__body) {
-  padding: 24px;
+  margin-bottom: 20px;
 }
 
 .filter-section {
@@ -873,263 +806,192 @@ onMounted(() => {
 }
 
 .filter-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 20px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .filter-item {
   display: flex;
   flex-direction: column;
+  flex-basis: 200px;
 }
 
 .filter-item label {
   font-size: 14px;
   color: #606266;
-  margin-bottom: 8px;
-  font-weight: bold;
-}
-
-.filter-item .el-input,
-.filter-item .el-select {
-  width: 100%;
-}
-
-.search-input :deep(.el-input__inner) {
-  border-radius: 8px;
+  margin-bottom: 5px;
 }
 
 .filter-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
 }
 
-/* 用户列表 */
 .table-card {
-  border-radius: 12px; /* Keep unique radius for table card */
-  background: rgba(255, 255, 255, 0.95); /* Keep unique background */
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* Keep unique shadow */
-}
-
-.table-card :deep(.el-card__body) {
-  padding: 24px;
+  margin-bottom: 20px;
 }
 
 .table-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .table-header h3 {
-  font-size: 20px;
+  font-size: 18px;
   color: #303133;
-  margin: 0;
 }
 
-.table-actions .result-count {
+.result-count {
   font-size: 14px;
   color: #909399;
 }
 
-.users-table {
-  width: 100%;
-}
-
-.users-table :deep(.el-table__header th) {
-  background-color: #f8f8f8 !important;
-  color: #606266;
-  font-weight: bold;
-}
-
-.users-table :deep(.el-table__cell) {
-  padding: 12px 0;
-}
-
-/* 用户信息列样式 */
-.user-info {
+.users-table .user-info {
   display: flex;
   align-items: center;
 }
 
-.user-avatar {
-  margin-right: 12px;
+.users-table .user-avatar {
+  margin-right: 10px;
 }
 
-.user-details {
-  justify-content: center;
+.users-table .user-details {
+  display: flex;
+  flex-direction: column;
 }
 
-.user-name {
+.users-table .user-name {
   font-weight: bold;
   color: #303133;
-  margin-bottom: 4px;
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
-.user-email,
-.user-phone {
-  font-size: 13px;
-  color: #909399;
+.users-table .admin-tag {
+  margin-left: 8px;
+  transform: scale(0.8);
+  transform-origin: left center;
 }
 
-.major-text {
-  color: #606266;
-}
-
-/* 状态标签样式 */
-.status-tag {
-  font-weight: bold;
-}
-
-/* 认证状态样式 */
-.verification-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-}
-
-.verified-icon {
-  color: #67c23a;
-}
-
-.unverified-icon {
-  color: #f56c6c;
-}
-
-/* 信用分样式 */
-.credit-score {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.credit-progress {
-  width: 80px;
-}
-
-.credit-number {
-  font-weight: bold;
-}
-
-/* 注册时间样式 */
-.join-time {
-  font-size: 13px;
-  color: #606266;
-}
-
-.time-ago {
+.users-table .user-email,
+.users-table .user-phone {
   font-size: 12px;
   color: #909399;
 }
 
-/* 操作按钮样式 */
+.users-table .major-text {
+  color: #606266;
+}
+
+.users-table .status-tag {
+  min-width: 60px;
+  text-align: center;
+}
+
+.users-table .verification-status {
+  display: flex;
+  align-items: center;
+  color: #606266;
+  font-size: 13px;
+}
+
+.users-table .verification-status .el-icon {
+  margin-right: 5px;
+}
+
+.users-table .verified-icon {
+  color: #67c23a;
+}
+
+.users-table .unverified-icon {
+  color: #909399;
+}
+
+.users-table .credit-score {
+  display: flex;
+  align-items: center;
+}
+
+.users-table .credit-progress {
+  flex-grow: 1;
+  margin-right: 8px;
+}
+
+.users-table .credit-number {
+  font-weight: bold;
+  color: #303133;
+}
+
+.users-table .join-time {
+  font-size: 13px;
+  color: #606266;
+}
+
+.users-table .time-ago {
+  font-size: 12px;
+  color: #909399;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .action-buttons .el-button {
-  padding: 0;
+  padding: 0 5px;
   height: auto;
 }
 
-/* 分页样式 */
+.el-dropdown {
+  vertical-align: middle;
+}
+
 .pagination-wrapper {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
 }
 
-/* 用户详情对话框样式 */
-.user-detail-content {
-  padding: 20px;
-}
-
-.detail-header {
+.detail-content .detail-row {
   display: flex;
-  align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 10px;
 }
 
-.detail-info {
-  margin-left: 20px;
-}
-
-.detail-info h3 {
-  font-size: 24px;
+.detail-content .detail-label {
   font-weight: bold;
   color: #303133;
-  margin: 0 0 8px 0;
+  width: 100px;
+  flex-shrink: 0;
 }
 
-.detail-info p {
-  font-size: 16px;
+.detail-content .detail-value {
   color: #606266;
-  margin: 0 0 12px 0;
+  flex-grow: 1;
 }
 
-.detail-tags .el-tag {
-  margin-right: 8px;
+.dialog-footer {
+  text-align: right;
 }
 
-:deep(.detail-descriptions .el-descriptions__label) {
-  font-weight: 600;
-}
-
-.user-bio h4 {
-  font-size: 16px;
-  color: #303133;
-  margin: 0 0 8px 0;
-}
-
-.user-bio p {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.6;
-}
-
-/* 信用分调整对话框样式 */
-.credit-adjust-content {
-  padding: 20px;
-}
-
-.current-credit {
-  font-size: 16px;
-  color: #606266;
-  margin-bottom: 20px;
-}
-
-.credit-adjust-content .el-form-item {
-  margin-bottom: 20px;
-}
-
-.credit-hint {
-  font-size: 13px;
-  color: #909399;
+.dialog-footer .el-button {
   margin-left: 10px;
 }
 
-.preview-result {
-  margin-top: 20px;
-  font-size: 16px;
-  color: #606266;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.credit-adjustment-form .el-form-item {
+  margin-bottom: 20px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .user-info {
-      flex-direction: column;
-      align-items: flex-start;
-  }
+.credit-adjustment-form .el-input-number {
+  width: 100%;
+}
 
-  .user-details {
-      align-items: flex-start;
-  }
+.credit-adjustment-form .el-input__inner {
+  text-align: left !important;
 }
 </style> 

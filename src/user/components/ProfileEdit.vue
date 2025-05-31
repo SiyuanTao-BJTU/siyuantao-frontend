@@ -3,6 +3,7 @@ import { reactive, ref, onMounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElForm, ElDialog } from 'element-plus'; // Import ElForm and ElDialog
 import { Plus } from '@element-plus/icons-vue'; // Import Plus icon
+import BackendConfig from "../../../backend.config"; // Import BackendConfig
 
 // Assuming api.js exists and has an updateProfile method
 import api from '@/API_PRO.js'; // Import api
@@ -25,7 +26,6 @@ const emits = defineEmits(['updateCancel', 'updateSuccess']);
 const localDialogVisible = ref(props.isProfileEditDialogVisible);
 
 const profileForm = reactive({
-  // username is not editable based on openapi.json, but we can display it
   username: '', // Display username, not editable
   major: '', // Corresponds to 'major' in backend data (openapi.json)
   bio: '', // Corresponds to 'bio' in backend data
@@ -62,7 +62,9 @@ watch(() => props.isProfileEditDialogVisible, (newValue) => {
     profileForm.major = props.userInfo.major || ''; // Use 'major' from backend schema
     profileForm.bio = props.userInfo.bio || '';
     profileForm.phoneNumber = props.userInfo.phone_number || ''; // Use 'phone_number' from backend schema
-    profileForm.avatarUrl = props.userInfo.avatar_url || null;
+    // Construct full avatar URL if avatarUrl is a relative path
+    profileForm.avatarUrl = props.userInfo.avatar_url ? 
+      BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + props.userInfo.avatar_url : null;
   } else if (!newValue && profileFormRef.value) {
       // Optionally reset form when dialog closes
       profileFormRef.value.resetFields();
@@ -72,30 +74,41 @@ watch(() => props.isProfileEditDialogVisible, (newValue) => {
   }
 });
 
+// Custom upload handler for avatar
+const handleAvatarHttpRequest = async (options) => {
+  const formData = new FormData();
+  formData.append('avatar_file', options.file);
+  try {
+    const response = await api.uploadUserAvatar(formData);
+    options.onSuccess(response); // Call onSuccess with the response data
+  } catch (error) {
+    console.error('Avatar upload failed:', error);
+    options.onError(error); // Call onError with the error
+  }
+};
+
 // Handle avatar upload success
-const handleAvatarUploadSuccess = (response, file) => {
-  // TODO: Process successful upload response
-  console.log('Avatar upload success:', response, file);
-  // Assuming the response contains the new avatar URL
-  // profileForm.avatarUrl = response.data.url; // Update avatar preview
-  ElMessage.success('头像上传成功'); // Add to i18n
+const handleAvatarUploadSuccess = (response) => {
+  console.log('Avatar upload success:', response);
+  // Update avatar preview with the URL from backend response, ensuring full path
+  profileForm.avatarUrl = response.avatar_url ? 
+    BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + response.avatar_url : null; 
+  ElMessage.success('头像上传成功');
+  emits('updateSuccess'); // Trigger profile update in parent to refresh user info
 };
 
 // Before avatar upload check
 const beforeAvatarUpload = (rawFile) => {
-  // TODO: Add file type and size validation
-  // if (rawFile.type !== 'image/jpeg') {
-  //   ElMessage.error('Avatar picture must be JPG format!');
-  //   return false;
-  // }
-  // if (rawFile.size / 1024 / 1024 > 2) {
-  //   ElMessage.error('Avatar picture size can not exceed 2MB!');
-  //   return false;
-  // }
-  console.log('Before avatar upload:', rawFile);
-  // Return true to allow upload, false to prevent
-  // For now, we will return true to allow upload framework testing, but need a real upload URL
-  return true; // Allow upload for now
+  const isJPG = rawFile.type === 'image/jpeg' || rawFile.type === 'image/png' || rawFile.type === 'image/gif';
+  const isLt2M = rawFile.size / 1024 / 1024 < 2;
+
+  if (!isJPG) {
+    ElMessage.error('头像图片只能是 JPG/PNG/GIF 格式!');
+  }
+  if (!isLt2M) {
+    ElMessage.error('头像图片大小不能超过 2MB!');
+  }
+  return isJPG && isLt2M;
 };
 
 const saveProfile = async () => {
@@ -109,11 +122,11 @@ const saveProfile = async () => {
     if (valid) {
       try {
         const updateData = { 
+          username: profileForm.username, // Include username
           major: profileForm.major || null, 
           phone_number: profileForm.phoneNumber || null, 
-          bio: profileForm.bio || null, 
-          avatar_url: profileForm.avatarUrl 
-        };
+          bio: profileForm.bio || null,
+        }; // avatar_url is updated via separate API call
         
         // Call the API to update user profile
         const response = await api.updateUserProfile(updateData);
@@ -127,6 +140,7 @@ const saveProfile = async () => {
       }
 
     } else {
+      console.log('Form validation failed');
       ElMessage.error('表单验证失败，请检查输入');
       return false;
     }
@@ -158,8 +172,9 @@ const cancelEdit = () => {
       <el-form-item label="头像">
         <el-upload
           class="avatar-uploader"
-          action="YOUR_UPLOAD_URL"
+          action=""
           :show-file-list="false"
+          :http-request="handleAvatarHttpRequest" 
           :on-success="handleAvatarUploadSuccess"
           :before-upload="beforeAvatarUpload"
         >
@@ -169,9 +184,9 @@ const cancelEdit = () => {
         </el-upload>
       </el-form-item>
 
-      <!-- 用户名 (不可编辑) -->
-      <el-form-item label="用户名">
-        <el-input v-model="profileForm.username" disabled />
+      <!-- 用户名 (可编辑) -->
+      <el-form-item label="用户名" prop="username">
+        <el-input v-model="profileForm.username" />
       </el-form-item>
 
       <!-- 专业 -->

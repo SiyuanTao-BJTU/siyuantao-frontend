@@ -164,6 +164,17 @@ const getUserProfile = () => {
 };
 
 /**
+ * @summary 管理员根据用户 ID 获取用户个人资料
+ * @method GET
+ * @path /api/v1/users/{user_id}
+ * @param {string} userId - 用户的UUID
+ * @note openapi.json lists /api/v1/users/{user_id} for GET.
+ */
+const getUserProfileById = (userId) => {
+  return apiRequest('GET', `/v1/users/${userId}`);
+};
+
+/**
  * @summary 修改当前用户个人信息 (需要认证)
  * @method PUT
  * @path /api/v1/users/me (assuming /user/profile/ maps to this in openapi)
@@ -548,6 +559,36 @@ const getProductsPendingReviewCount = () => Promise.resolve(5); // 模拟数据
 const getPendingReturnsCount = () => Promise.resolve(3); // 模拟数据
 const getLatestReportsCount = () => Promise.resolve(2); // 模拟数据
 
+// 新增：上传用户头像
+/**
+ * @summary 上传用户头像
+ * @method PUT
+ * @path /api/v1/users/me/avatar
+ * @param {FormData} avatarFile - 包含头像文件 (file) 的 FormData 对象
+ * @note openapi.json lists /api/v1/users/me/avatar PUT.
+ */
+const uploadUserAvatar = (avatarFile) => {
+  const formData = new FormData();
+  formData.append('avatar_file', avatarFile);
+  return apiRequest('PUT', '/v1/users/me/avatar', formData, null, true);
+};
+
+const requestPasswordReset = (requestData) => apiRequest('POST', '/v1/auth/request-otp-password-reset', requestData);
+
+const verifyPasswordResetToken = (requestData) => apiRequest('POST', '/v1/auth/verify-otp-and-reset-password', requestData);
+
+const requestOtpForPasswordReset = (requestData) => apiRequest('POST', '/v1/auth/request-otp-password-reset', requestData);
+
+const verifyOtpAndResetPassword = (requestData) => apiRequest('POST', '/v1/auth/verify-otp-and-reset-password', requestData);
+
+const requestStudentVerificationOtp = (requestData) => apiRequest('POST', '/v1/auth/request-verification-email', requestData);
+
+const verifyStudentVerificationOtp = (requestData) => apiRequest('POST', '/v1/auth/verify-email-otp', requestData);
+
+const requestLoginOtp = (requestData) => apiRequest('POST', '/v1/auth/request-login-otp', requestData);
+
+const verifyLoginOtp = (requestData) => apiRequest('POST', '/v1/auth/verify-login-otp', requestData);
+
 // 导出所有 API 函数
 export default {
   // User
@@ -556,6 +597,7 @@ export default {
   userRegister,
   userModifyPassword,
   getUserProfile,
+  getUserProfileById,
   updateUserProfile,
   getUserTradeComments,
   getUserBoughtRecords,
@@ -565,6 +607,15 @@ export default {
   adjustUserCredit,
   deleteUser,
   toggleUserStaffStatus,
+  uploadUserAvatar,
+  requestPasswordReset, // Keep this for compatibility/old forms if they exist, but its body now calls OTP
+  verifyPasswordResetToken, // Keep this for compatibility/old forms, its body now calls OTP
+  requestOtpForPasswordReset, // Explicit new function
+  verifyOtpAndResetPassword, // Explicit new function
+  requestStudentVerificationOtp,
+  verifyStudentVerificationOtp,
+  requestLoginOtp, // New function for passwordless login OTP
+  verifyLoginOtp, // New function for passwordless login
 
   // Product
   getProductList,

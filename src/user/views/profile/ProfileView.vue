@@ -1,6 +1,7 @@
 <script setup>
   import {computed, onMounted, ref} from "vue";
   import api from '@/API_PRO.js'; // 导入新的 API 服务
+  import BackendConfig from "../../../../backend.config"; // Import BackendConfig
   import {
     User,
     Lock,
@@ -64,7 +65,11 @@
           firstName.value = userInfo.first_name || "";
           lastName.value = userInfo.last_name || "";
           bio.value = userInfo.bio || "";
-          avatarUrl.value = userInfo.avatar_url || "";
+          // Construct full avatar URL if avatarUrl is a relative path
+          avatarUrl.value = userInfo.avatar_url ? 
+            BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + userInfo.avatar_url : "";
+          // Also update userProfileResponseData to ensure correct URL is passed to child components
+          userProfileResponseData.value.avatar_url = avatarUrl.value;
 
           if (userInfo.student_profile) {
             student_id.value = userInfo.student_profile.student_id || "";

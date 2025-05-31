@@ -17,7 +17,8 @@
 
 <script>
 import { ref } from 'vue';
-import axiosClient from '@/axios_client/index.js';
+// import axiosClient from '@/axios_client/index.js'; // Removed
+import api from '@/API_PRO.js'; // Added
 import { ElMessage } from 'element-plus';
 
 export default {
@@ -29,11 +30,12 @@ export default {
 
     const requestVerification = async () => {
       try {
-        await axiosClient.post('/v1/users/me/request-student-verification-email', { email: form.value.email });
-        ElMessage.success('验证邮件已发送，请检查您的邮箱。');
+        // await axiosClient.post('/v1/users/me/request-student-verification-email', { email: form.value.email }); // Removed
+        await api.requestStudentVerificationOtp({ email: form.value.email }); // Added
+        ElMessage.success('验证码已发送，请检查您的邮箱。' + ' 如果未收到，请检查垃圾邮件或稍后重试。'); // Modified message
       } catch (error) {
-        console.error('请求验证邮件失败:', error);
-        const errorMessage = error.response?.data?.detail || '请求验证邮件失败，请稍后重试。';
+        console.error('请求验证码失败:', error);
+        const errorMessage = error.response?.data?.detail || '请求验证码失败，请稍后重试。';
         ElMessage.error(errorMessage);
       }
     };
