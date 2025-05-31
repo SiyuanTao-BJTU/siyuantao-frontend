@@ -11,6 +11,13 @@ const cardCount = 20; // 每页显示的卡片数量
 const cardList = ref([]); // 商品卡片列表
 const searchQuery = ref(''); // 搜索框内容
 const componentKey = ref(0); // 用于强制刷新组件
+const categoryFilter = ref('');
+const priceMin = ref('');
+const priceMax = ref('');
+const conditionFilter = ref('');
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 
 // 模拟数据
 const mockCardList = [
@@ -61,14 +68,24 @@ const handleSearch = () => {
     ElMessage.warning('搜索内容不能为空');
     return;
   }
-  api.getProductList({ search: searchQuery.value })
+  const filters = {
+    search: searchQuery.value,
+    category: categoryFilter.value,
+    priceMin: priceMin.value,
+    priceMax: priceMax.value,
+    condition: conditionFilter.value,
+    page: currentPage.value,
+    pageSize: pageSize.value
+  };
+  api.getProductList(filters)
     .then(data => {
       // Ensure img is an array for PurchaseGoodsCard
-      cardList.value = data.map(item => ({
+      cardList.value = data.list.map(item => ({
         ...item,
         img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
       }));
-      if (!data || data.length === 0) {
+      total.value = data.total;
+      if (!data.list || data.list.length === 0) {
         ElMessage.info('未找到相关商品');
         cardList.value = []; // 清空列表，显示"暂无商品"
       }
@@ -82,23 +99,31 @@ const handleSearch = () => {
 };
 
 const recommendCall = () => {
-  // Passing null or empty object if no specific filters are needed for "recommendations"
-  // The API_PRO.js change will ensure it hits /products/
-  api.getProductList(null) 
+  const filters = {
+    category: categoryFilter.value,
+    priceMin: priceMin.value,
+    priceMax: priceMax.value,
+    condition: conditionFilter.value,
+    page: currentPage.value,
+    pageSize: pageSize.value
+  };
+  api.getProductList(filters) 
     .then(data => {
-      if (data && data.length > 0) { // 检查API是否返回数据
+      if (data && data.list.length > 0) { // 检查API是否返回数据
         // Ensure img is an array for PurchaseGoodsCard
-        cardList.value = data.map(item => ({
+        cardList.value = data.list.map(item => ({
           ...item,
           img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
         })); // 使用API数据
+        total.value = data.total;
         // 根据API数据填充顶部推荐商品，如果不足3个，保持空对象
-        top_item_1.value = data[0] || {}; 
-        top_item_2.value = data[1] || {};
-        top_item_3.value = data[2] || {};
+        top_item_1.value = data.list[0] || {}; 
+        top_item_2.value = data.list[1] || {};
+        top_item_3.value = data.list[2] || {};
       } else { // 如果API没有返回数据，使用模拟数据
         ElMessage.info('API未返回商品，显示模拟数据');
         cardList.value = mockCardList;
+        total.value = mockCardList.length;
         // 使用模拟数据填充顶部推荐商品 (假设模拟数据至少有3个，否则也需要处理)
          top_item_1.value = mockCardList[0] || {}; 
          top_item_2.value = mockCardList[1] || {};
@@ -109,6 +134,7 @@ const recommendCall = () => {
       console.error("Recommend API failure:", error);
       ElMessage.error('获取推荐商品失败，显示模拟数据');
       cardList.value = mockCardList; // API 调用失败时也显示模拟数据
+      total.value = mockCardList.length;
        // 使用模拟数据填充顶部推荐商品 (假设模拟数据至少有3个)
        top_item_1.value = mockCardList[0] || {}; 
        top_item_2.value = mockCardList[1] || {};
@@ -124,10 +150,25 @@ const handleTagClick = (tag) => {
   handleSearch(); // handleSearch already uses { search: searchQuery.value }
 };
 
+const handleFilter = () => {
+  handleSearch();
+}
+
+const handleSizeChange = (newSize) => {
+  pageSize.value = newSize;
+  handleSearch();
+}
+
+const handleCurrentChange = (newPage) => {
+  currentPage.value = newPage;
+  handleSearch();
+}
+
 onMounted(() => {
   recommendCall()
 });
 </script>
+
 
 <template>
   <div class="basic-container">
@@ -144,6 +185,53 @@ onMounted(() => {
         </template>
       </el-input>
 
+      <!-- 筛选区域 -->
+      <el-card class="filter-card" shadow="never">
+        <div class="filter-content">
+          <div class="filter-row">
+            <el-select
+              v-model="categoryFilter"
+              placeholder="商品分类"
+              clearable
+              @change="handleFilter"
+              class="filter-select"
+            >
+              <el-option label="电子产品" value="electronics" />
+              <el-option label="书籍文具" value="books" />
+              <el-option label="生活用品" value="daily" />
+              <el-option label="服装配饰" value="clothing" />
+              <el-option label="其他" value="others" />
+            </el-select>
+            <el-input
+              v-model="priceMin"
+              placeholder="最低价格"
+              clearable
+              @input="handleFilter"
+              class="price-input"
+            />
+            <el-input
+              v-model="priceMax"
+              placeholder="最高价格"
+              clearable
+              @input="handleFilter"
+              class="price-input"
+            />
+            <el-select
+              v-model="conditionFilter"
+              placeholder="新旧程度"
+              clearable
+              @change="handleFilter"
+              class="filter-select"
+            >
+              <el-option label="全新" value="new" />
+              <el-option label="九成新" value="90%" />
+              <el-option label="八成新" value="80%" />
+              <el-option label="七成新" value="70%" />
+              <el-option label="六成新及以下" value="60% and below" />
+            </el-select>
+          </div>
+        </div>
+      </el-card>
 
       <!-- 商品列表区域 -->
       <div class="item-info-block" v-if="cardList.length !== 0">
@@ -165,6 +253,18 @@ onMounted(() => {
                 :key="card.id || componentKey"
             />
           </div>
+        </div>
+        <!-- 分页 -->
+        <div class="pagination-wrapper">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
         </div>
       </div>
       <div v-else class="empty-block">

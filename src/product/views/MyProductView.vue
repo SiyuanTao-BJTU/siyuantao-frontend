@@ -68,6 +68,71 @@ const fetch_room_list = () => {
   componentKey.value += 1;
 }
 
+const editProduct = (productId) => {
+  router.push(`/product/edit/${productId}`);
+}
+
+const deleteProduct = async (productId) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除此商品吗？',
+      '删除商品',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    
+    const response = await api.deleteProduct(productId);
+    if (response?.code === 0) {
+      ElMessage.success('商品删除成功');
+      fetch_room_list();
+    } else {
+      ElMessage.error('商品删除失败');
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Delete product failed:', error);
+      ElMessage.error('商品删除失败');
+    }
+  }
+}
+
+const toggleStatus = async (product) => {
+  try {
+    const newStatus = product.status === 'published' ? 'draft' : 'published';
+    
+    let newStatusText = '';
+    if (newStatus === 'published') newStatusText = '上架';
+    else if (newStatus === 'draft') newStatusText = '下架';
+
+    await ElMessageBox.confirm(
+      `确定要将商品状态更改为 ${newStatusText} 吗？`,
+      '更改商品状态',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+
+    const response = await api.updateProductStatus(product.id, newStatus);
+    if (response?.code === 0) {
+      ElMessage.success(`商品状态更新成功为 ${newStatusText}`);
+      product.status = newStatus;
+      fetch_room_list();
+    } else {
+      ElMessage.error('商品状态更新失败');
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Update product status failed:', error);
+      ElMessage.error('商品状态更新失败');
+    }
+  }
+}
+
 onMounted(() => {
   fetch_room_list();
 })
@@ -105,6 +170,13 @@ onMounted(() => {
                           <p id="card-info-description">{{item.description}}</p>
                           <p id="card-info-price">￥{{item.price}}</p>
                         </div>
+                      </div>
+                      <div class="action-buttons">
+                        <el-button size="small" @click="editProduct(item.id)">编辑</el-button>
+                        <el-button size="small" type="danger" @click="deleteProduct(item.id)">删除</el-button>
+                        <el-button size="small" :type="item.status === 'published' ? 'warning' : 'success'" @click="toggleStatus(item)">
+                          {{ item.status === 'published' ? '下架' : '上架' }}
+                        </el-button>
                       </div>
                     </el-card>
                   </div>

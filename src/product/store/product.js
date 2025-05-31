@@ -1,3 +1,5 @@
+import api from '@/API_PRO.js';
+
 const state = () => ({
   // 商品模块的状态
   productList: [], // 商品列表
@@ -31,13 +33,83 @@ const mutations = {
 const actions = {
   // 商品模块的 actions (异步操作，通常涉及 API 调用)
   // 对应 TODO: 3. 商品模块
-  async fetchProductList({ commit }, params) { /* 获取商品列表 */ },
-  async fetchProductDetail({ commit }, productId) { /* 获取商品详情 */ },
-  async createProduct({ commit }, productData) { /* 创建商品 */ },
-  async updateProduct({ commit }, productData) { /* 更新商品 */ },
-  async deleteProduct({ commit }, productId) { /* 删除商品 */ },
-  async toggleFavorite({ commit }, productId) { /* 切换收藏状态 */ },
-  async fetchUserFavorites({ commit }) { /* 获取用户收藏列表 */ },
+  async fetchProductList({ commit }, params) {
+    commit('SET_LOADING', true);
+    try {
+      const response = await api.getProductList(params);
+      commit('SET_PRODUCT_LIST', response.data);
+    } catch (error) {
+      console.error('Fetch product list failed:', error);
+    } finally {
+      commit('SET_LOADING', false);
+    }
+  },
+  async fetchProductDetail({ commit }, productId) {
+    commit('SET_LOADING', true);
+    try {
+      const response = await api.getProductDetail(productId);
+      commit('SET_PRODUCT_DETAIL', response.data);
+    } catch (error) {
+      console.error('Fetch product detail failed:', error);
+    } finally {
+      commit('SET_LOADING', false);
+    }
+  },
+  async createProduct({ commit }, productData) {
+    commit('SET_LOADING', true);
+    try {
+      await api.createProduct(productData);
+      // 可以在这里添加刷新商品列表的逻辑
+    } catch (error) {
+      console.error('Create product failed:', error);
+    } finally {
+      commit('SET_LOADING', false);
+    }
+  },
+  async updateProduct({ commit }, productData) {
+    commit('SET_LOADING', true);
+    try {
+      await api.updateProduct(productData.id, productData);
+      // 可以在这里添加刷新商品列表的逻辑
+    } catch (error) {
+      console.error('Update product failed:', error);
+    } finally {
+      commit('SET_LOADING', false);
+    }
+  },
+  async deleteProduct({ commit }, productId) {
+    commit('SET_LOADING', true);
+    try {
+      await api.deleteProduct(productId);
+      // 可以在这里添加刷新商品列表的逻辑
+    } catch (error) {
+      console.error('Delete product failed:', error);
+    } finally {
+      commit('SET_LOADING', false);
+    }
+  },
+  async toggleFavorite({ commit }, productId) {
+    commit('SET_LOADING', true);
+    try {
+      await api.toggleFavorite(productId);
+      // 可以在这里添加刷新用户收藏列表的逻辑
+    } catch (error) {
+      console.error('Toggle favorite failed:', error);
+    } finally {
+      commit('SET_LOADING', false);
+    }
+  },
+  async fetchUserFavorites({ commit }) {
+    commit('SET_LOADING', true);
+    try {
+      const response = await api.getUserFavorites();
+      commit('SET_USER_FAVORITES', response.data);
+    } catch (error) {
+      console.error('Fetch user favorites failed:', error);
+    } finally {
+      commit('SET_LOADING', false);
+    }
+  },
   // async fetchUserProducts({ commit }, userId) { /* 获取用户发布的商品列表 */ },
   // async activateProduct({ commit }, productId) { /* 管理员激活商品 */ },
   // async rejectProduct({ commit }, productId) { /* 管理员拒绝商品 */ },

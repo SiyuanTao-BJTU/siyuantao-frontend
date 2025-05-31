@@ -8,6 +8,12 @@ const router = useRouter();
 
 const userProducts = ref([]);
 const isLoading = ref(false);
+const isPublishDialogVisible = ref(false);
+const productName = ref('');
+const productDescription = ref('');
+const productPrice = ref('');
+const fileList = ref([]);
+const uploadUrl = ref('your_upload_api_url');
 
 const fetchUserProducts = async () => {
   isLoading.value = true;
@@ -96,6 +102,38 @@ const getStatusText = (status) => {
   return status; // Fallback
 };
 
+const publishProduct = async () => {
+  try {
+    const formData = new FormData();
+    formData.append('name', productName.value);
+    formData.append('description', productDescription.value);
+    formData.append('price', productPrice.value);
+    fileList.value.forEach(file => {
+      formData.append('images', file.raw);
+    });
+
+    const response = await api.publishProduct(formData);
+    if (response?.code === 0) {
+      ElMessage.success('商品发布成功');
+      isPublishDialogVisible.value = false;
+      fetchUserProducts();
+    } else {
+      ElMessage.error('商品发布失败');
+    }
+  } catch (error) {
+    console.error('Publish product failed:', error);
+    ElMessage.error('商品发布失败');
+  }
+}
+
+const handleUploadSuccess = (response, file, fileList) => {
+  ElMessage.success('图片上传成功');
+}
+
+const handleUploadError = (error, file, fileList) => {
+  ElMessage.error('图片上传失败');
+}
+
 onMounted(() => {
   fetchUserProducts();
 });
@@ -152,9 +190,42 @@ onMounted(() => {
           </div>
         </div>
       </el-card>
+
+      <!-- 商品发布表单 -->
+      <el-dialog
+        v-model="isPublishDialogVisible"
+        title="发布商品"
+        width="800px"
+      >
+        <template #content>
+          <form @submit.prevent="publishProduct">
+            <el-input v-model="productName" placeholder="商品名称"></el-input>
+            <el-input v-model="productDescription" placeholder="商品描述"></el-input>
+            <el-input v-model="productPrice" placeholder="商品价格"></el-input>
+            <el-upload
+              :action="uploadUrl"
+              :multiple="true"
+              :limit="5"
+              :on-success="handleUploadSuccess"
+              :on-error="handleUploadError"
+              :file-list="fileList"
+            >
+              <el-button slot="trigger" type="primary">选择图片</el-button>
+              <template #tip>
+                <div class="el-upload__tip">最多上传5张图片</div>
+              </template>
+            </el-upload>
+            <el-button type="primary" @click="publishProduct">发布</el-button>
+          </form>
+        </template>
+        <template #footer>
+          <el-button @click="isPublishDialogVisible = false">取消</el-button>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
+
 
 <style scoped>
 .basic-container {

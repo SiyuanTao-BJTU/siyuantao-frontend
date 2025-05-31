@@ -148,7 +148,7 @@
 
 ### 3.1 商品浏览、搜索与收藏 (开发者 B)
 
-*   `[ ] TODO: (开发者 B)` 实现商品列表页面 (`frontend/src/product/views/HomeView.vue`)：
+*   `[√] TODO: (开发者 B)` 实现商品列表页面 (`frontend/src/product/views/HomeView.vue`)：
     *   布局：商品卡片展示、侧边/顶部筛选区域、搜索框。
     *   商品卡片组件 (`frontend/src/components/product/ProductCard.vue`)：显示商品图片、标题、价格、发布者、简要描述。
     *   调用 API 获取商品列表。
@@ -156,7 +156,7 @@
     *   实现筛选功能 (按分类、价格区间、新旧程度等)。
     *   实现分页或无限滚动加载。
     *   实现加载状态和空状态展示。
-*   `[ ] TODO: (开发者 B)` 实现商品详情组件 (`frontend/src/components/product/ProductDetail.vue`)：
+*   `[√] TODO: (开发者 B)` 实现商品详情组件 (`frontend/src/components/product/ProductDetail.vue`)：
     *   商品图片轮播组件。
     *   显示详细商品信息（标题、描述、价格、数量、分类、新旧程度）。
     *   显示发布者信息。
@@ -171,13 +171,13 @@
 
 ### 3.2 商品发布与管理 (开发者 B)
 
-*   `[ ] TODO: (开发者 B)` 实现商品发布/编辑页面 (`frontend/src/product/views/ProductPostView.vue`)：
+*   `[√] TODO: (开发者 B)` 实现商品发布/编辑页面 (`frontend/src/product/views/ProductPostView.vue`)：
     *   表单输入（标题、描述、分类、新旧程度、数量、价格）。
     *   图片上传组件：支持多图上传、预览、删除、数量限制、调用后端文件上传 API。
     *   前端表单验证。
     *   调用发布 API 或编辑 API。
     *   处理成功/失败提示和页面跳转。
-*   `[ ] TODO: (开发者 B)` 实现用户发布的商品列表页面 (`frontend/src/product/views/MyProductView.vue`)：
+*   `[√] TODO: (开发者 B)` 实现用户发布的商品列表页面 (`frontend/src/product/views/MyProductView.vue`)：
     *   显示当前用户发布的商品列表。
     *   提供编辑、删除、上架/下架操作按钮。
     *   调用 API 获取列表。
@@ -332,3 +332,4 @@
 3.  **每日更新:** 每位开发者在完成任务、开始新任务或遇到阻塞时，更新对应的 TODO 项状态（`[ ]` 到 `[√] DONE:`，或者 `[!] OPTIONAL:`，`[#] PENDING:`）。
 4.  **定期评审:** 在每周的项目会议中，团队可以过一遍这个文档，了解整体进度，讨论阻塞点，并重新分配任务。
 5.  **Git 版本控制:** 将这个 `TODO.md` 文件纳入 Git 版本控制，确保所有成员都在同一个最新版本上工作。每次更新后提交。
+

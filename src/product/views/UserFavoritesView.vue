@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus';
 import { useRouter } from 'vue-router';
 
 // Assuming api.js exists and has getUserFavorites and removeFavorite methods
-// import api from '@/API_PRO.js';
+ import api from '@/API_PRO.js';
 
 // Assuming PurchaseGoodsCard or a similar component exists for displaying products
 import PurchaseGoodsCard from '@/product/components/PurchaseGoodsCard.vue'; 
