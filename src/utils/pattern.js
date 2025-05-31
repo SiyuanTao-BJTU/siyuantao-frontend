@@ -7,7 +7,7 @@ const PatternCheck = {
      * @param password
      * @type {RegExp}
      */
-    const reg = /^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z]{6,20}$/;
+    const reg = /^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z@]{6,20}$/;
 
     if (password.length < 6 || password.length > 20) {
       return { valid: false, error: "密码长度应为 6 到 20 个字符" };
@@ -19,7 +19,7 @@ const PatternCheck = {
       return { valid: false, error: "密码不能只包含字母" };
     }
     if (!reg.test(password)) {
-      return { valid: false, error: "密码包含非法字符，只能包含数字和字母" };
+      return { valid: false, error: "密码包含非法字符" };
     }
 
     return { valid: true, error: null };

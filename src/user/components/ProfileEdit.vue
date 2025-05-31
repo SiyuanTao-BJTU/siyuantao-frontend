@@ -76,8 +76,19 @@ watch(() => props.isProfileEditDialogVisible, (newValue) => {
 
 // Custom upload handler for avatar
 const handleAvatarHttpRequest = async (options) => {
+  console.log('handleAvatarHttpRequest called. options.file:', options.file);
+  console.log('options.file type:', typeof options.file);
+  if (options.file) {
+    console.log('options.file name:', options.file.name);
+    console.log('options.file size:', options.file.size);
+    console.log('options.file type (MIME):', options.file.type);
+  }
   const formData = new FormData();
   formData.append('avatar_file', options.file);
+  // Also log the FormData content (for debugging, might be complex for large files)
+  for (let pair of formData.entries()) {
+    console.log(pair[0]+ ', ' + pair[1]);
+  }
   try {
     const response = await api.uploadUserAvatar(formData);
     options.onSuccess(response); // Call onSuccess with the response data

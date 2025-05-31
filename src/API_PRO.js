@@ -12,11 +12,10 @@ import axiosClient from './axios_client/index.js'; // 导入 axiosClient
  * @param {string} path - API 路径 (例如 /user/login/)
  * @param {object|null} data - 请求体数据 (用于 POST, PUT)
  * @param {object|null} params - URL 查询参数 (用于 GET)
- * @param {boolean} isFormData - 指示请求体是否为 FormData (用于文件上传)
- * @param {string|null} contentType - 可选，手动指定 Content-Type 头部
+ * @param {string} contentType - 可选，手动指定 Content-Type 头部
  * @returns {Promise<any>} - API 响应数据
  */
-const apiRequest = async (method, path, data = null, params = null, isFormData = false, contentType = null) => {
+const apiRequest = async (method, path, data = null, params = null, contentType = 'application/json') => {
   // const url = `${BASE_URL}${path}`; // REMOVED
   
   // ---- 实际项目中需要处理认证 Token ----
@@ -44,16 +43,7 @@ const apiRequest = async (method, path, data = null, params = null, isFormData =
   // Set Content-Type based on parameters, prioritize explicit contentType
   if (contentType) {
     config.headers['Content-Type'] = contentType;
-  } else if (isFormData) {
-    config.headers['Content-Type'] = 'multipart/form-data';
-  } else {
-    // Default to application/json if data is present and not form data
-    // Axios often does this automatically for objects, but explicit is clear
-    if (data !== null) {
-       config.headers['Content-Type'] = 'application/json';
-    }
   }
-
 
   if (data) {
     config.data = data;
@@ -109,7 +99,7 @@ const userLogin = (credentials) => {
     formData.append(key, credentials[key]);
   }
   // 指定 Content-Type 为 application/x-www-form-urlencoded
-  return apiRequest('POST', '/v1/auth/login', formData, null, false, 'application/x-www-form-urlencoded');
+  return apiRequest('POST', '/v1/auth/login', formData, null, 'application/x-www-form-urlencoded');
 };
 
 /**
@@ -564,13 +554,12 @@ const getLatestReportsCount = () => Promise.resolve(2); // 模拟数据
  * @summary 上传用户头像
  * @method PUT
  * @path /api/v1/users/me/avatar
- * @param {FormData} avatarFile - 包含头像文件 (file) 的 FormData 对象
+ * @param {FormData} formData - 包含头像文件 (file) 的 FormData 对象
  * @note openapi.json lists /api/v1/users/me/avatar PUT.
  */
-const uploadUserAvatar = (avatarFile) => {
-  const formData = new FormData();
-  formData.append('avatar_file', avatarFile);
-  return apiRequest('PUT', '/v1/users/me/avatar', formData, null, true);
+const uploadUserAvatar = (formData) => {
+  // 这里的 formData 已经是 ProfileEdit.vue 中创建并附加了文件的 FormData 对象
+  return apiRequest('PUT', '/v1/users/me/avatar', formData, null, 'multipart/form-data');
 };
 
 const requestPasswordReset = (requestData) => apiRequest('POST', '/v1/auth/request-otp-password-reset', requestData);
