@@ -1,0 +1,511 @@
+<script setup>
+import { onMounted, ref, reactive, watch, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox, ElForm, ElDialog, ElUpload } from 'element-plus';
+import { Plus, Close } from '@element-plus/icons-vue';
+import api from '@/API_PRO.js';
+import BackendConfig from '../../../backend.config'; // Import BackendConfig
+
+const router = useRouter();
+
+// 定义 props
+const props = defineProps({
+  isDialogVisible: Boolean,
+  isEditMode: {
+    type: Boolean,
+    default: false,
+  },
+  productId: {
+    type: String,
+    default: null,
+  },
+});
+
+// 定义 emits
+const emits = defineEmits(['update:isDialogVisible', 'updateSuccess', 'updateCancel']);
+
+const localDialogVisible = ref(props.isDialogVisible);
+
+// 商品表单数据
+const productForm = reactive({
+  product_name: '',
+  description: '',
+  price: null,
+  category: '',
+  condition: '',
+  image_urls: [], // 用于显示已有的图片，可能从后端获取
+  image_files: [], // 用于存储待上传的图片文件
+});
+
+// 表单验证规则
+const rules = {
+  product_name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
+  description: [{ required: true, message: '请输入商品描述', trigger: 'blur' }],
+  price: [
+    { required: true, message: '请输入商品价格', trigger: 'blur' },
+    { type: 'number', message: '价格必须是数字', trigger: 'blur', transform: (value) => Number(value) },
+    { min: 0.01, message: '价格必须大于0', trigger: 'blur', type: 'number' }
+  ],
+  category: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
+  condition: [{ required: true, message: '请选择商品成色', trigger: 'change' }],
+  image_files: [
+    {
+      validator: (rule, value, callback) => {
+        if (productForm.image_urls.length === 0 && productForm.image_files.length === 0) {
+          callback(new Error('请至少上传一张商品图片'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'change',
+    },
+  ],
+};
+
+const productFormRef = ref(null); // 表单引用
+
+// 重置表单
+const resetForm = () => {
+  productForm.product_name = '';
+  productForm.description = '';
+  productForm.price = null;
+  productForm.category = '';
+  productForm.condition = '';
+  productForm.image_urls = [];
+  productForm.image_files = [];
+  if (productFormRef.value) {
+    productFormRef.value.clearValidate(); // 清除验证状态
+  }
+};
+
+// 监听 props.isDialogVisible 的变化
+watch(() => props.isDialogVisible, (newValue) => {
+  localDialogVisible.value = newValue;
+  if (newValue) {
+    // 弹窗打开时，如果是编辑模式，则获取商品详情
+    if (props.isEditMode && props.productId) {
+      fetchProductDetail(props.productId);
+    } else {
+      // 发布模式，重置表单
+      resetForm();
+    }
+  } else {
+    // 弹窗关闭时，重置表单和验证状态
+    if (productFormRef.value) {
+      productFormRef.value.resetFields();
+    }
+    resetForm(); // 确保手动重置所有字段
+  }
+}, { immediate: true });
+
+// 监听 localDialogVisible 的变化，将其同步回父组件
+watch(localDialogVisible, (newValue) => {
+  emits('update:isDialogVisible', newValue);
+});
+
+// 获取商品详情 (编辑模式下)
+const fetchProductDetail = async (id) => {
+  try {
+    const response = await api.getProductDetail(id);
+    if (response) {
+      productForm.product_name = response.product_name;
+      productForm.description = response.description;
+      productForm.price = response.price;
+      productForm.category = response.category;
+      productForm.condition = response.condition;
+      // 确保图片 URL 包含完整路径
+      productForm.image_urls = response.image_urls ? 
+        response.image_urls.map(url => {
+            const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
+            return (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) + (url.startsWith('/') ? url : '/' + url);
+        }) : [];
+      // 清空待上传文件列表
+      productForm.image_files = [];
+    } else {
+      ElMessage.error('获取商品详情失败');
+      // 关闭弹窗
+      emits('updateCancel');
+    }
+  } catch (error) {
+    console.error('获取商品详情失败:', error);
+    ElMessage.error('获取商品详情失败');
+    // 关闭弹窗
+    emits('updateCancel');
+  }
+};
+
+// 图片上传相关
+const handleImageUpload = async (options) => {
+  const file = options.file;
+  productForm.image_files.push(file); // 将文件添加到待上传列表
+  // 仅在前端显示预览，实际上传在提交表单时进行
+  options.onSuccess(); // 假装上传成功，让 Element Plus 显示文件
+};
+
+const handleRemoveImage = (file) => {
+  // 从 image_files 中移除文件
+  const index = productForm.image_files.findIndex(f => f.uid === file.uid);
+  if (index !== -1) {
+    productForm.image_files.splice(index, 1);
+  }
+  // 如果是已有的图片（通过 image_urls 显示的），则需要特殊处理
+  // 这里简化处理，直接移除，实际项目中可能需要额外的删除图片API
+  const urlIndex = productForm.image_urls.indexOf(file.url);
+  if (urlIndex !== -1) {
+    productForm.image_urls.splice(urlIndex, 1);
+  }
+  // 手动触发图片验证
+  if (productFormRef.value) {
+    nextTick(() => {
+      productFormRef.value.validateField('image_files');
+    });
+  }
+};
+
+const beforeImageUpload = (rawFile) => {
+  const isLt2M = rawFile.size / 1024 / 1024 < 2;
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!');
+  }
+  // 检查文件类型
+  const isValidType = ['image/jpeg', 'image/png', 'image/gif'].includes(rawFile.type);
+  if (!isValidType) {
+    ElMessage.error('图片只能是 JPG/PNG/GIF 格式!');
+  }
+  return isLt2M && isValidType;
+};
+
+// 提交表单（发布或更新）
+const handleSubmit = async () => {
+  if (!productFormRef.value) return;
+
+  await productFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        let uploadedImageUrls = [];
+        // 如果有新上传的图片文件，先上传它们
+        if (productForm.image_files.length > 0) {
+          const formData = new FormData();
+          productForm.image_files.forEach((file, index) => {
+            formData.append(`image${index + 1}`, file.raw); // 后端可能需要具体的字段名，例如 image1, image2
+          });
+          // 假设 imagesUploadCreate 返回一个包含所有上传图片 URL 的数组
+          const uploadResponse = await api.imagesUploadCreate(formData);
+          if (uploadResponse && Array.isArray(uploadResponse.image_urls)) {
+            uploadedImageUrls = uploadResponse.image_urls;
+          } else {
+            ElMessage.error('图片上传失败');
+            return;
+          }
+        }
+
+        const finalImageUrls = [...productForm.image_urls.map(url => {
+            const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
+            return url.replace((baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl), '').replace(/^\//, '');
+        }), ...uploadedImageUrls]; // 合并已有和新上传的图片URL，并去除后端BASE_URL和开头的斜杠
+
+        const submitData = {
+          product_name: productForm.product_name,
+          description: productForm.description,
+          price: productForm.price,
+          category: productForm.category,
+          condition: productForm.condition,
+          image_urls: finalImageUrls, // 提交给后端的图片URL列表
+        };
+
+        if (props.isEditMode && props.productId) {
+          // 更新商品
+          await api.updateProduct(props.productId, submitData);
+          ElMessage.success('商品更新成功');
+        } else {
+          // 发布商品
+          await api.createProduct(submitData);
+          ElMessage.success('商品发布成功');
+        }
+        emits('updateSuccess');
+        localDialogVisible.value = false;
+      } catch (error) {
+        console.error('商品操作失败:', error);
+        ElMessage.error('商品操作失败：' + (error.response?.data?.detail || error.message));
+      }
+    } else {
+      ElMessage.error('表单验证失败，请检查输入');
+    }
+  });
+};
+
+const handleCancel = () => {
+  localDialogVisible.value = false;
+  emits('updateCancel');
+};
+
+// 组件挂载时如果是在编辑模式且有productId，则加载数据
+onMounted(() => {
+  if (props.isEditMode && props.productId) {
+    fetchProductDetail(props.productId);
+  }
+});
+</script>
+
+<template>
+  <el-dialog
+    v-model="localDialogVisible"
+    :title="props.isEditMode ? '编辑商品信息' : '发布新商品'"
+    width="600px"
+    :before-close="handleCancel"
+    destroy-on-close
+    class="product-post-dialog"
+  >
+    <el-form
+      :model="productForm"
+      :rules="rules"
+      ref="productFormRef"
+      label-width="80px"
+      class="product-form"
+    >
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="商品名称" prop="product_name">
+            <el-input v-model="productForm.product_name" placeholder="请输入商品名称，简洁明了" clearable />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="商品描述" prop="description">
+            <el-input
+              type="textarea"
+              v-model="productForm.description"
+              :rows="5"
+              placeholder="请详细描述商品特点、状况及交易方式等"
+              clearable
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="商品价格" prop="price">
+            <el-input-number
+              v-model="productForm.price"
+              :min="0.01"
+              :precision="2"
+              controls-position="right"
+              placeholder="请输入价格"
+              style="width: 100%;"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="商品分类" prop="category">
+            <el-select v-model="productForm.category" placeholder="请选择商品分类" style="width: 100%;">
+              <el-option label="电子产品" value="electronics"></el-option>
+              <el-option label="书籍文具" value="books"></el-option>
+              <el-option label="生活用品" value="daily"></el-option>
+              <el-option label="服装配饰" value="clothing"></el-option>
+              <el-option label="其他" value="others"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="商品成色" prop="condition">
+            <el-select v-model="productForm.condition" placeholder="请选择商品成色" style="width: 100%;">
+              <el-option label="全新" value="全新"></el-option>
+              <el-option label="九成新" value="九成新"></el-option>
+              <el-option label="八成新" value="八成新"></el-option>
+              <el-option label="七成新" value="七成新"></el-option>
+              <el-option label="五成新及以下" value="五成新及以下"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+
+        <el-col :span="24">
+          <el-form-item label="商品图片" prop="image_files">
+            <el-upload
+              v-model:file-list="productForm.image_files"
+              action=""
+              list-type="picture-card"
+              :limit="5"
+              :on-remove="handleRemoveImage"
+              :before-upload="beforeImageUpload"
+              :http-request="handleImageUpload"
+              :auto-upload="false"
+              class="product-image-uploader"
+            >
+              <el-icon><Plus /></el-icon>
+              <template #tip>
+                <div class="el-upload__tip">支持JPG/PNG/GIF格式，单张不超过2MB，最多5张</div>
+              </template>
+            </el-upload>
+            <!-- 已上传图片预览区域 -->
+            <div v-if="productForm.image_urls.length > 0" class="existing-images-preview">
+              <div v-for="(url, index) in productForm.image_urls" :key="'existing-' + index" class="image-preview-item">
+                <img :src="url" class="uploaded-image-preview" />
+                <div class="image-overlay">
+                  <el-icon class="delete-icon" @click.stop="handleRemoveImage({url: url})"><Close /></el-icon>
+                </div>
+              </div>
+            </div>
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="handleCancel">取消</el-button>
+        <el-button type="primary" @click="handleSubmit">
+          {{ props.isEditMode ? '保存修改' : '立即发布' }}
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
+</template>
+
+<style scoped>
+/* Dialog 整体样式 */
+.product-post-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.product-post-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+.product-post-dialog :deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid #ebeef5;
+  background-color: #f5f7fa;
+}
+
+/* Form 样式 */
+.product-form .el-form-item {
+  margin-bottom: 22px;
+}
+
+.product-form :deep(.el-form-item__label) {
+  font-weight: 600;
+  color: #303133;
+}
+
+/* Input/Select/Textarea 样式 */
+.product-form :deep(.el-input__inner),
+.product-form :deep(.el-textarea__inner),
+.product-form :deep(.el-select__inner) {
+  border-radius: 8px;
+  border: 1px solid #dcdfe6;
+  box-shadow: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.product-form :deep(.el-input__inner:focus),
+.product-form :deep(.el-textarea__inner:focus),
+.product-form :deep(.el-select__inner:focus) {
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+/* InputNumber 样式 */
+.product-form :deep(.el-input-number) {
+  width: 100%;
+}
+
+.product-form :deep(.el-input-number__decrease),
+.product-form :deep(.el-input-number__increase) {
+  border-left: 1px solid #dcdfe6;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Upload 样式 */
+.product-image-uploader :deep(.el-upload--picture-card) {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: border-color 0.3s;
+}
+
+.product-image-uploader :deep(.el-upload--picture-card):hover {
+  border-color: #4A90E2;
+}
+
+.product-image-uploader :deep(.el-upload-list--picture-card .el-upload-list__item) {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+}
+
+.product-image-uploader :deep(.el-upload__tip) {
+  margin-top: 5px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.existing-images-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px; /* Space from new upload button */
+}
+
+.image-preview-item {
+    position: relative;
+    width: 120px; /* Match el-upload item size */
+    height: 120px; /* Match el-upload item size */
+    border: 1px solid #dcdfe6;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex; /* For centering content */
+    justify-content: center;
+    align-items: center;
+}
+
+.uploaded-image-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); /* Darker overlay */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.image-preview-item:hover .image-overlay {
+    opacity: 1;
+}
+
+.delete-icon {
+    color: #fff;
+    font-size: 28px; /* Larger delete icon */
+    cursor: pointer;
+}
+
+/* Footer buttons */
+.dialog-footer .el-button {
+  min-width: 100px;
+}
+
+.dialog-footer .el-button--primary {
+  background-color: #4A90E2;
+  border-color: #4A90E2;
+}
+
+.dialog-footer .el-button--primary:hover {
+  background-color: #357ABD;
+  border-color: #357ABD;
+}
+</style> 

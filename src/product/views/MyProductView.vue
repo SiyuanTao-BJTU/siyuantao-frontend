@@ -3,8 +3,8 @@ import {ref, onMounted, computed} from 'vue';
 import router from "@/router/index.js";
 import api from '@/API_PRO.js';
 import {ElMessage} from "element-plus";
-import {RefreshRight} from "@element-plus/icons-vue";
-import AddItemDialog from "@/product/components/AddItemDialog.vue";
+import {RefreshRight, Plus, Edit, Delete} from "@element-plus/icons-vue";
+import ProductPostDialog from "@/product/components/ProductPostDialog.vue";
 import ItemInfoBlock from "@/product/components/ItemInfoBlock.vue";
 import FormatObject from "@/utils/format.js";
 import PurchaseGoodsCard from "@/product/components/PurchaseGoodsCard.vue";
@@ -12,11 +12,13 @@ import PurchaseGoodsCard from "@/product/components/PurchaseGoodsCard.vue";
 // 组件基本变量定义
 let isItemSelected = ref(false);
 let selectedItemId = ref("");
-let isItemAddDialogVisible = ref(false);
+let isProductPostDialogVisible = ref(false);
+let currentEditProductId = ref(null);
 let username = ref(localStorage.getItem('username'));
 let avatar_char = computed(() => localStorage.getItem("username").slice(0, 2).toUpperCase());
 let itemList = ref([]);
 let componentKey = ref(0);
+let loading = ref(false);
 
 // 组件基本函数定义
 const handleOtherAvatarClick = (username) => {
@@ -26,36 +28,47 @@ const handleOtherAvatarClick = (username) => {
 const openSellComponent = (item) => {
   isItemSelected.value = true;
   selectedItemId.value = item.id;
-  componentKey.value += 1;
 }
 
-const dialogClose = () => {
-  isItemAddDialogVisible.value = false;
-  componentKey.value += 1
-}
+const handleProductPostDialogClose = () => {
+  isProductPostDialogVisible.value = false;
+  currentEditProductId.value = null;
+};
 
-const dialogSuccess = () => {
-  isItemAddDialogVisible.value = false;
-  window.location.reload();
-  componentKey.value += 1
-}
+const handleProductPostDialogSuccess = () => {
+  isProductPostDialogVisible.value = false;
+  currentEditProductId.value = null;
+  fetchMyProducts();
+};
 
-const dialogOpen = () => {
-  isItemAddDialogVisible.value = true;
-  componentKey.value += 1
-}
+const openNewProductDialog = () => {
+  isProductPostDialogVisible.value = true;
+  currentEditProductId.value = null;
+};
 
-const fetch_room_list = () => {
+const openEditProductDialog = (productId) => {
+  isProductPostDialogVisible.value = true;
+  currentEditProductId.value = productId;
+};
+
+const fetchMyProducts = () => {
+  loading.value = true;
   const userId = localStorage.getItem('userId');
   if (!userId) {
     ElMessage.error('未找到用户ID');
     itemList.value = [];
-    componentKey.value += 1;
+    loading.value = false;
     return;
   }
   api.getProductList({ owner_id: userId })
     .then(data => {
-      itemList.value = data;
+      itemList.value = data.map(item => ({
+        ...item,
+        status: item.status || (item.is_active ? 'active' : 'inactive'),
+        img: Array.isArray(item.img) ? 
+          item.img.map(url => (BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (url.startsWith('/') ? url : '/' + url))) : 
+          (item.img ? [(BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (item.img.startsWith('/') ? item.img : '/' + item.img))] : []),
+      }));
       if (!data || data.length === 0) {
         console.log("当前用户发布的商品列表为空");
       }
@@ -64,346 +77,444 @@ const fetch_room_list = () => {
       console.error("Fetch item list failure:", error);
       ElMessage.error('获取商品列表失败');
       itemList.value = [];
+    })
+    .finally(() => {
+      loading.value = false;
     });
-  componentKey.value += 1;
-}
+};
 
-const editProduct = (productId) => {
-  router.push(`/product/edit/${productId}`);
-}
-
-const deleteProduct = async (productId) => {
+const handleToggleProductStatus = async (item) => {
+  const newStatus = item.status === 'active' ? 'inactive' : 'active';
+  const actionText = newStatus === 'active' ? '上架' : '下架';
   try {
     await ElMessageBox.confirm(
-      '确定要删除此商品吗？',
+      `确定要${actionText}此商品吗？`,
+      `${actionText}商品`,
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    
+    const response = await api.updateProduct(item.id, { status: newStatus });
+    
+    if (response?.code === 0) {
+      ElMessage.success(`商品已成功${actionText}`);
+      item.status = newStatus;
+    } else {
+      ElMessage.error(`${actionText}商品失败`);
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(`${actionText}商品失败:`, error);
+      ElMessage.error(`${actionText}商品失败`);
+    }
+  }
+};
+
+const handleDeleteProduct = async (productId) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除此商品吗？此操作不可逆！',
       '删除商品',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning'
+        type: 'error'
       }
     );
-    
     const response = await api.deleteProduct(productId);
     if (response?.code === 0) {
-      ElMessage.success('商品删除成功');
-      fetch_room_list();
+      ElMessage.success('商品已成功删除');
+      fetchMyProducts();
     } else {
-      ElMessage.error('商品删除失败');
+      ElMessage.error('删除商品失败');
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('Delete product failed:', error);
-      ElMessage.error('商品删除失败');
+      console.error('删除商品失败:', error);
+      ElMessage.error('删除商品失败');
     }
   }
-}
+};
 
-const toggleStatus = async (product) => {
-  try {
-    const newStatus = product.status === 'published' ? 'draft' : 'published';
-    
-    let newStatusText = '';
-    if (newStatus === 'published') newStatusText = '上架';
-    else if (newStatus === 'draft') newStatusText = '下架';
-
-    await ElMessageBox.confirm(
-      `确定要将商品状态更改为 ${newStatusText} 吗？`,
-      '更改商品状态',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    );
-
-    const response = await api.updateProductStatus(product.id, newStatus);
-    if (response?.code === 0) {
-      ElMessage.success(`商品状态更新成功为 ${newStatusText}`);
-      product.status = newStatus;
-      fetch_room_list();
-    } else {
-      ElMessage.error('商品状态更新失败');
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('Update product status failed:', error);
-      ElMessage.error('商品状态更新失败');
-    }
+const getProductStatusTagType = (status) => {
+  switch (status) {
+    case 'active': return 'success';
+    case 'inactive': return 'info';
+    case 'sold': return 'warning';
+    default: return 'info';
   }
-}
+};
+
+const getProductStatusText = (status) => {
+  switch (status) {
+    case 'active': return '在售';
+    case 'inactive': return '已下架';
+    case 'sold': return '已售出';
+    default: return '未知状态';
+  }
+};
 
 onMounted(() => {
-  fetch_room_list();
+  fetchMyProducts();
 })
 </script>
 
 <template>
-  <div class="basic-container">
-    <div class="center-container">
-      <div class="whole-sell-container">
-        <div class="left-container">
-          <div class="info-block">
-            <div class="avatar-info">
-              <el-avatar :size="80" shape="square" class="avatar" @click="handleOtherAvatarClick(username)">{{avatar_char}}</el-avatar>
-              <h3>{{username}}</h3>
-            </div>
-          </div>
-          <div class="sell-item-list-block">
-            <div class="item-list-top-bar">
-              <p>我的商品列表</p>
-              <div class="gap" />
-              <el-icon @click="fetch_room_list"><RefreshRight /></el-icon>
-            </div>
-            <div class="item-list">
-              <el-scrollbar height="600px" class="item-list-scrollbar">
-                <div v-if="itemList.length === 0" class="select-notice">
-                  <el-empty description="您还没有发布的商品"></el-empty>
-                </div>
-                <div v-else>
-                  <div v-for="item in itemList" :key="item.id" class="single-card-container">
-                    <el-card @click="openSellComponent(item)">
-                      <div class="card-info">
-                        <img class="img-block" :src="FormatObject.formattedImgUrl(item.img[0])" :alt="item.name"/>
-                        <div class="card-info-block">
-                          <p id="card-info-name">{{item.name}}</p>
-                          <p id="card-info-description">{{item.description}}</p>
-                          <p id="card-info-price">￥{{item.price}}</p>
-                        </div>
-                      </div>
-                      <div class="action-buttons">
-                        <el-button size="small" @click="editProduct(item.id)">编辑</el-button>
-                        <el-button size="small" type="danger" @click="deleteProduct(item.id)">删除</el-button>
-                        <el-button size="small" :type="item.status === 'published' ? 'warning' : 'success'" @click="toggleStatus(item)">
-                          {{ item.status === 'published' ? '下架' : '上架' }}
-                        </el-button>
-                      </div>
-                    </el-card>
-                  </div>
-                </div>
-              </el-scrollbar>
-            </div>
-            <div class="add-item-button-block">
-              <button class="add-item-button" @click="isItemAddDialogVisible = true">+</button>
-            </div>
-          </div>
+  <div class="my-products-container">
+    <el-card class="product-list-card" shadow="hover">
+      <div class="card-header">
+        <h2 class="card-title">我的发布</h2>
+        <div class="header-actions">
+          <el-button type="primary" :icon="Plus" @click="openNewProductDialog" class="publish-button">
+            发布新商品
+          </el-button>
+          <el-button :icon="RefreshRight" @click="fetchMyProducts" circle class="refresh-button" />
         </div>
-        <div class="gap-block"></div>
-        <div class="right-container-selected" v-if="isItemSelected">
-          <ItemInfoBlock
-            :itemID="selectedItemId"
-            :key="componentKey"
-          />
-        </div>
-        <div class="right-container-unselected" v-else>
-          <el-empty description="请选择一个商品查看或编辑"></el-empty>
-        </div>
-        <AddItemDialog
-          :is-dialog-visiable="isItemAddDialogVisible"
-          :is-put-request="false"
-          :key="componentKey"
-          @update-cancel="dialogClose"
-          @update-success="dialogSuccess"
-        />
       </div>
-    </div>
+
+      <div class="product-grid-wrapper" v-loading="loading">
+        <div v-if="itemList.length === 0" class="empty-products-state">
+          <el-empty description="您还没有发布的商品"></el-empty>
+          <el-button type="primary" @click="openNewProductDialog">
+            去发布商品
+          </el-button>
+        </div>
+
+        <el-row v-else :gutter="20" class="product-cards-grid">
+          <el-col :span="24" :md="12" :lg="8" v-for="item in itemList" :key="item.id">
+            <el-card class="product-item-card" shadow="hover">
+              <template #header>
+                <div class="product-card-header">
+                  <img :src="FormatObject.formattedImgUrl(item.img[0])" :alt="item.name" class="product-image" @click="openSellComponent(item)"/>
+                </div>
+              </template>
+              <div class="product-card-body">
+                <h3 class="product-title-text" @click="openSellComponent(item)">{{ item.name }}</h3>
+                <p class="product-description-text">{{ item.description }}</p>
+                <div class="product-meta-info">
+                  <span class="product-price-text">￥{{ item.price }}</span>
+                  <el-tag :type="getProductStatusTagType(item.status)" size="small" effect="light" class="product-status-tag">
+                    {{ getProductStatusText(item.status) }}
+                  </el-tag>
+                </div>
+              </div>
+              <div class="product-card-actions">
+                <el-button type="primary" :icon="Edit" size="small" @click="openEditProductDialog(item.id)" class="edit-button">
+                  编辑
+                </el-button>
+                <el-button type="danger" :icon="Delete" size="small" @click="handleDeleteProduct(item.id)" class="delete-button">
+                  删除
+                </el-button>
+                <el-switch
+                  v-model="item.status"
+                  :active-value="'active'"
+                  :inactive-value="'inactive'"
+                  active-text="上架" inactive-text="下架"
+                  @change="handleToggleProductStatus(item)"
+                  class="status-toggle-switch"
+                />
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+    </el-card>
+
+    <el-drawer
+      v-model="isItemSelected"
+      :with-header="false"
+      direction="rtl"
+      size="50%"
+      class="item-info-drawer"
+      destroy-on-close
+    >
+      <ItemInfoBlock
+        v-if="isItemSelected"
+        :itemID="selectedItemId"
+        :key="componentKey + 'info'"
+        @closeDrawer="isItemSelected = false"
+      />
+    </el-drawer>
+
+    <ProductPostDialog
+      :isDialogVisible="isProductPostDialogVisible"
+      :isEditMode="!!currentEditProductId"
+      :productId="currentEditProductId"
+      @update:isDialogVisible="isProductPostDialogVisible = $event"
+      @updateCancel="handleProductPostDialogClose"
+      @updateSuccess="handleProductPostDialogSuccess"
+      :key="componentKey + 'dialog'"
+    />
   </div>
 </template>
 
 <style scoped>
-.basic-container {
+.my-products-container {
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 1100px;
-  background-color: #CAD9F1;
-}
-
-.center-container{
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
   align-items: flex-start;
-  height: 100%;
-  max-width: 1200px;
-  min-width: 1200px;
-  margin-top: 50px;
+  min-height: calc(100vh - 60px);
+  background-color: #f5f7fa;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.whole-sell-container {
+.product-list-card {
   width: 100%;
-  height: 900px;
-  display: grid;
-  grid-template-columns: 28% 2% 70%;
-  border-radius: 5px;
+  max-width: 1400px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border: none;
+  padding: 20px;
 }
 
-.left-container {
+.card-header {
   display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  border-radius: 5px;
-  box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
-}
-
-.right-container-selected {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  background-color: #ffffff;
-  border-radius: 5px;
-  box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
-}
-
-.right-container-unselected {
-  display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  background-color: #ffffff;
-  border-radius: 5px;
-  box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ebeef5;
 }
 
-.info-block {
-  display: flex;
-  background-color: #a1c9ee;
-  border-radius: 5px;
-  flex-direction: column;
-  width: 100%;
-}
-
-.avatar-info {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: flex-start;
-  margin-left: 15px;
-  margin-bottom: 10px;
-  margin-top: 10px;
-}
-
-.avatar {
-  font-size: 40px;
-  background-color: #9c9ea1;
-  color: #ffffff;
-}
-
-h3 {
-  font-size: 20px;
+.card-title {
+  font-size: 24px;
   font-weight: bold;
-  margin-left: 5px;
+  color: #303133;
+  margin: 0;
 }
 
-.item-list-top-bar {
+.header-actions {
   display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
-  background-color: #e8e8e8;
-  border-radius: 5px;
+  gap: 15px;
 }
 
-.item-list-top-bar p {
+.publish-button {
+  background-color: #4A90E2;
+  border-color: #4A90E2;
+  color: #fff;
   font-size: 15px;
-  font-weight: bold;
-  margin-left: 10px;
-}
-
-.item-list-top-bar .gap {
-  flex: 1;
-}
-
-.item-list-top-bar .el-icon {
-  margin-right: 10px;
-}
-
-.item-list {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  margin-top: 10px;
-}
-
-.item-list-scrollbar {
-  margin-left: 5%;
-  margin-right: 5%;
-  height: 600px;
-  width: 90%;
-}
-
-.select-notice {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  text-align: center;
-}
-
-.card-info {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
-}
-
-.img-block {
-  min-width: 75px;
-  max-width: 75px;
-  min-height: 75px;
-  max-height: 75px;
-}
-
-.card-info-block {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  margin-left: 10px;
-}
-
-#card-info-name {
-  font-size: 18px;
-  font-weight: bold;
-  overflow: hidden;
-}
-
-#card-info-description {
-  font-size: 15px;
-  overflow: hidden;
-}
-
-#card-info-price {
-  font-size: 15px;
-  font-weight: bold;
-  color: #ff4f24;
-}
-
-.add-item-button-block {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 10px;
-  border-top: 2px solid #ccc;
-  padding-top: 10px;
-}
-
-.add-item-button {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: #409eff;
-  color: white;
-  font-size: 30px;
-  border: none; /* 去掉边框 */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  padding: 10px 20px;
+  border-radius: 8px;
   transition: background-color 0.3s;
 }
 
-.single-card-container {
+.publish-button:hover {
+  background-color: #357ABD;
+  border-color: #357ABD;
+}
+
+.refresh-button {
+  color: #4A90E2;
+  border-color: #4A90E2;
+  background-color: transparent;
+  transition: color 0.3s, background-color 0.3s;
+}
+
+.refresh-button:hover {
+  background-color: #E6F2FF;
+  color: #357ABD;
+}
+
+.product-grid-wrapper {
+  min-height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-products-state {
+  width: 100%;
+  text-align: center;
+  padding: 50px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.product-cards-grid {
+  width: 100%;
+}
+
+.product-item-card {
+  margin-bottom: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  border: none;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.product-item-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.product-card-header {
+  height: 180px;
+  overflow: hidden;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.product-image:hover {
+  transform: scale(1.05);
+}
+
+.product-card-body {
+  padding: 15px;
+}
+
+.product-title-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+  margin: 0 0 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.product-description-text {
+  font-size: 13px;
+  color: #909399;
+  margin: 0 0 12px 0;
+  height: 36px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.product-meta-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 10px;
+}
+
+.product-price-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: #FF7043;
+}
+
+.product-status-tag {
+  font-size: 12px;
+}
+
+.product-status-tag.active {
+  background-color: #e6f7ff;
+  color: #1890ff;
+  border-color: #91d5ff;
+}
+
+.product-status-tag.inactive {
+  background-color: #f0f2f5;
+  color: #595959;
+  border-color: #d9d9d9;
+}
+
+.product-status-tag.sold {
+  background-color: #f6ffed;
+  color: #52c41a;
+  border-color: #b7eb8f;
+}
+
+.product-card-actions {
+  padding: 15px;
+  border-top: 1px solid #ebeef5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.edit-button, .delete-button {
+  flex: 1;
+  border-radius: 8px;
+}
+
+.edit-button {
+  border-color: #4A90E2;
+  color: #4A90E2;
+  background-color: transparent;
+}
+
+.edit-button:hover {
+  background-color: #E6F2FF;
+  border-color: #357ABD;
+  color: #357ABD;
+}
+
+.delete-button {
+  border-color: #F56C6C;
+  color: #F56C6C;
+  background-color: transparent;
+}
+
+.delete-button:hover {
+  background-color: #FEF0F0;
+  border-color: #F56C6C;
+  color: #F56C6C;
+}
+
+.status-toggle-switch {
+  margin-left: auto;
+}
+
+.item-info-drawer :deep(.el-drawer__body) {
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .my-products-container {
+    padding: 10px;
+  }
+
+  .card-title {
+    font-size: 20px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .publish-button,
+  .refresh-button {
+    width: 100%;
+  }
+
+  .product-item-card {
+    margin-bottom: 15px;
+  }
+
+  .product-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .edit-button, .delete-button, .status-toggle-switch {
+    flex: none;
+    width: 100%;
+  }
+
+  .status-toggle-switch {
+    margin-left: 0;
+  }
 }
 </style>

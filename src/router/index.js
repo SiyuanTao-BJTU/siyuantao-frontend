@@ -6,6 +6,8 @@ import 'nprogress/nprogress.css'; // 导入 NProgress 样式
 
 // 静态导入 ProfileView，暂时解决动态加载问题
 import ProfileView from '@/user/views/profile/ProfileView.vue';
+// 导入我的商品页面
+import MyProductView from '@/product/views/MyProductView.vue';
 // 导入学生认证请求页面
 import StudentAuthRequestView from '@/user/views/profile/StudentAuthRequestView.vue';
 // 导入通用的邮箱验证页面
@@ -26,16 +28,22 @@ const router = createRouter({
         }
       },
     },
-    { // 商品浏览主页，所有商品列表 (原 /products)
+    { // 商品浏览主页，所有商品列表
       path: '/products',
       name: 'ProductList',
       component: () => import('@/product/views/HomeView.vue'),
       meta: { requiresAuth: true }
-    },
+    },    
     { // 商品详情页
       path: '/item/:itemId',
       name: 'item-info',
       component: () => import('@/views/ItemInfoView.vue'),
+      meta: { requiresAuth: true }
+    },
+    { // 我的发布页面
+      path: '/my-products',
+      name: 'MyProductView',
+      component: MyProductView,
       meta: { requiresAuth: true }
     },
     { // 交易记录页面 (保留原路径，如果需要也可以扁平化)
@@ -44,19 +52,13 @@ const router = createRouter({
       component: { template: '<div>交易记录页面</div>' },
       meta: { requiresAuth: true }
     },
-    { // 扁平化个人中心子功能路由
-      path: '/my-products',
-      name: 'my-products',
-      component: () => import('@/user/views/profile/UserProductsView.vue'),
-      meta: { requiresAuth: true }
-    },
-    { // 我的订单页面 (原 /profile/my-orders)
+    { // 我的订单页面
       path: '/orders',
       name: 'my-orders',
       component: { template: '<div>我的订单页面 (占位符)</div>' },
       meta: { requiresAuth: true }
     },
-    { // 我的收藏页面 (原 /profile/my-favorites)
+    { // 我的收藏页面 
       path: '/favorites',
       name: 'my-favorites',
       component: () => import('@/product/views/UserFavoritesView.vue'),
@@ -91,12 +93,6 @@ const router = createRouter({
       name: 'settings',
       component: { template: '<div>偏好设置页面 (占位符)</div>' },
       meta: { requiresAuth: true }
-    },
-    { // 发布商品页面 (保留原路径)
-      path: '/publish',
-      name: 'publish',
-      component: () => import('@/product/views/ProductPostView.vue'),
-      meta: { requiresAuth: true, requiresVerified: true }
     },
     // TODO: 修改密码页面可以在个人中心页面通过弹窗处理，无需单独路由
     // {

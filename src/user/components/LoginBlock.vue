@@ -350,7 +350,7 @@ const handleCloseForgotPasswordDialog = () => {
     <el-tab-pane label="密码登录" name="passwordLogin">
       <el-form
           :model="form"
-          label-width="auto"
+          label-width="80px"
           class="login-form"
       >
         <el-form-item label="用户名">
@@ -373,7 +373,7 @@ const handleCloseForgotPasswordDialog = () => {
         </el-form-item>
         <el-form-item>
           <el-checkbox v-model="form.rememberMe">记住我</el-checkbox>
-          <el-link type="primary" :underline="false" @click="handleForgotPassword" class="forgot-password-link">忘记密码?</el-link>
+          <el-link type="primary" underline="never" @click="handleForgotPassword" class="forgot-password-link">忘记密码?</el-link>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleLoginClick" class="login-button">登录</el-button>
@@ -385,7 +385,7 @@ const handleCloseForgotPasswordDialog = () => {
           :model="otpLoginForm"
           :rules="otpLoginRules"
           ref="otpLoginFormRef"
-          label-width="auto"
+          label-width="100px"
           class="otp-login-form"
       >
         <el-form-item label="用户名/邮箱" prop="identifier">

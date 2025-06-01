@@ -64,7 +64,7 @@ watch(() => props.isProfileEditDialogVisible, (newValue) => {
     profileForm.phoneNumber = props.userInfo.phone_number || ''; // Use 'phone_number' from backend schema
     // Construct full avatar URL if avatarUrl is a relative path
     profileForm.avatarUrl = props.userInfo.avatar_url ? 
-      BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + props.userInfo.avatar_url : null;
+      BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (props.userInfo.avatar_url.startsWith('/') ? props.userInfo.avatar_url : '/' + props.userInfo.avatar_url) : null;
   } else if (!newValue && profileFormRef.value) {
       // Optionally reset form when dialog closes
       profileFormRef.value.resetFields();

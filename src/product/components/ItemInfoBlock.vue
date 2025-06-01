@@ -4,10 +4,9 @@ import api from '@/API_PRO.js';
 import {ElMessage} from "element-plus";
 import {Back, ChatLineRound, Delete, EditPen, Loading, Message, Picture, ShoppingCart} from "@element-plus/icons-vue";
 import router from "@/router/index.js";
-import AddItemDialog from "@/components/sell/AddItemDialog.vue";
 import FormatObject from "@/utils/format.js";
 import WebSocketService from "@/socket_client/socket";
-import InputBlock from "@/components/chatroom/InputBlock.vue";
+import InputBlock from "@/chat/components/InputBlock.vue";
 
 // 组件基本事件属性定义
 const props = defineProps({
@@ -270,14 +269,6 @@ onMounted(() => {
         </el-scrollbar>
       </div>
     </div>
-    <AddItemDialog
-      :isDialogVisiable="isItemAddDialogVisible"
-      :isPutRequest="true"
-      :itemID="props.itemID"
-      :key="componentKey"
-      @updateCancel="isItemAddDialogVisible = false"
-      @updateSuccess="updateSuccessGetItemInfo"
-    />
   </div>
 </template>
 

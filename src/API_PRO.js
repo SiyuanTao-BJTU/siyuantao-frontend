@@ -266,21 +266,14 @@ const toggleUserStaffStatus = (userId) => {
 /**
  * @summary 获取商品列表
  * @method GET
- * @path /api/v1/items/products (assuming /item/products/ maps to this)
+ * @path /api/v1/products/
  * @param {object} [filters] - 可选的过滤参数 { category_id, search, owner_id, status }
- * @note openapi.json lists /api/v1/items/. Adjusting path.
+ * @note openapi.json lists /api/v1/products/. Adjusting path.
  */
 const getProductList = (filters) => {
-  // Construct query parameters string from filters object
-  let queryString = '';
-  if (filters) {
-    queryString = Object.keys(filters)
-      .map(key => filters[key] ? `${encodeURIComponent(key)}=${encodeURIComponent(filters[key])}` : null)
-      .filter(part => part !== null)
-      .join('&');
-  }
-  const path = queryString ? `/products/?${queryString}` : '/products/';
-  return apiRequest('get', path, null, null); // Filters are now part of the path
+  // 根据 openapi.json，商品列表接口路径是 /api/v1/products/
+  // filters 参数应作为查询参数传递
+  return apiRequest('GET', '/v1/products/', null, filters);
 };
 
 /**

@@ -14,12 +14,12 @@ const activeMenu = computed(() => route.path);
 // 前台侧边导航菜单数据源 - 按照新的职责排序和包含内容
 const commonNavMenus = [
   { path: '/products', title: '首页', icon: ShoppingBag }, // 主商品浏览入口
-  { path: '/publish', title: '发布商品', icon: Box }, // 核心高频操作
+  { path: '/my-products', title: '我的发布', icon: Upload }, // 个人管理模块
+  // { path: '/publish', title: '发布商品', icon: Box }, // 核心高频操作 - 移除，整合到我的发布
   { path: '/messages', title: '我的消息', icon: ChatLineRound }, // 个人管理模块
   { path: '/orders', title: '我的订单', icon: List }, // 个人管理模块
   { path: '/favorites', title: '我的收藏', icon: Star }, // 个人管理模块
-  { path: '/my-products', title: '我的发布', icon: Upload }, // 个人管理模块
-  { path: '/transactions', title: '交易记录', icon: Money }, // 个人管理模块
+  // { path: '/transactions', title: '交易记录', icon: Money }, // 个人管理模块
   { path: '/profile', title: '个人中心', icon: UserFilled }, // 辅助功能
   { path: '/settings', title: '偏好设置', icon: Setting }, // 辅助功能
 ];
@@ -140,10 +140,10 @@ const handleLogout = () => {
   overflow-x: hidden;
   /* Ensure fixed positioning and full height from top 0 */
   position: fixed; /* Should be fixed to stay in place */
-  top: 0; /* Starts from the top edge */
+  top: 45px; /* Starts from the top edge */
   left: 0; /* Starts from the left edge */
   /* Adjust height to be viewport height minus header height */
-  height: 100vh; /* Full viewport height */
+  height: calc(100vh - 60px); /* Full viewport height */
   /* Add transition for width changes */
   transition: width 0.3s ease-in-out;
   z-index: 999; /* Below the fixed header */
@@ -216,6 +216,6 @@ const handleLogout = () => {
   /* Add transition for margin-left when sidebar collapses */
   transition: margin-left 0.3s ease-in-out;
   /* Adjust margin-top to be below the fixed header */
-  margin-top: 60px;
+  margin-top: -30px;
 }
 </style>
