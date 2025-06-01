@@ -386,7 +386,7 @@ const getChatWebSocketUrl = (userId) => {
   }
   // Ensure the final path is for WebSocket connection, typically /ws/...
   // This path should match your backend WebSocket ASGI routing.
-  return `${wsBaseUrl}/ws/chat/${userId}/`;
+  return `${wsBaseUrl}/ws/chat/${userId}/`; 
 };
 
 // const submitStudentAuth = (authData) => {
