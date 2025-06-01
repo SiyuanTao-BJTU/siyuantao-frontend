@@ -33,6 +33,7 @@ const productForm = reactive({
   price: null,
   category: '',
   condition: '',
+  quantity: 1, // 新增：商品数量，默认1
   image_urls: [], // 用于显示已有的图片，可能从后端获取
   image_files: [], // 用于存储待上传的图片文件
 });
@@ -45,6 +46,11 @@ const rules = {
     { required: true, message: '请输入商品价格', trigger: 'blur' },
     { type: 'number', message: '价格必须是数字', trigger: 'blur', transform: (value) => Number(value) },
     { min: 0.01, message: '价格必须大于0', trigger: 'blur', type: 'number' }
+  ],
+  quantity: [
+    { required: true, message: '请输入商品数量', trigger: 'blur' },
+    { type: 'number', message: '数量必须是数字', trigger: 'blur', transform: (value) => Number(value) },
+    { min: 1, message: '数量必须大于0', trigger: 'blur', type: 'number' }
   ],
   category: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
   condition: [{ required: true, message: '请选择商品成色', trigger: 'change' }],
@@ -71,6 +77,7 @@ const resetForm = () => {
   productForm.price = null;
   productForm.category = '';
   productForm.condition = '';
+  productForm.quantity = 1; // 重置数量
   productForm.image_urls = [];
   productForm.image_files = [];
   if (productFormRef.value) {
@@ -108,28 +115,32 @@ const fetchProductDetail = async (id) => {
   try {
     const response = await api.getProductDetail(id);
     if (response) {
-      productForm.product_name = response.product_name;
-      productForm.description = response.description;
-      productForm.price = response.price;
-      productForm.category = response.category;
-      productForm.condition = response.condition;
-      // 确保图片 URL 包含完整路径
-      productForm.image_urls = response.image_urls ? 
-        response.image_urls.map(url => {
+      productForm.product_name = response.商品名称;
+      productForm.description = response.商品描述;
+      productForm.price = parseFloat(response.价格) || null;
+      productForm.category = response.商品类别;
+      productForm.condition = response.商品成色 || '';
+      productForm.quantity = parseInt(response.库存, 10) || 1;
+      
+      const imageUrlsString = response.ImageURLs;
+      if (imageUrlsString && typeof imageUrlsString === 'string') {
+        productForm.image_urls = imageUrlsString.split(',').map(url => {
             const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
-            return (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) + (url.startsWith('/') ? url : '/' + url);
-        }) : [];
-      // 清空待上传文件列表
+            const trimmedUrl = url.trim();
+            return (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) + (trimmedUrl.startsWith('/') ? trimmedUrl : '/' + trimmedUrl);
+        });
+      } else {
+        productForm.image_urls = [];
+      }
+      
       productForm.image_files = [];
     } else {
-      ElMessage.error('获取商品详情失败');
-      // 关闭弹窗
+      ElMessage.error('获取商品详情失败: 未返回有效数据');
       emits('updateCancel');
     }
   } catch (error) {
     console.error('获取商品详情失败:', error);
-    ElMessage.error('获取商品详情失败');
-    // 关闭弹窗
+    ElMessage.error('获取商品详情失败: ' + (error.response?.data?.detail || error.message));
     emits('updateCancel');
   }
 };
@@ -201,22 +212,26 @@ const handleSubmit = async () => {
 
         const finalImageUrls = [
           ...productForm.image_urls.map(url => {
-            // 移除前端 BASE_URL 部分，确保后端只接收相对路径
             const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
-            return url.replace((baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl), '').replace(/^\//, '');
+            const relativeUrl = url.replace((baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl), '');
+            return relativeUrl.startsWith('/') ? relativeUrl.substring(1) : relativeUrl;
           }),
           ...uploadedImageUrls
-        ]; // 合并已有和新上传的图片URL
+        ];
 
         const submitData = {
           product_name: productForm.product_name,
           description: productForm.description,
           price: productForm.price,
-          category_name: productForm.category, // Changed to category_name to match backend ProductCreate schema
-          quantity: 1, // Assuming quantity is always 1 for now, or add to form
-          image_urls: finalImageUrls, // 提交给后端的图片URL列表
-          condition: productForm.condition, // Add condition
+          category_name: productForm.category,
+          quantity: productForm.quantity,
+          image_urls: finalImageUrls,
+          // condition: productForm.condition, // Backend schema ProductCreate/Update does not have condition
         };
+        // 如果 productForm.condition 有值且确实希望提交，需要后端 ProductCreate schema 支持 condition
+        if (productForm.condition) {
+            submitData.condition = productForm.condition;
+        }
 
         if (props.isEditMode && props.productId) {
           // 更新商品
@@ -225,15 +240,22 @@ const handleSubmit = async () => {
             description: submitData.description,
             price: submitData.price,
             category_name: submitData.category_name,
-            quantity: submitData.quantity, // Assuming quantity is always 1 for now, or add to form
-            image_urls: submitData.image_urls.length > 0 ? submitData.image_urls : [], // If no images, send empty array
-            condition: submitData.condition, // Add condition
+            quantity: submitData.quantity,
+            image_urls: submitData.image_urls.length > 0 ? submitData.image_urls : [],
+            // ProductUpdate schema doesn't have condition, so we don't send it
+            // If backend ProductUpdate schema is updated to include condition, uncomment below
+            // ...(submitData.condition && { condition: submitData.condition }), 
           };
-          await api.updateProduct(props.productId, updateData, false); // Explicitly set isFormData to false
+          // 如果后端 ProductUpdate schema 明确支持 condition，则可以这样添加：
+          if (submitData.condition) { //  仅在有值时传递，且后端ProductUpdate支持此字段
+             updateData.condition = submitData.condition; // 后端已支持 condition
+          }
+
+          await api.updateProduct(props.productId, updateData, false); 
           ElMessage.success('商品更新成功');
         } else {
           // 发布商品
-          await api.createProduct(submitData, false); // Explicitly set isFormData to false
+          await api.createProduct(submitData, false);
           ElMessage.success('商品发布成功');
         }
         emits('updateSuccess');
@@ -291,6 +313,17 @@ onMounted(() => {
               :rows="5"
               placeholder="请详细描述商品特点、状况及交易方式等"
               clearable
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="商品数量" prop="quantity">
+            <el-input-number v-model="productForm.quantity" 
+            :min="1" 
+            :precision="0" 
+            controls-position="right" 
+            placeholder="请输入商品数量" 
+            style="width: 100%;" 
             />
           </el-form-item>
         </el-col>

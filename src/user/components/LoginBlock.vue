@@ -353,7 +353,7 @@ const handleCloseForgotPasswordDialog = () => {
           label-width="80px"
           class="login-form"
       >
-        <el-form-item label="用户名">
+        <el-form-item label="用户名/邮箱">
           <el-input v-model="form.username" placeholder="请输入用户名或邮箱"/>
         </el-form-item>
         <el-form-item label="密码">
@@ -467,6 +467,7 @@ const handleCloseForgotPasswordDialog = () => {
 
 .login-form .el-form-item {
     margin-bottom: 20px; /* Add space between form items */
+    margin-right: 50px;
 }
 
 .remember-forgot {
@@ -507,6 +508,7 @@ const handleCloseForgotPasswordDialog = () => {
 :deep(.el-form-item__label) {
     color: #333 !important; /* 深灰色文字 */
     font-weight: bold;
+    width: 120px !important;
 }
 
 :deep(.el-input__inner) {

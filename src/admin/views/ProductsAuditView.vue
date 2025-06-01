@@ -223,7 +223,7 @@
               >
                 查看
               </el-button>
-              <template v-if="row.auditStatus === 'pending'">
+              <template v-if="row.auditStatus === 'PendingReview'">
                 <el-button
                   type="success"
                   size="small"
@@ -329,7 +329,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="productDetailVisible = false">关闭</el-button>
-          <template v-if="selectedProduct?.auditStatus === 'pending'">
+          <template v-if="selectedProduct?.auditStatus === 'PendingReview'">
             <el-button type="success" @click="approveProduct(selectedProduct)">
               审核通过
             </el-button>
@@ -374,6 +374,16 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 商品发布/编辑弹窗 (用于管理员修改) -->
+    <ProductPostDialog 
+      :isDialogVisible="isEditDialogVisible"
+      :isEditMode="isEditMode"
+      :productId="selectedProductForEdit ? selectedProductForEdit.id : null"
+      @update:isDialogVisible="isEditDialogVisible = $event"
+      @productPosted="fetchData"
+    />
+    
   </div>
 </template>
 
@@ -381,9 +391,13 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Search, Refresh, Bell, Download, View, Edit, Check, Close,
-  Clock, Box, Picture
-} from '@element-plus/icons-vue'
+      Search, Refresh, Bell, Download, View, Edit, Check, Close,
+      Clock, Box, Picture
+    } from '@element-plus/icons-vue'
+import api from '@/API_PRO.js';
+import FormatObject from '@/utils/format.js';
+import ProductPostDialog from "@/product/components/ProductPostDialog.vue"; // 确保导入
+
 
 // 响应式数据
 const loading = ref(false)
@@ -392,6 +406,11 @@ const selectedProducts = ref([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
+
+// 新增用于编辑商品弹窗的状态
+const isEditDialogVisible = ref(false); // 控制 ProductPostDialog 的显示
+const selectedProductForEdit = ref(null); // 存储要编辑的商品数据
+const isEditMode = ref(false); // 标记是否为编辑模式
 
 // 筛选条件
 const searchKeyword = ref('')
@@ -423,105 +442,75 @@ const pendingCount = computed(() => stats.pending)
 
 // 方法
 const fetchData = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // 模拟数据
-    const mockData = [
-      {
-        id: '1',
-        title: '全新MacBook Air M2 13寸',
-        description: '全新未拆封的MacBook Air，M2芯片，8GB内存，256GB存储，银色。因为重复购买所以出售。',
-        price: 8999,
-        category: 'electronics',
-        condition: '全新',
-        images: [
-          'https://picsum.photos/400/300?random=1',
-          'https://picsum.photos/400/300?random=2'
-        ],
-        auditStatus: 'pending',
-        auditReason: '',
-        createdAt: new Date(2024, 0, 15),
-        user: {
-          username: 'techuser',
-          avatar: null,
-          credit: 95,
-          phone: '138****1234',
-          joinTime: new Date(2023, 5, 10)
-        }
-      },
-      {
-        id: '2',
-        title: '计算机科学导论教材',
-        description: '计算机科学与技术专业必修教材，9成新，无划线笔记。',
-        price: 45,
-        category: 'books',
-        condition: '九成新',
-        images: ['https://picsum.photos/400/300?random=3'],
-        auditStatus: 'approved',
-        auditReason: '',
-        createdAt: new Date(2024, 0, 14),
-        user: {
-          username: 'bookworm',
-          avatar: null,
-          credit: 88,
-          phone: '139****5678',
-          joinTime: new Date(2023, 8, 20)
-        }
-      },
-      {
-        id: '3',
-        title: '违禁物品测试',
-        description: '这是一个测试违禁物品的描述',
-        price: 100,
-        category: 'others',
-        condition: '全新',
-        images: [],
-        auditStatus: 'rejected',
-        auditReason: '违禁物品',
-        createdAt: new Date(2024, 0, 13),
-        user: {
-          username: 'testuser',
-          avatar: null,
-          credit: 60,
-          phone: '137****9876',
-          joinTime: new Date(2023, 10, 5)
-        }
+    const params = {
+      page_number: currentPage.value,
+      page_size: pageSize.value,
+      category_name: categoryFilter.value || undefined,
+      status: statusFilter.value === 'pending' ? 'PendingReview' : // 确保状态字符串匹配后端
+              (statusFilter.value === 'approved' ? 'Active' :
+              (statusFilter.value === 'rejected' ? 'Rejected' : undefined)),
+      keyword: searchKeyword.value || undefined,
+      // dateRange 暂时不处理，如果后端支持日期过滤再添加
+    };
+
+    // 获取所有商品，以便计算总数和各种状态的数量
+    // 后续可以优化为后端直接返回统计数据
+    const allProductsResponse = await api.getProductList({}); // 获取所有商品列表，不带status过滤
+    const filteredProductsResponse = await api.getProductList(params);
+
+    const mapProductData = (item) => ({
+      id: item.商品ID,
+      title: item.商品名称,
+      description: item.商品描述,
+      price: item.价格,
+      category: item.商品类别,
+      auditStatus: item.商品状态, // 将商品状态作为审核状态
+      condition: item.商品成色 || '', 
+      images: item.主图URL 
+        ? (Array.isArray(item.主图URL) 
+            ? item.主图URL.map(url => url.startsWith('http') || url.startsWith('//') ? url : FormatObject.formattedImgUrl(url))
+            : [item.主图URL.startsWith('http') || item.主图URL.startsWith('//') ? item.主图URL : FormatObject.formattedImgUrl(item.主图URL)])
+        : [],
+      auditReason: '', // 后端目前未返回审核原因，暂时留空
+      createdAt: item.发布时间,
+      user: {
+        username: item.发布者用户名,
+        credit: 100, // 暂时硬编码，待后端提供
+        avatar: '', // 暂时为空，待后端提供
+        phone: '未提供', // 暂时未提供
+        joinTime: item.发布时间, // 暂时使用商品发布时间
       }
-    ]
+    });
 
-    tableData.value = mockData
-    total.value = mockData.length
+    tableData.value = filteredProductsResponse.map(mapProductData);
+    total.value = filteredProductsResponse.length; // 这里的 total 应该是过滤后的总数
 
-    // 更新统计数据
-    stats.pending = mockData.filter(item => item.auditStatus === 'pending').length
-    stats.approved = mockData.filter(item => item.auditStatus === 'approved').length
-    stats.rejected = mockData.filter(item => item.auditStatus === 'rejected').length
-    stats.total = mockData.length
+    // 更新统计数据 (基于所有商品)
+    const mappedAllProducts = allProductsResponse.map(mapProductData);
+    stats.pending = mappedAllProducts.filter(item => item.auditStatus === 'PendingReview').length;
+    stats.approved = mappedAllProducts.filter(item => item.auditStatus === 'Active').length;
+    stats.rejected = mappedAllProducts.filter(item => item.auditStatus === 'Rejected').length;
+    stats.total = mappedAllProducts.length;
 
   } catch (error) {
-    console.error('获取数据失败:', error)
-    ElMessage.error('获取数据失败')
+    console.error('获取数据失败:', error);
+    ElMessage.error('获取数据失败：' + (error.response?.data?.detail || error.message));
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const handleSearch = () => {
-  // 实现搜索逻辑
-  console.log('搜索:', searchKeyword.value)
-}
+  // 触发数据重新获取
+  fetchData();
+};
 
 const handleFilter = () => {
-  // 实现筛选逻辑
-  console.log('筛选条件:', {
-    status: statusFilter.value,
-    category: categoryFilter.value,
-    dateRange: dateRange.value
-  })
-}
+  // 触发数据重新获取
+  fetchData();
+};
 
 const handleSelectionChange = (selection) => {
   selectedProducts.value = selection
@@ -551,90 +540,87 @@ const approveProduct = async (product) => {
   try {
     await ElMessageBox.confirm('确认通过该商品的审核？', '确认操作', {
       type: 'warning'
-    })
+    });
     
-    // 调用 API 审核通过
-    console.log('审核通过:', product.id)
+    await api.activateProduct(product.id);
     
-    // 更新本地数据
-    product.auditStatus = 'approved'
-    product.auditReason = ''
-    
-    ElMessage.success('审核通过成功')
-    productDetailVisible.value = false
-    
-    // 重新获取统计数据
-    fetchData()
+    ElMessage.success('审核通过成功');
+    productDetailVisible.value = false;
+    fetchData();
   } catch (error) {
-    // 用户取消操作
+    if (error !== 'cancel') {
+      console.error('审核通过失败:', error);
+      ElMessage.error('审核通过失败：' + (error.response?.data?.detail || error.message));
+    }
   }
-}
+};
 
 const rejectProduct = (product) => {
-  selectedProduct.value = product
-  rejectForm.reason = ''
-  rejectForm.detail = ''
-  rejectDialogVisible.value = true
-}
+  selectedProduct.value = product;
+  rejectForm.reason = '';
+  rejectForm.detail = '';
+  rejectDialogVisible.value = true;
+};
 
 const confirmReject = async () => {
   if (!rejectForm.reason) {
-    ElMessage.warning('请选择拒绝原因')
-    return
+    ElMessage.warning('请选择拒绝原因');
+    return;
   }
-
   try {
-    // 调用 API 审核拒绝
-    console.log('审核拒绝:', selectedProduct.value.id, rejectForm)
+    const reasonDetail = rejectForm.reason + (rejectForm.detail ? `: ${rejectForm.detail}` : '');
+    await api.rejectProduct(selectedProduct.value.id, { reason: reasonDetail });
     
-    // 更新本地数据
-    selectedProduct.value.auditStatus = 'rejected'
-    selectedProduct.value.auditReason = rejectForm.reason + (rejectForm.detail ? `: ${rejectForm.detail}` : '')
-    
-    ElMessage.success('审核拒绝成功')
-    rejectDialogVisible.value = false
-    productDetailVisible.value = false
-    
-    // 重新获取统计数据
-    fetchData()
+    ElMessage.success('审核拒绝成功');
+    rejectDialogVisible.value = false;
+    productDetailVisible.value = false;
+    fetchData();
   } catch (error) {
-    console.error('审核拒绝失败:', error)
-    ElMessage.error('审核拒绝失败')
+    console.error('审核拒绝失败:', error);
+    ElMessage.error('审核拒绝失败：' + (error.response?.data?.detail || error.message));
   }
-}
+};
 
-const editAuditStatus = (product) => {
-  // 修改审核状态
-  console.log('修改审核状态:', product.id)
-}
-
-const handleBatchAudit = () => {
+const handleBatchAudit = async () => {
   if (selectedProducts.value.length === 0) {
-    ElMessage.warning('请先选择要批量审核的商品')
-    return
+    ElMessage.warning('请先选择要批量审核的商品');
+    return;
   }
-  
-  ElMessageBox.confirm(
-    `确认批量通过选中的 ${selectedProducts.value.length} 个商品？`,
-    '批量审核',
-    {
-      type: 'warning'
+  try {
+    await ElMessageBox.confirm(
+      `确认批量通过选中的 ${selectedProducts.value.length} 个商品？`,
+      '批量审核',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    const productIdsToActivate = selectedProducts.value.map(p => p.id);
+    // 确保 API_PRO.js 中有 batchActivateProducts，并且后端接口是 /batch/activate
+    await api.batchActivateProducts({ product_ids: productIdsToActivate }); 
+    ElMessage.success('批量审核通过成功');
+    fetchData();
+  } catch (error) {
+    if (error !== 'cancel') {
+        console.error('批量审核失败:', error);
+        ElMessage.error('批量审核失败：' + (error.response?.data?.detail || error.message));
     }
-  ).then(() => {
-    selectedProducts.value.forEach(product => {
-      product.auditStatus = 'approved'
-      product.auditReason = ''
-    })
-    ElMessage.success('批量审核成功')
-    fetchData()
-  }).catch(() => {
-    // 用户取消
-  })
-}
+  }
+};
 
 const exportData = () => {
   ElMessage.info('导出功能开发中...')
 }
+
+const editAuditStatus = (product) => {
+      console.log("Edit audit status for product:", product.id);
+      ElMessage.info(`尝试编辑商品 ${product.title} 的审核状态`);
+      
+      selectedProductForEdit.value = product; // 用于传递给 ProductPostDialog 的商品数据
+      isEditDialogVisible.value = true; // 控制 ProductPostDialog 的显示
+      isEditMode.value = true; // 告知 ProductPostDialog 进入编辑模式
+};
 
 // 工具函数
 const getCategoryName = (category) => {
@@ -654,34 +640,34 @@ const getCategoryTagType = (category) => {
     books: 'info',
     daily: 'warning',
     clothing: 'danger',
-    others: ''
+    others: 'info'
   }
-  return typeMap[category] || ''
+  return typeMap[category] || 'info'
 }
 
 const getStatusText = (status) => {
   const statusMap = {
-    pending: '待审核',
-    approved: '已通过',
-    rejected: '已拒绝'
-  }
-  return statusMap[status] || status
-}
+    'PendingReview': '待审核', // 修改
+    'Active': '已通过', // 修改
+    'Rejected': '已拒绝' // 修改
+  };
+  return statusMap[status] || status;
+};
 
 const getStatusTagType = (status) => {
   const typeMap = {
-    pending: 'warning',
-    approved: 'success',
-    rejected: 'danger'
-  }
-  return typeMap[status] || ''
-}
+    'PendingReview': 'warning',
+    'Active': 'success',
+    'Rejected': 'danger'
+  };
+  return typeMap[status] || 'info';
+};
 
 const getStatusIcon = (status) => {
   const iconMap = {
-    pending: Clock,
-    approved: Check,
-    rejected: Close
+    'PendingReview': Clock, // 修改
+    'Active': Check, // 修改
+    'Rejected': Close // 修改
   }
   return iconMap[status]
 }

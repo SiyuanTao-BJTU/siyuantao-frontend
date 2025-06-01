@@ -82,29 +82,54 @@ const handleDelete = () => {
   componentKey.value += 1;
 }
 
-const getItemInfo = () => {
+const getItemInfo = async () => {
   if (!props.itemID) {
-    console.log("itemID is empty for getItemInfo");
-    ElMessage.error("商品ID缺失");
+    item_info_err.value = "商品ID缺失";
+    item_info_loading.value = false;
     return;
   }
-  api.getProductDetail(props.itemID)
-    .then(data => {
-      itemInfo.value = data;
-      if (data.images) {
-        itemInfo.value.img = data.images;
-      } else if (data.img) {
-        itemInfo.value.img = data.img;
-      } else {
-        itemInfo.value.img = [];
+  item_info_loading.value = true;
+  item_info_err.value = "";
+  try {
+    const response = await api.getProductDetail(props.itemID);
+    if (response) {
+      // 直接使用后端返回的字段名，并确保user对象存在
+      item_info.value = {
+        ...response, // 展开后端返回的所有字段
+        // 如果后端直接返回 user 对象，则不需要手动构造
+        // 否则，需要根据后端返回的字段 (如 发布者用户名) 手动构造
+        user: response.user || { // 假设后端可能返回 user 对象，或者需要我们构造
+          username: response.发布者用户名 || '未知用户',
+          // 其他 user 相关字段可以从 response 获取或设为默认值
+          avatar: response.发布者头像 || '', // 假设有头像字段
+          credit: response.发布者信用分 || 0, // 假设有信用分字段
+        },
+        // 确保图片字段是数组
+        images: response.ImageURLs 
+          ? (typeof response.ImageURLs === 'string' ? response.ImageURLs.split(',') : response.ImageURLs) 
+          : (response.主图URL ? [response.主图URL] : []),
+        // 价格转为数字
+        price: parseFloat(response.价格) || 0,
+        // 库存转为数字
+        quantity: parseInt(response.库存, 10) || 0,
+      };
+      // 检查商品是否已收藏
+      if (isLoggedIn.value) {
+        checkIfFavorite();
       }
-    })
-    .catch(error => {
-      console.error("Get item info failure:", error);
-      ElMessage.error("获取商品信息失败");
-      itemInfo.value = { ...init_item_info };
-    });
-  componentKey.value += 1;
+    } else {
+      item_info_err.value = "未找到商品详情";
+    }
+  } catch (error) {
+    console.error("获取商品详情失败:", error);
+    item_info_err.value = "加载商品详情失败: " + (error.response?.data?.detail || error.message);
+  } finally {
+    item_info_loading.value = false;
+  }
+};
+
+const checkIfFavorite = async () => {
+  // ... existing code ...
 }
 
 const updateSuccessGetItemInfo = (responseData) => {

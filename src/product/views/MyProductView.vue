@@ -1,8 +1,8 @@
 <script setup>
-import {ref, onMounted, computed} from 'vue';
+import {ref, onMounted, computed, nextTick} from 'vue';
 import router from "@/router/index.js";
 import api from '@/API_PRO.js';
-import {ElMessage} from "element-plus";
+import {ElMessage, ElMessageBox} from "element-plus";
 import {RefreshRight, Plus, Edit, Delete} from "@element-plus/icons-vue";
 import ProductPostDialog from "@/product/components/ProductPostDialog.vue";
 import ItemInfoBlock from "@/product/components/ItemInfoBlock.vue";
@@ -59,16 +59,39 @@ const fetchMyProducts = () => {
     loading.value = false;
     return;
   }
-  api.getProductList({ owner_id: userId })
+  api.getProductList({ owner_id: userId }) // 确保这里传递了 owner_id
     .then(data => {
+      // 检查 data 是否为 null 或 undefined，以及是否是数组
+      if (!data || !Array.isArray(data)) {
+        console.warn("API returned no data or invalid data format for my products:", data);
+        itemList.value = [];
+        return;
+      }
       itemList.value = data.map(item => ({
-        ...item,
-        status: item.status || (item.is_active ? 'active' : 'inactive'),
-        img: Array.isArray(item.img) ? 
-          item.img.map(url => (BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (url.startsWith('/') ? url : '/' + url))) : 
-          (item.img ? [(BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (item.img.startsWith('/') ? item.img : '/' + item.img))] : []),
+        id: item.商品ID, // 映射 商品ID 到 id
+        name: item.商品名称, // 映射 商品名称 到 name
+        description: item.商品描述, // 映射 商品描述 到 description
+        quantity: item.库存, // 映射 库存 到 quantity
+        price: item.价格, // 映射 价格 到 price
+        post_time: item.发布时间, // 映射 发布时间 到 post_time
+        status: item.商品状态, // 映射 商品状态 到 status
+        // 智能处理图片URL：如果已经是完整URL则直接使用，否则添加 BASE_URL
+        img: item.主图URL 
+          ? [item.主图URL.startsWith('http') || item.主图URL.startsWith('//') 
+             ? item.主图URL 
+             : FormatObject.formattedImgUrl(item.主图URL)] 
+          : [],
+        
+        // ProductCard.vue 和 ItemInfoBlock.vue 期望的 user 对象
+        user: {
+            username: item.发布者用户名,
+            // 假设后端没有返回 credit 和 avatar，暂时使用默认值
+            credit: 100, // 默认信用分
+            avatar: '', // 默认头像URL，如果需要显示实际头像，后端应提供
+        },
+        total_count: item.总商品数, // 映射 总商品数
       }));
-      if (!data || data.length === 0) {
+      if (itemList.value.length === 0) {
         console.log("当前用户发布的商品列表为空");
       }
     })
@@ -83,32 +106,41 @@ const fetchMyProducts = () => {
 };
 
 const handleToggleProductStatus = async (item) => {
-  const newStatus = item.status === 'active' ? 'inactive' : 'active';
-  const actionText = newStatus === 'active' ? '上架' : '下架';
+  const originalStatus = item.status;
+  if (originalStatus !== 'Active') { // 只允许对 "Active" 状态的商品进行操作
+    ElMessage.info('只有"在售"状态的商品才能执行下架操作。');
+    // 确保开关状态回滚
+    await nextTick(() => {
+      item.status = originalStatus;
+    });
+    return;
+  }
+
+  // 从 Active 状态下架到 Withdrawn
   try {
     await ElMessageBox.confirm(
-      `确定要${actionText}此商品吗？`,
-      `${actionText}商品`,
+      `确定要下架此商品 "${item.name}" 吗？下架后商品将不可见，但您后续仍可编辑或删除。`,
+      '确认下架',
       {
-        confirmButtonText: '确定',
+        confirmButtonText: '确定下架',
         cancelButtonText: '取消',
-        type: 'warning'
+        type: 'warning',
       }
     );
-    
-    const response = await api.updateProduct(item.id, { status: newStatus });
-    
-    if (response?.code === 0) {
-      ElMessage.success(`商品已成功${actionText}`);
-      item.status = newStatus;
-    } else {
-      ElMessage.error(`${actionText}商品失败`);
-    }
+
+    await api.withdrawProduct(item.id); // 调用下架接口
+    ElMessage.success('商品已成功下架');
+    item.status = 'Withdrawn'; // 更新前端状态
+    // fetchMyProducts(); // 可以考虑重新获取列表以同步最新状态
   } catch (error) {
     if (error !== 'cancel') {
-      console.error(`${actionText}商品失败:`, error);
-      ElMessage.error(`${actionText}商品失败`);
+      console.error('下架商品失败:', error);
+      ElMessage.error('下架商品失败: ' + (error.response?.data?.detail || error.message));
     }
+    //  如果操作失败或用户取消，状态应回滚
+    await nextTick(() => {
+      item.status = originalStatus;
+    });
   }
 };
 
@@ -123,36 +155,38 @@ const handleDeleteProduct = async (productId) => {
         type: 'error'
       }
     );
-    const response = await api.deleteProduct(productId);
-    if (response?.code === 0) {
-      ElMessage.success('商品已成功删除');
-      fetchMyProducts();
-    } else {
-      ElMessage.error('删除商品失败');
-    }
+    // 调用真正的删除API
+    await api.deleteProduct(productId);
+    ElMessage.success('商品已成功删除');
+    fetchMyProducts(); // 重新获取列表
+
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除商品失败:', error);
-      ElMessage.error('删除商品失败');
+      ElMessage.error('删除商品失败: ' + (error.response?.data?.detail || error.message));
     }
   }
 };
 
 const getProductStatusTagType = (status) => {
   switch (status) {
-    case 'active': return 'success';
-    case 'inactive': return 'info';
-    case 'sold': return 'warning';
+    case 'Active': return 'success';
+    case 'Withdrawn': return 'info';
+    case 'Sold': return 'warning';
+    case 'PendingReview': return 'primary';
+    case 'Rejected': return 'danger';
     default: return 'info';
   }
 };
 
 const getProductStatusText = (status) => {
   switch (status) {
-    case 'active': return '在售';
-    case 'inactive': return '已下架';
-    case 'sold': return '已售出';
-    default: return '未知状态';
+    case 'Active': return '在售';
+    case 'Withdrawn': return '已下架';
+    case 'Sold': return '已售出';
+    case 'PendingReview': return '审核中';
+    case 'Rejected': return '已拒绝';
+    default: return `未知 (${status})`;
   }
 };
 
@@ -209,10 +243,11 @@ onMounted(() => {
                 </el-button>
                 <el-switch
                   v-model="item.status"
-                  :active-value="'active'"
-                  :inactive-value="'inactive'"
-                  active-text="上架" inactive-text="下架"
+                  active-value="Active"
+                  inactive-value="Withdrawn"
+                  active-text="在售" inactive-text="下架"
                   @change="handleToggleProductStatus(item)"
+                  :disabled="item.status !== 'Active'"
                   class="status-toggle-switch"
                 />
               </div>

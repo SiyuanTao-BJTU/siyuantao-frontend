@@ -6,7 +6,7 @@ import BackendConfig from "../../backend.config";
 
 // 创建 Axios 实例
 const axiosClient = axios.create({
-  baseURL: process.env.NODE_ENV ===' desktop' ? BackendConfig.RESTFUL_API_URL : '/api', // API 基础路径
+  baseURL: process.env.NODE_ENV ===' desktop' ? BackendConfig.RESTFUL_API_URL : '', // API 基础路径
   timeout: 10000, // 设置请求超时时间
   withCredentials: true, // 开启跨域凭证
 });

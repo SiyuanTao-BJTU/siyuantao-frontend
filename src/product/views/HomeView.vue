@@ -12,51 +12,12 @@ const cardList = ref([]); // 商品卡片列表
 const searchQuery = ref(''); // 搜索框内容
 const componentKey = ref(0); // 用于强制刷新组件
 const categoryFilter = ref('');
-const priceMin = ref('');
-const priceMax = ref('');
-const conditionFilter = ref('');
+const priceMin = ref(null); // 初始化为 null 或 undefined
+const priceMax = ref(null); // 初始化为 null 或 undefined
+// const conditionFilter = ref(''); // 移除 conditionFilter，因为API不支持
 const currentPage = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
-
-// 模拟数据
-const mockCardList = [
-  {
-    id: 'mock1',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+1'],
-    name: "模拟商品 1",
-    description: "这是一个模拟商品描述 1",
-    price: 100,
-  },
-  {
-    id: 'mock2',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+2'],
-    name: "模拟商品 2",
-    description: "这是一个模拟商品描述 2",
-    price: 200,
-  },
-  {
-    id: 'mock3',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+3'],
-    name: "模拟商品 3",
-    description: "这是一个模拟商品描述 3",
-    price: 300,
-  },
-   {
-    id: 'mock4',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+4'],
-    name: "模拟商品 4",
-    description: "这是一个模拟商品描述 4",
-    price: 400,
-  },
-   {
-    id: 'mock5',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+5'],
-    name: "模拟商品 5",
-    description: "这是一个模拟商品描述 5",
-    price: 500,
-  },
-];
 
 // 顶部推荐商品 (如果API返回不足3个，会用空对象填充)
 const top_item_1 = ref({});
@@ -64,84 +25,80 @@ const top_item_2 = ref({});
 const top_item_3 = ref({});
 
 const handleSearch = () => {
-  if (searchQuery.value === "") {
-    ElMessage.warning('搜索内容不能为空');
-    return;
-  }
+  // searchQuery 为空时，也应该允许搜索（即获取所有或基于其他筛选条件的商品）
+  // if (searchQuery.value === "") {
+  //   ElMessage.warning('搜索内容不能为空');
+  //   return;
+  // }
+  fetchProductData();
+};
+
+// 统一的数据获取函数
+const fetchProductData = () => {
   const filters = {
-    search: searchQuery.value,
-    category: categoryFilter.value,
-    priceMin: priceMin.value ? parseFloat(priceMin.value) : null,
-    priceMax: priceMax.value ? parseFloat(priceMax.value) : null,
-    condition: conditionFilter.value,
-    page: currentPage.value,
-    pageSize: pageSize.value
+    keyword: searchQuery.value || undefined,
+    category_name: categoryFilter.value || undefined,
+    min_price: priceMin.value ? parseFloat(priceMin.value) : undefined,
+    max_price: priceMax.value ? parseFloat(priceMax.value) : undefined,
+    // condition: conditionFilter.value || undefined, // API不支持condition
+    page_number: currentPage.value,
+    page_size: pageSize.value
   };
   api.getProductList(filters)
     .then(data => {
-      // Ensure img is an array for PurchaseGoodsCard
-      cardList.value = data.list.map(item => ({
-        ...item,
-        img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
-      }));
-      total.value = data.total;
-      if (!data.list || data.list.length === 0) {
-        ElMessage.info('未找到相关商品');
-        cardList.value = []; // 清空列表，显示"暂无商品"
+      // 后端返回的数据直接是列表，没有 list 和 total 嵌套
+      if (data && Array.isArray(data)) {
+        cardList.value = data.map(item => ({
+          id: item.商品ID,
+          name: item.商品名称,
+          description: item.商品描述,
+          price: parseFloat(item.价格),
+          // 确保 img 是一个数组，即使只有一个主图URL
+          img: item.主图URL ? [item.主图URL] : [], 
+          // 如果需要显示发布者等其他信息，也在这里映射
+          // user: { username: item.发布者用户名, ... }
+        }));
+        // total 的计算方式：如果后端在每个商品项中返回了 总商品数，
+        // 且这个数在分页查询下代表的是符合当前筛选条件的总数，则可以使用它。
+        // 否则，如果API本身不直接返回分页后的总数，前端可能需要另一接口或接受当前返回列表长度作为当前页数量
+        // 假设后端 getProductList 返回的每个 item 包含 总商品数，且它是过滤后的总数
+        total.value = data.length > 0 ? data[0].总商品数 : 0; 
+        
+        if (cardList.value.length === 0) {
+          ElMessage.info('未找到相关商品');
+        }
+
+        // 更新顶部推荐商品（如果逻辑需要基于当前筛选结果）
+        // 这个逻辑可能需要调整，首页推荐通常是独立的
+        top_item_1.value = cardList.value[0] || {}; 
+        top_item_2.value = cardList.value[1] || {};
+        top_item_3.value = cardList.value[2] || {};
+
+      } else {
+        ElMessage.info('暂无商品数据');
+        cardList.value = [];
+        total.value = 0;
+        top_item_1.value = {}; top_item_2.value = {}; top_item_3.value = {};
       }
     })
     .catch(error => {
-      console.error("Search API failure:", error);
-      ElMessage.error('搜索商品失败');
-      cardList.value = []; // 清空列表，显示错误或"暂无商品"
+      console.error("API getProductList failure:", error);
+      ElMessage.error('获取商品列表失败: ' + (error.response?.data?.detail || error.message));
+      cardList.value = []; 
+      total.value = 0;
+      top_item_1.value = {}; top_item_2.value = {}; top_item_3.value = {};
     });
   componentKey.value += 1;
-};
+}
 
 const recommendCall = () => {
-  const filters = {
-    category: categoryFilter.value,
-    priceMin: priceMin.value,
-    priceMax: priceMax.value,
-    condition: conditionFilter.value,
-    page: currentPage.value,
-    pageSize: pageSize.value
-  };
-  api.getProductList(filters) 
-    .then(data => {
-      if (data && data.list.length > 0) { // 检查API是否返回数据
-        // Ensure img is an array for PurchaseGoodsCard
-        cardList.value = data.list.map(item => ({
-          ...item,
-          img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
-        })); // 使用API数据
-        total.value = data.total;
-        // 根据API数据填充顶部推荐商品，如果不足3个，保持空对象
-        top_item_1.value = data.list[0] || {}; 
-        top_item_2.value = data.list[1] || {};
-        top_item_3.value = data.list[2] || {};
-      } else { // 如果API没有返回数据，使用模拟数据
-        ElMessage.info('API未返回商品，显示模拟数据');
-        cardList.value = mockCardList;
-        total.value = mockCardList.length;
-        // 使用模拟数据填充顶部推荐商品 (假设模拟数据至少有3个，否则也需要处理)
-         top_item_1.value = mockCardList[0] || {}; 
-         top_item_2.value = mockCardList[1] || {};
-         top_item_3.value = mockCardList[2] || {};
-      }
-    })
-    .catch(error => {
-      console.error("Recommend API failure:", error);
-      ElMessage.error('获取推荐商品失败，显示模拟数据');
-      cardList.value = mockCardList; // API 调用失败时也显示模拟数据
-      total.value = mockCardList.length;
-       // 使用模拟数据填充顶部推荐商品 (假设模拟数据至少有3个)
-       top_item_1.value = mockCardList[0] || {}; 
-       top_item_2.value = mockCardList[1] || {};
-       top_item_3.value = mockCardList[2] || {};
-    });
-  componentKey.value += 1;
-  searchQuery.value = "";
+  // 首页推荐通常有自己的逻辑或调用特定API，或者就是默认的 getProductList 无特殊过滤
+  searchQuery.value = ''; // 清空搜索词
+  categoryFilter.value = ''; // 清空分类
+  priceMin.value = null;
+  priceMax.value = null;
+  currentPage.value = 1; // 重置到第一页
+  fetchProductData(); 
 };
 
 const handleTagClick = (tag) => {
@@ -216,7 +173,7 @@ onMounted(() => {
               @input="handleFilter"
               class="price-input"
             />
-            <el-select
+            <!-- <el-select
               v-model="conditionFilter"
               placeholder="新旧程度"
               clearable
@@ -228,7 +185,7 @@ onMounted(() => {
               <el-option label="八成新" value="80%" />
               <el-option label="七成新" value="70%" />
               <el-option label="六成新及以下" value="60% and below" />
-            </el-select>
+            </el-select> -->
           </div>
         </div>
       </el-card>
