@@ -67,7 +67,7 @@
           bio.value = userInfo.bio || "";
           // Construct full avatar URL if avatarUrl is a relative path
           avatarUrl.value = userInfo.avatar_url ? 
-            BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + userInfo.avatar_url : "";
+            BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (userInfo.avatar_url.startsWith('/') ? userInfo.avatar_url : '/' + userInfo.avatar_url) : "";
           // Also update userProfileResponseData to ensure correct URL is passed to child components
           userProfileResponseData.value.avatar_url = avatarUrl.value;
 
@@ -209,15 +209,15 @@
             <el-icon><Lock /></el-icon>
             <span>修改密码</span>
           </el-card>
-           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/profile/my-products')">
+           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/my-products')">
             <el-icon><Goods /></el-icon>
             <span>我的商品</span>
           </el-card>
-           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/profile/my-orders')">
+           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/orders')">
             <el-icon><List /></el-icon>
             <span>我的订单</span>
           </el-card>
-           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/profile/my-favorites')">
+           <el-card class="functional-card" shadow="hover" @click="handleCardClick('/favorites')">
             <el-icon><Star /></el-icon>
             <span>我的收藏</span>
           </el-card>
