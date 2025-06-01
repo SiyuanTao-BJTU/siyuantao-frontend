@@ -70,6 +70,41 @@ const rules = {
 
 const productFormRef = ref(null); // 表单引用
 
+// 获取商品详情 (编辑模式下)
+const fetchProductDetail = async (id) => {
+  try {
+    const response = await api.getProductDetail(id);
+    if (response) {
+      productForm.product_name = response.商品名称;
+      productForm.description = response.商品描述;
+      productForm.price = parseFloat(response.价格) || null;
+      productForm.category = response.商品类别;
+      productForm.condition = response.商品成色 || '';
+      productForm.quantity = parseInt(response.库存, 10) || 1;
+      
+      const imageUrlsString = response.ImageURLs;
+      if (imageUrlsString && typeof imageUrlsString === 'string') {
+        productForm.image_urls = imageUrlsString.split(',').map(url => {
+            const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
+            const trimmedUrl = url.trim();
+            return (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) + (trimmedUrl.startsWith('/') ? trimmedUrl : '/' + trimmedUrl);
+        });
+      } else {
+        productForm.image_urls = [];
+      }
+      
+      productForm.image_files = [];
+    } else {
+      ElMessage.error('获取商品详情失败: 未返回有效数据');
+      emits('updateCancel');
+    }
+  } catch (error) {
+    console.error('获取商品详情失败:', error);
+    ElMessage.error('获取商品详情失败: ' + (error.response?.data?.detail || error.message));
+    emits('updateCancel');
+  }
+};
+
 // 重置表单
 const resetForm = () => {
   productForm.product_name = '';
@@ -109,41 +144,6 @@ watch(() => props.isDialogVisible, (newValue) => {
 watch(localDialogVisible, (newValue) => {
   emits('update:isDialogVisible', newValue);
 });
-
-// 获取商品详情 (编辑模式下)
-const fetchProductDetail = async (id) => {
-  try {
-    const response = await api.getProductDetail(id);
-    if (response) {
-      productForm.product_name = response.商品名称;
-      productForm.description = response.商品描述;
-      productForm.price = parseFloat(response.价格) || null;
-      productForm.category = response.商品类别;
-      productForm.condition = response.商品成色 || '';
-      productForm.quantity = parseInt(response.库存, 10) || 1;
-      
-      const imageUrlsString = response.ImageURLs;
-      if (imageUrlsString && typeof imageUrlsString === 'string') {
-        productForm.image_urls = imageUrlsString.split(',').map(url => {
-            const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
-            const trimmedUrl = url.trim();
-            return (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) + (trimmedUrl.startsWith('/') ? trimmedUrl : '/' + trimmedUrl);
-        });
-      } else {
-        productForm.image_urls = [];
-      }
-      
-      productForm.image_files = [];
-    } else {
-      ElMessage.error('获取商品详情失败: 未返回有效数据');
-      emits('updateCancel');
-    }
-  } catch (error) {
-    console.error('获取商品详情失败:', error);
-    ElMessage.error('获取商品详情失败: ' + (error.response?.data?.detail || error.message));
-    emits('updateCancel');
-  }
-};
 
 // 图片上传相关
 const handleImageUpload = async (options) => {

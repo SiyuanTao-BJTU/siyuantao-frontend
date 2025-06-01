@@ -42,6 +42,24 @@
           <span class="stat-label">已拒绝</span>
         </div>
       </div>
+      <div class="stat-card withdrawn" @click="handleStatCardClick('withdrawn')">
+        <div class="stat-icon">
+          <el-icon><Download /></el-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">{{ stats.withdrawn }}</span>
+          <span class="stat-label">已下架</span>
+        </div>
+      </div>
+      <div class="stat-card sold" @click="handleStatCardClick('sold')">
+        <div class="stat-icon">
+          <el-icon><ShoppingCartFull /></el-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">{{ stats.sold }}</span>
+          <span class="stat-label">已售罄</span>
+        </div>
+      </div>
       <div class="stat-card total" @click="handleStatCardClick(null)">
         <div class="stat-icon">
           <el-icon><Box /></el-icon>
@@ -373,7 +391,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
       Search, Refresh, Bell, Download, View, Edit, Check, Close, Delete,
-      Clock, Box, Picture, Operation
+      Clock, Box, Picture, Operation, ShoppingCartFull
     } from '@element-plus/icons-vue'
 import api from '@/API_PRO.js';
 import FormatObject from '@/utils/format.js';
@@ -405,6 +423,8 @@ const stats = reactive({
   pending: 0,
   approved: 0,
   rejected: 0,
+  withdrawn: 0,
+  sold: 0,
   total: 0
 })
 
@@ -456,13 +476,13 @@ const fetchData = async () => {
   loading.value = true;
   try {
     // 1. 获取全量数据用于统计 (使用新的特殊状态值)
-    const allProductsResponse = await api.getProductList({ status: '_FETCH_ALL_PRODUCTS_', page_size: 10000 }); // 获取足够多的数据以进行准确统计
+    const allProductsResponse = await api.getProductList({ status: '_FETCH_ALL_PRODUCTS_', page_size: 10000 }); 
     const mappedAllProducts = allProductsResponse.map(mapProductData);
     stats.pending = mappedAllProducts.filter(item => item.auditStatus === 'PendingReview').length;
     stats.approved = mappedAllProducts.filter(item => item.auditStatus === 'Active').length;
-    stats.rejected = mappedAllProducts.filter(item => item.auditStatus === 'Rejected').length; // 假设还有其他状态如 Withdrawn, Sold，按需添加
-    // stats.withdrawn = mappedAllProducts.filter(item => item.auditStatus === 'Withdrawn').length;
-    // stats.sold = mappedAllProducts.filter(item => item.auditStatus === 'Sold').length;
+    stats.rejected = mappedAllProducts.filter(item => item.auditStatus === 'Rejected').length;
+    stats.withdrawn = mappedAllProducts.filter(item => item.auditStatus === 'Withdrawn').length;
+    stats.sold = mappedAllProducts.filter(item => item.auditStatus === 'Sold').length;
     stats.total = mappedAllProducts.length;
 
     // 2. 根据当前筛选条件（包括 statusFilter）准备参数获取表格数据
@@ -472,15 +492,21 @@ const fetchData = async () => {
     else if (statusFilter.value === 'rejected') currentStatusParam = 'Rejected';
     else if (statusFilter.value === 'withdrawn') currentStatusParam = 'Withdrawn';
     else if (statusFilter.value === 'sold') currentStatusParam = 'Sold';
-    // 如果 statusFilter.value 为空字符串或 null/undefined，则 currentStatusParam 保持 undefined (获取所有)
+    // 如果 statusFilter.value 为空字符串或 null/undefined (即点击"总商品"卡片)，则 currentStatusParam 保持 undefined (后端sp_GetProductList在status为null时获取所有激活商品，需要调整为获取全部，或前端在此时不传status)
+    // 为了保持点击 "总商品" 卡片时显示所有商品，当 statusFilter.value 为 null 时，我们不传递 status 参数给后端，
+    // 或者传递一个后端能识别为"所有状态"的特殊值（如果后端支持）。
+    // 当前 sp_GetProductList 对于 status=null 会默认查询 Active，对于 _FETCH_ALL_PRODUCTS_ 会查询所有。
+    // 所以，当 statusFilter.value 为 null (点击总览卡片) 时，我们应该让 currentStatusParam 为 _FETCH_ALL_PRODUCTS_
+    if (statusFilter.value === null) {
+        currentStatusParam = '_FETCH_ALL_PRODUCTS_';
+    }
 
     const params = {
       page_number: currentPage.value,
       page_size: pageSize.value,
       category_name: categoryFilter.value || undefined,
-      status: currentStatusParam, // 使用处理后的 status
+      status: currentStatusParam, 
       keyword: searchKeyword.value || undefined,
-      // 如果API支持日期范围过滤，在这里添加
       // start_date: dateRange.value?.[0] || undefined,
       // end_date: dateRange.value?.[1] || undefined,
     };
@@ -491,46 +517,24 @@ const fetchData = async () => {
     tableData.value = filteredProductsResponse.map(mapProductData);
 
     // 4. 设置分页总数
-    // 假设API返回的 filteredProductsResponse 是数组，且第一个元素（如果存在）有 '总商品数' 属性
-    // 这个 '总商品数' 应该代表当前筛选条件下的总数
-    if (filteredProductsResponse.length > 0 && filteredProductsResponse[0].hasOwnProperty('总商品数')) {
-        total.value = filteredProductsResponse[0].总商品数; 
-    } else if (currentStatusParam === undefined && !categoryFilter.value && !searchKeyword.value && (!dateRange.value || dateRange.value.length === 0)) {
-        // 如果没有活动筛选器（状态、分类、关键词、日期都为空），则分页总数等于全量商品数
-        total.value = stats.total;
+    // 如果后端API能返回筛选后的总数，优先使用。否则根据当前筛选情况估算或使用全局总数。
+    // 当前getProductList的返回结构中，每个商品对象都带有 `总商品数`，这通常是全局总数。
+    // 因此，我们不能依赖它作为筛选后的总数。
+    // 如果有状态筛选，我们用当前返回的列表长度作为 total，这只对单页数据准确，多页分页不准。
+    // 最好的方式是后端API能够返回筛选后的总数。
+    // 鉴于当前情况，为了让列表筛选有效，当有筛选条件时，total 应该反映筛选后的数量。
+    // 但我们无法从后端直接获取，所以如果 statusFilter 有值，total 就是 tableData.value.length (当前页的)
+    // 这会导致分页器仅对当前页正确。一种折中是，如果筛选了，就不显示分页或总数，或者一直用stats.total
+
+    if (params.status && params.status !== '_FETCH_ALL_PRODUCTS_') {
+      // 如果有具体的状态筛选，我们无法从当前API得知该状态下的总商品数，
+      // 除非我们获取所有该状态的商品（不分页）然后计数，但这不高效。
+      // 暂时将 total 设置为当前页返回的数量，这使得分页仅对第一页有意义。
+      // 或者，更简单地，让 total 始终等于 stats.total (所有商品的总数)，分页器始终基于所有商品。
+      // 用户通过点击统计卡片或筛选器来过滤列表内容。
+      total.value = stats[statusFilter.value] || 0; // 使用对应状态的统计数量作为分页总数
     } else {
-        // 如果有筛选器，但API没有返回过滤后的总数，则total.value是当前页的条目数 (这可能不是最佳体验)
-        // 或者，如果API不返回过滤后的总数，我们可能需要另一个API来获取该计数
-        // 为简化，如果 filteredProductsResponse 为空，则 total.value 为 0
-        total.value = filteredProductsResponse.length > 0 ? filteredProductsResponse.length : 0; 
-        // 一个更稳妥的做法是，如果API不能提供过滤后的总数，分页器应该显示基于全量数据的总数，但用户体验可能不佳。
-        // 暂时假设，如果filteredProductsResponse[0].总商品数不存在，就用当前页数量，这在真实分页下不准确。
-        // 更理想的是后端在调用 sp_GetProductList 时，该存储过程能返回符合当前条件的总记录数。
-        // 从用户提供的信息看，`总商品数` 似乎是全局总数，而不是特定查询的总数。 这需要后端API调整才能完美实现。
-        // 基于当前后端API返回的结构，如果 filteredProductsResponse[0].总商品数 是全局总数，那么分页是不准确的。
-        // 暂时，如果 statusFilter 有效，我们用 filteredProductsResponse.length，否则用 stats.total
-        if (params.status) { // 如果有状态筛选
-           // 后端API似乎不直接返回筛选后的总数，这使得分页困难
-           // 理想情况: api.getProductList(params) 返回 { items: [...], totalFiltered: X }
-           // 暂时用一种折中方案：如果没有 filteredProductsResponse[0].总商品数，就用 stats.total，这可能导致分页不准
-           total.value = stats.total; //  回退到显示所有商品的总数，如果API不提供精确的筛选后总数
-        } else {
-           total.value = stats.total; // 无筛选也用总数
-        }
-        // 重新审视：如果 filteredProductsResponse[0].总商品数 是全局总数，我们无法准确知道筛选后的总数
-        // 除非后端 sp_GetProductList 返回过滤后的总数。这里我们假设它返回的是全局总数。
-        // 那么，total.value 应该总是 stats.total，前端分页只是模拟。
-        // 或者，后端修改 getProductList 接口，使其可以返回筛选后的总数。
-
-        // 根据用户最新提供的API返回信息，每个商品都带有一个 总商品数=16，这显然是全局总数。
-        // 因此，分页的 total 必须用其他方式确定，或者API需要修改。
-        // 暂时，如果 statusFilter 被应用，我们无法从当前API得知筛选后的总数。
-        // 如果没有状态筛选，total.value 就是 stats.total。
-        // 如果有状态筛选，分页可能不准确，除非我们对 filteredProductsResponse 做客户端计数。
-        // 但这只对当前页有效。
-        // **最合理的临时处理：分页的 total.value 总是 stats.total，这表示所有商品的总数。**
-        total.value = stats.total;
-
+      total.value = stats.total; // 没有特定状态筛选（如查看全部或总商品）时，使用总商品数
     }
 
   } catch (error) {
@@ -690,7 +694,7 @@ const handleWithdrawProduct = async (product) => {
     });
     await api.withdrawProduct(product.id);
     ElMessage.success('商品下架成功');
-    fetchData(); 
+    fetchData(); // 刷新列表和统计数据
   } catch (error) {
     if (error !== 'cancel') {
       console.error('下架商品失败:', error);
@@ -883,6 +887,8 @@ onMounted(() => {
 .stat-card.pending { border-left: 4px solid #f59e0b; }
 .stat-card.approved { border-left: 4px solid #10b981; }
 .stat-card.rejected { border-left: 4px solid #ef4444; }
+.stat-card.withdrawn { border-left: 4px solid #a0aec0; }
+.stat-card.sold { border-left: 4px solid #718096; }
 .stat-card.total { border-left: 4px solid #3b82f6; }
 
 .stat-icon {
@@ -900,6 +906,8 @@ onMounted(() => {
 .pending .stat-icon { background: linear-gradient(45deg, #f59e0b, #ffcf96); } /* Keep unique gradient */
 .approved .stat-icon { background: linear-gradient(45deg, #10b981, #6ee7b7); }
 .rejected .stat-icon { background: linear-gradient(45deg, #ef4444, #fca5a5); }
+.withdrawn .stat-icon { background: linear-gradient(45deg, #a0aec0, #cbd5e0); }
+.sold .stat-icon { background: linear-gradient(45deg, #718096, #a0aec0); }
 .total .stat-icon { background: linear-gradient(45deg, #3b82f6, #93c5fd); }
 
 

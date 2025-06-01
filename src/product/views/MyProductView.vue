@@ -314,10 +314,12 @@ onMounted(() => {
     <!-- 商品发布/编辑对话框 -->
     <ProductPostDialog
         v-if="isProductPostDialogVisible"
-        :visible="isProductPostDialogVisible"
+        :isDialogVisible="isProductPostDialogVisible"
+        :isEditMode="!!currentEditProductId" 
         :product-id="currentEditProductId"
-        @close="handleProductPostDialogClose"
-        @success="handleProductPostDialogSuccess"
+        @update:isDialogVisible="isProductPostDialogVisible = $event"
+        @updateSuccess="handleProductPostDialogSuccess"
+        @updateCancel="handleProductPostDialogClose" 
     />
 
     <!-- 5. 嵌入 ProductDetail 对话框 -->
