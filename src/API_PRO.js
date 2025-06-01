@@ -271,89 +271,78 @@ const toggleUserStaffStatus = (userId) => {
  * @note openapi.json lists /api/v1/products/. Adjusting path.
  */
 const getProductList = (filters) => {
-  // 根据 openapi.json，商品列表接口路径是 /api/v1/products/
-  // filters 参数应作为查询参数传递
-  return apiRequest('GET', '/v1/products/', null, filters);
+  // Path adjusted to /v1/products/ based on openapi.json
+  return apiRequest('GET', '/v1/products', null, filters);
 };
 
 /**
  * @summary 创建新商品 (需要认证)
  * @method POST
- * @path /api/v1/items/ (assuming /item/products/ maps to this for POST)
- * @param {FormData|object} productData - 商品数据。
- *                                      如果包含图片上传，应为 FormData 实例。
- *                                      (参考 ProductSerializer: { name, price, quantity, category (pk), description?, condition? })
- *                                      后端会自动设置 owner。
- *                                      对于图片(images): 如果是 FormData, 应包含 image 文件；如果是 JSON，应为图片信息数组 (通常创建时直接传文件)。
+ * @path /api/v1/products/
+ * @param {FormData|object} productData - 商品数据 (参考 ProductSerializer)
  * @note 若包含图片上传，请确保 isFormData = true，并正确构造 FormData
- * @note openapi.json lists /api/v1/items/ for POST. Adjusting path.
  */
 const createProduct = (productData, isFormData = false) => {
-  // Path adjusted to /v1/items/ based on openapi.json /api/v1/items for POST
-  return apiRequest('POST', '/v1/items/', productData, null, isFormData);
+  // Path adjusted to /v1/products/ based on error message indicating this path
+  return apiRequest('POST', '/v1/products', productData, null, isFormData);
 };
 
 /**
  * @summary 获取单个商品详情
  * @method GET
- * @path /api/v1/items/{item_id} (assuming /item/products/{productId}/ maps to this)
+ * @path /api/v1/products/{product_id}
  * @param {string} productId - 商品的UUID
- * @note openapi.json lists /api/v1/items/{item_id}. Adjusting path.
  */
 const getProductDetail = (productId) => {
-  // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('GET', `/v1/items/${productId}`);
+  // Path adjusted to /v1/products/{productId}
+  return apiRequest('GET', `/v1/products/${productId}`);
 };
 
 /**
  * @summary 修改商品信息 (需要认证，所有者或管理员)
  * @method PUT
- * @path /api/v1/items/{item_id} (assuming /item/products/{productId}/ maps to this)
+ * @path /api/v1/products/{product_id}
  * @param {string} productId - 商品的UUID
  * @param {FormData|object} productData - 更新的商品数据 (参考 ProductSerializer, 支持部分更新)
  * @note 若包含图片上传/修改，请确保 isFormData = true，并正确构造 FormData
- * @note openapi.json lists /api/v1/items/{item_id} for PUT. Adjusting path.
  */
 const updateProduct = (productId, productData, isFormData = false) => {
-  // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('PUT', `/v1/items/${productId}/`, productData, null, isFormData);
+  // Path adjusted to /v1/products/{productId}
+  return apiRequest('PUT', `/v1/products/${productId}`, productData, null, isFormData);
 };
 
 /**
  * @summary 删除商品 (需要认证，所有者或管理员)
  * @method DELETE
- * @path /api/v1/items/{item_id} (assuming /item/products/{productId}/ maps to this)
+ * @path /api/v1/products/{product_id}
  * @param {string} productId - 商品的UUID
- * @note openapi.json lists /api/v1/items/{item_id} for DELETE. Adjusting path.
  */
 const deleteProduct = (productId) => {
-  // Path adjusted to /v1/items/{productId} based on openapi.json /api/v1/items/{item_id}
-  return apiRequest('DELETE', `/v1/items/${productId}/`);
+  // Path adjusted to /v1/products/{productId}/
+  return apiRequest('DELETE', `/v1/products/${productId}/`);
 };
 
 /**
  * @summary 为商品添加评论 (需要认证)
  * @method POST
- * @path /api/v1/items/{item_id}/comments (assuming /item/products/{productId}/comments/ maps to this)
+ * @path /api/v1/products/{product_id}/comments
  * @param {string} productId - 商品的UUID
  * @param {object} commentData - { content, rating }
- * @note openapi.json lists /api/v1/items/{item_id}/comments. Adjusting path.
  */
 const addProductComment = (productId, commentData) => {
-  // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
-  return apiRequest('POST', `/v1/items/${productId}/comments/`, commentData);
+  // Path adjusted to /v1/products/{productId}/comments/
+  return apiRequest('POST', `/v1/products/${productId}/comments/`, commentData);
 };
 
 /**
  * @summary 获取某商品的所有评论
  * @method GET
- * @path /api/v1/items/{item_id}/comments (assuming /item/products/{productId}/comments/ maps to this)
+ * @path /api/v1/products/{product_id}/comments
  * @param {string} productId - 商品的UUID
- * @note openapi.json lists /api/v1/items/{item_id}/comments. Adjusting path.
  */
 const getProductComments = (productId) => {
-  // Path adjusted to /v1/items/{productId}/comments based on openapi.json /api/v1/items/{item_id}/comments
-  return apiRequest('GET', `/v1/items/${productId}/comments/`);
+  // Path adjusted to /v1/products/{productId}/comments/
+  return apiRequest('GET', `/v1/products/${productId}/comments/`);
 };
 
 // ========================================================================
@@ -571,6 +560,16 @@ const requestLoginOtp = (requestData) => apiRequest('POST', '/v1/auth/request-lo
 
 const verifyLoginOtp = (requestData) => apiRequest('POST', '/v1/auth/verify-login-otp', requestData);
 
+/**
+ * @summary 通用图片上传接口
+ * @method POST
+ * @path /api/v1/upload/image
+ * @param {FormData} formData - 包含图片的 FormData 对象，字段名为 'file'
+ */
+const uploadImage = (formData) => {
+  return apiRequest('POST', '/v1/upload/image', formData, null, 'multipart/form-data');
+};
+
 // 导出所有 API 函数
 export default {
   // User
@@ -633,4 +632,7 @@ export default {
   getProductsPendingReviewCount,
   getPendingReturnsCount,
   getLatestReportsCount,
+
+  // New Image Upload
+  uploadImage,
 }; 

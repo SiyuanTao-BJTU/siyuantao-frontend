@@ -185,41 +185,55 @@ const handleSubmit = async () => {
         let uploadedImageUrls = [];
         // 如果有新上传的图片文件，先上传它们
         if (productForm.image_files.length > 0) {
-          const formData = new FormData();
-          productForm.image_files.forEach((file, index) => {
-            formData.append(`image${index + 1}`, file.raw); // 后端可能需要具体的字段名，例如 image1, image2
-          });
-          // 假设 imagesUploadCreate 返回一个包含所有上传图片 URL 的数组
-          const uploadResponse = await api.imagesUploadCreate(formData);
-          if (uploadResponse && Array.isArray(uploadResponse.image_urls)) {
-            uploadedImageUrls = uploadResponse.image_urls;
-          } else {
-            ElMessage.error('图片上传失败');
-            return;
+          for (const file of productForm.image_files) {
+            const formData = new FormData();
+            formData.append('file', file.raw); // 后端接口期望的字段名为 'file'
+            // 调用新的通用图片上传接口
+            const uploadResponse = await api.uploadImage(formData);
+            if (uploadResponse && uploadResponse.url) {
+              uploadedImageUrls.push(uploadResponse.url); // 收集返回的图片 URL
+            } else {
+              ElMessage.error('图片上传失败: 未获取到有效的图片 URL');
+              return;
+            }
           }
         }
 
-        const finalImageUrls = [...productForm.image_urls.map(url => {
+        const finalImageUrls = [
+          ...productForm.image_urls.map(url => {
+            // 移除前端 BASE_URL 部分，确保后端只接收相对路径
             const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
             return url.replace((baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl), '').replace(/^\//, '');
-        }), ...uploadedImageUrls]; // 合并已有和新上传的图片URL，并去除后端BASE_URL和开头的斜杠
+          }),
+          ...uploadedImageUrls
+        ]; // 合并已有和新上传的图片URL
 
         const submitData = {
           product_name: productForm.product_name,
           description: productForm.description,
           price: productForm.price,
-          category: productForm.category,
-          condition: productForm.condition,
+          category_name: productForm.category, // Changed to category_name to match backend ProductCreate schema
+          quantity: 1, // Assuming quantity is always 1 for now, or add to form
           image_urls: finalImageUrls, // 提交给后端的图片URL列表
+          condition: productForm.condition, // Add condition
         };
 
         if (props.isEditMode && props.productId) {
           // 更新商品
-          await api.updateProduct(props.productId, submitData);
+          const updateData = {
+            product_name: submitData.product_name,
+            description: submitData.description,
+            price: submitData.price,
+            category_name: submitData.category_name,
+            quantity: submitData.quantity, // Assuming quantity is always 1 for now, or add to form
+            image_urls: submitData.image_urls.length > 0 ? submitData.image_urls : [], // If no images, send empty array
+            condition: submitData.condition, // Add condition
+          };
+          await api.updateProduct(props.productId, updateData, false); // Explicitly set isFormData to false
           ElMessage.success('商品更新成功');
         } else {
           // 发布商品
-          await api.createProduct(submitData);
+          await api.createProduct(submitData, false); // Explicitly set isFormData to false
           ElMessage.success('商品发布成功');
         }
         emits('updateSuccess');

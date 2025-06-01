@@ -7,7 +7,6 @@ import {RefreshRight, Plus, Edit, Delete} from "@element-plus/icons-vue";
 import ProductPostDialog from "@/product/components/ProductPostDialog.vue";
 import ItemInfoBlock from "@/product/components/ItemInfoBlock.vue";
 import FormatObject from "@/utils/format.js";
-import PurchaseGoodsCard from "@/product/components/PurchaseGoodsCard.vue";
 
 // 组件基本变量定义
 let isItemSelected = ref(false);

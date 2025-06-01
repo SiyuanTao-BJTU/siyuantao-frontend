@@ -71,8 +71,8 @@ const handleSearch = () => {
   const filters = {
     search: searchQuery.value,
     category: categoryFilter.value,
-    priceMin: priceMin.value,
-    priceMax: priceMax.value,
+    priceMin: priceMin.value ? parseFloat(priceMin.value) : null,
+    priceMax: priceMax.value ? parseFloat(priceMax.value) : null,
     condition: conditionFilter.value,
     page: currentPage.value,
     pageSize: pageSize.value
