@@ -25,6 +25,12 @@ const isLoading = ref(true);
 const error = ref(false);
 const isFavorite = ref(false);
 const isTogglingFavorite = ref(false);
+const quantityToBuy = ref(1); // 新增：购买数量的状态
+
+// 新增交易信息相关的响应式变量
+const showTradeInfoDialog = ref(false); // 控制交易信息对话框显示
+const tradeDateTime = ref(new Date()); // 交易时间，默认当前时间
+const tradeLocation = ref(''); // 交易地点
 
 const store = useStore(); // 获取 Vuex store 实例
 const currentUser = computed(() => store.getters['user/getUserInfo']); // 从 Vuex store 获取用户信息
@@ -120,25 +126,75 @@ const toggleFavorite = async () => {
   }
 };
 
-const handleBuy = () => {
-  if (!currentUserId.value) { // 使用 currentUserId.value
+const handleBuy = async () => {
+  if (!currentUserId.value) {
     ElMessage.warning('请先登录后再操作');
     router.push('/login');
     return;
   }
   if (!productDetail.value) return;
-  // 实际购买逻辑，例如跳转到订单确认页或创建订单
-  ElMessageBox.confirm(`确定要购买 "${productDetail.value.name}" 吗?`, '确认购买', {
+
+  ElMessageBox.confirm(`确定要购买 "${productDetail.value.name}" ${quantityToBuy.value} 件吗?`, '确认购买', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info',
   }).then(() => {
-    // 示例：跳转到订单创建，并传递商品ID和数量
-    // router.push({ name: 'CreateOrder', query: { productId: productDetail.value.id, quantity: 1 } });
-    ElMessage.info('购买功能开发中...');
+    // 如果用户确认购买，打开交易信息对话框
+    showTradeInfoDialog.value = true;
   }).catch(() => {
-    // ElMessage.info('已取消购买');
+    ElMessage.info('已取消购买');
   });
+};
+
+const confirmTradeDetails = async () => {
+    // 验证交易时间和地点
+    if (!tradeDateTime.value) {
+        ElMessage.warning('请选择交易时间');
+        return;
+    }
+    if (!tradeLocation.value.trim()) {
+        ElMessage.warning('交易地点不能为空');
+        return;
+    }
+
+    try {
+        // 增加对 product_id 的严格检查
+        if (!productDetail.value || !productDetail.value.id) {
+            ElMessage.error('商品ID缺失，无法创建订单。');
+            console.error('Product ID missing in productDetail.value:', productDetail.value);
+            return;
+        }
+        
+        const quantity = quantityToBuy.value;
+
+        // 将 tradeDateTime.value（字符串）转换为 Date 对象
+        const tradeTimeDateObject = new Date(tradeDateTime.value); 
+
+        // 调用创建订单 API
+        const response = await api.createOrder({
+            product_id: productDetail.value.id, // 这里 productDetail.value.id 应该是一个有效的 UUID 字符串
+            quantity: quantity,
+            trade_time: tradeTimeDateObject.toISOString(), // 对 Date 对象调用 toISOString()
+            trade_location: tradeLocation.value,
+        });
+
+        ElMessage.success('订单创建成功！订单号: ' + response.order_id);
+        router.push({ name: 'my-orders' }); // 跳转到我的订单页面
+    } catch (err) {
+        console.error('创建订单失败:', err);
+        const errorMessage = err.response?.data?.detail || err.message;
+        ElMessage.error('创建订单失败: ' + errorMessage);
+    } finally {
+        showTradeInfoDialog.value = false; // 无论成功失败，关闭对话框
+    }
+};
+
+const cancelTradeDetails = () => {
+    showTradeInfoDialog.value = false; // 关闭对话框
+    // 可以重置 tradeDateTime 和 tradeLocation 的值
+    tradeDateTime.value = new Date();
+    tradeLocation.value = '';
+    ElMessage.info('已取消交易信息填写');
 };
 
 const handleContactSeller = () => {
@@ -189,7 +245,7 @@ watch(() => props.dialogVisible, (isVisible) => {
   }
 });
 
-// Initial fetch if dialog is meant to be visible брак and productId is available
+// Initial fetch if dialog is meant to be visible and productId is available
 onMounted(() => {
   if (props.dialogVisible && props.productId) {
     fetchProductDetail(props.productId);
@@ -198,9 +254,10 @@ onMounted(() => {
 
 const canBuy = computed(() => {
   return productDetail.value && 
-         productDetail.value.quantity > 0 && 
+         quantityToBuy.value > 0 && // 购买数量大于0
+         quantityToBuy.value <= productDetail.value.quantity && // 购买数量不大于库存
          productDetail.value.status === 'Active' &&
-         (!productDetail.value?.user || currentUserId.value === productDetail.value?.user?.id); // 确保所有对 user 的访问都安全
+         (!productDetail.value?.user || currentUserId.value !== productDetail.value?.user?.id); // 不能购买自己的商品
 });
 
 // 新增计算属性，用于收藏按钮的禁用逻辑
@@ -216,7 +273,6 @@ const isContactSellerDisabled = computed(() => {
   if (!currentUserId.value) return true; // 如果当前用户未登录，则禁用
   return !productDetail.value.user?.id || currentUserId.value === productDetail.value.user.id; // 不能联系自己，或卖家信息缺失
 });
-
 </script>
 
 <template>
@@ -291,6 +347,11 @@ const isContactSellerDisabled = computed(() => {
 
           <el-divider />
 
+          <div class="quantity-selector">
+            <span class="meta-label">购买数量:</span>
+            <el-input-number v-model="quantityToBuy" :min="1" :max="productDetail.quantity" />
+          </div>
+
           <div class="action-buttons">
             <el-button 
                 :type="isFavorite ? 'warning' : 'default'" 
@@ -328,6 +389,38 @@ const isContactSellerDisabled = computed(() => {
       <div class="dialog-footer">
         <el-button @click="closeDialog">关闭</el-button>
       </div>
+    </template>
+  </el-dialog>
+
+  <!-- 新增：交易信息填写对话框 -->
+  <el-dialog
+    v-model="showTradeInfoDialog"
+    title="填写交易信息"
+    width="40%"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    @close="cancelTradeDetails"
+  >
+    <el-form label-width="80px">
+      <el-form-item label="交易时间">
+        <el-date-picker
+          v-model="tradeDateTime"
+          type="datetime"
+          placeholder="选择日期时间"
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DD HH:mm"
+          style="width: 100%;"
+        />
+      </el-form-item>
+      <el-form-item label="交易地点">
+        <el-input v-model="tradeLocation" placeholder="请输入交易地点" clearable />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="cancelTradeDetails">取消</el-button>
+        <el-button type="primary" @click="confirmTradeDetails">确定</el-button>
+      </span>
     </template>
   </el-dialog>
 </template>
