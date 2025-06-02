@@ -8,20 +8,14 @@
           <p class="page-subtitle">审核用户发布的商品，确保平台商品质量</p>
         </div>
         <div class="header-actions">
-          <!-- Removed Batch Audit and Refresh from here -->
-          <!-- <el-badge :value="pendingCount" class="badge-item">
-            <el-button type="primary" :icon="Bell" @click="handleBatchAudit">
-              批量审核 ({{ selectedProducts.length }})
-            </el-button>
-          </el-badge>
-          <el-button :icon="Refresh" @click="refreshData">刷新</el-button> -->
+          <!-- Actions moved to table header -->
         </div>
       </div>
     </div>
 
     <!-- 统计卡片 -->
     <div class="stats-cards">
-      <div class="stat-card pending">
+      <div class="stat-card pending" @click="handleStatCardClick('pending')">
         <div class="stat-icon">
           <el-icon><Clock /></el-icon>
         </div>
@@ -30,16 +24,16 @@
           <span class="stat-label">待审核</span>
         </div>
       </div>
-      <div class="stat-card approved">
+      <div class="stat-card approved" @click="handleStatCardClick('approved')">
         <div class="stat-icon">
           <el-icon><Check /></el-icon>
         </div>
         <div class="stat-content">
           <span class="stat-number">{{ stats.approved }}</span>
-          <span class="stat-label">已通过</span>
+          <span class="stat-label">已上架</span>
         </div>
       </div>
-      <div class="stat-card rejected">
+      <div class="stat-card rejected" @click="handleStatCardClick('rejected')">
         <div class="stat-icon">
           <el-icon><Close /></el-icon>
         </div>
@@ -48,7 +42,25 @@
           <span class="stat-label">已拒绝</span>
         </div>
       </div>
-      <div class="stat-card total">
+      <div class="stat-card withdrawn" @click="handleStatCardClick('withdrawn')">
+        <div class="stat-icon">
+          <el-icon><Download /></el-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">{{ stats.withdrawn }}</span>
+          <span class="stat-label">已下架</span>
+        </div>
+      </div>
+      <div class="stat-card sold" @click="handleStatCardClick('sold')">
+        <div class="stat-icon">
+          <el-icon><ShoppingCartFull /></el-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">{{ stats.sold }}</span>
+          <span class="stat-label">已售罄</span>
+        </div>
+      </div>
+      <div class="stat-card total" @click="handleStatCardClick(null)">
         <div class="stat-icon">
           <el-icon><Box /></el-icon>
         </div>
@@ -73,14 +85,16 @@
           />
           <el-select
             v-model="statusFilter"
-            placeholder="审核状态"
+            placeholder="商品状态"
             clearable
             @change="handleFilter"
             class="filter-select"
           >
             <el-option label="待审核" value="pending" />
-            <el-option label="已通过" value="approved" />
+            <el-option label="已上架" value="approved" />
             <el-option label="已拒绝" value="rejected" />
+            <el-option label="已下架" value="withdrawn" />
+            <el-option label="已售罄" value="sold" />
           </el-select>
           <el-select
             v-model="categoryFilter"
@@ -103,6 +117,7 @@
             end-placeholder="结束日期"
             @change="handleFilter"
             class="date-picker"
+            value-format="YYYY-MM-DD"
           />
         </div>
       </div>
@@ -116,20 +131,31 @@
           <span class="table-count">共 {{ total }} 条记录</span>
         </div>
         <div class="table-actions">
-          <el-button 
-            size="small" 
-            :icon="Download" 
-            @click="exportData"
-          >
-            导出
-          </el-button>
-          <!-- Moved Batch Audit and Refresh buttons here -->
-           <el-badge :value="pendingCount" class="badge-item">
-            <el-button type="primary" size="small" :icon="Bell" @click="handleBatchAudit">
-              批量审核 ({{ selectedProducts.length }})
+          <el-tooltip content="导出数据" placement="top">
+            <el-button 
+              size="small" 
+              :icon="Download" 
+              @click="exportData"
+            >
+              导出
             </el-button>
+          </el-tooltip>
+           <el-badge :value="pendingCount" class="badge-item" :hidden="pendingCount === 0 || selectedProducts.filter(p=>p.auditStatus === 'PendingReview').length === 0">
+            <el-tooltip content="批量通过选中的待审核商品" placement="top">
+              <el-button 
+                type="primary" 
+                size="small" 
+                :icon="Bell" 
+                @click="handleBatchAudit" 
+                :disabled="selectedProducts.filter(p=>p.auditStatus === 'PendingReview').length === 0"
+              >
+                批量审核 ({{ selectedProducts.filter(p=>p.auditStatus === 'PendingReview').length }})
+              </el-button>
+            </el-tooltip>
           </el-badge>
-          <el-button size="small" :icon="Refresh" @click="refreshData">刷新</el-button>
+          <el-tooltip content="刷新列表" placement="top">
+            <el-button size="small" :icon="Refresh" @click="refreshData"></el-button>
+          </el-tooltip>
         </div>
       </div>
 
@@ -139,8 +165,9 @@
         @selection-change="handleSelectionChange"
         class="products-table"
         row-key="id"
+        empty-text="暂无商品数据"
       >
-        <el-table-column type="selection" width="55" />
+        <el-table-column type="selection" width="55" :selectable="row => row.auditStatus === 'PendingReview'" />
         
         <el-table-column label="商品信息" min-width="300">
           <template #default="{ row }">
@@ -153,59 +180,61 @@
                   class="product-image"
                   :preview-src-list="row.images"
                   preview-teleported
+                  hide-on-click-modal
                 />
                 <div v-else class="no-image">
                   <el-icon><Picture /></el-icon>
                 </div>
               </div>
               <div class="product-details">
-                <h4 class="product-title">{{ row.title }}</h4>
-                <p class="product-description">{{ row.description }}</p>
+                <h4 class="product-title" :title="row.title">{{ row.title }}</h4>
+                <p class="product-description" :title="row.description">{{ row.description }}</p>
                 <div class="product-meta">
-                  <el-tag :type="getCategoryTagType(row.category)" size="small">
+                  <el-tag :type="getCategoryTagType(row.category)" size="small" effect="light">
                     {{ getCategoryName(row.category) }}
                   </el-tag>
-                  <span class="product-price">¥{{ row.price }}</span>
+                  <span class="product-price">¥{{ row.price?.toFixed(2) }}</span>
                 </div>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="发布者" width="150">
+        <el-table-column label="发布者" width="180">
           <template #default="{ row }">
             <div class="user-info">
-              <el-avatar :size="32" :src="row.user.avatar">
-                {{ row.user.username?.[0] }}
+              <el-avatar :size="32" :src="row.user.avatar || undefined">
+                {{ row.user.username?.[0]?.toUpperCase() }}
               </el-avatar>
               <div class="user-details">
-                <span class="username">{{ row.user.username }}</span>
+                <span class="username" :title="row.user.username">{{ row.user.username }}</span>
                 <span class="user-credit">信用: {{ row.user.credit }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="发布时间" width="120">
+        <el-table-column label="发布时间" width="170" sortable prop="createdAt">
           <template #default="{ row }">
-            <div class="time-info">
+            <div class="time-info" :title="formatDateTime(row.createdAt)">
               <span class="date">{{ formatDate(row.createdAt) }}</span>
               <span class="time">{{ formatTime(row.createdAt) }}</span>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="审核状态" width="120">
+        <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <div class="status-column">
               <el-tag
                 :type="getStatusTagType(row.auditStatus)"
                 :icon="getStatusIcon(row.auditStatus)"
                 size="small"
+                effect="light"
               >
                 {{ getStatusText(row.auditStatus) }}
               </el-tag>
-              <div v-if="row.auditReason" class="audit-reason">
+              <div v-if="row.auditReason && row.auditStatus === 'Rejected'" class="audit-reason" :title="row.auditReason">
                 {{ row.auditReason }}
               </div>
             </div>
@@ -214,42 +243,68 @@
 
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button
-                type="primary"
-                size="small"
-                :icon="View"
-                @click="viewProduct(row)"
-              >
-                查看
-              </el-button>
-              <template v-if="row.auditStatus === 'pending'">
+            <div class="action-buttons-wrapper">
+              <el-tooltip content="查看商品详情" placement="top">
                 <el-button
-                  type="success"
+                  type="primary"
                   size="small"
-                  :icon="Check"
-                  @click="approveProduct(row)"
-                >
-                  通过
-                </el-button>
-                <el-button
-                  type="danger"
-                  size="small"
-                  :icon="Close"
-                  @click="rejectProduct(row)"
-                >
-                  拒绝
-                </el-button>
+                  :icon="View"
+                  circle
+                  @click="viewProduct(row)"
+                />
+              </el-tooltip>
+              
+              <template v-if="row.auditStatus === 'PendingReview'">
+                <el-tooltip content="通过审核" placement="top">
+                  <el-button
+                    type="success"
+                    size="small"
+                    :icon="Check"
+                    circle
+                    @click="approveProduct(row)"
+                  />
+                </el-tooltip>
+                <el-tooltip content="拒绝审核" placement="top">
+                  <el-button
+                    type="danger"
+                    size="small"
+                    :icon="Close"
+                    circle
+                    @click="rejectProduct(row)"
+                  />
+                </el-tooltip>
               </template>
-              <el-button
-                v-else
-                type="warning"
-                size="small"
-                :icon="Edit"
-                @click="editAuditStatus(row)"
-              >
-                修改
-              </el-button>
+              
+              <el-dropdown trigger="click" popper-class="action-dropdown">
+                <el-button type="info" size="small" :icon="Operation" circle />
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item 
+                      :icon="Edit" 
+                      @click="editAuditStatus(row)"
+                      :disabled="row.auditStatus === 'PendingReview' || row.auditStatus === 'Sold'" 
+                    >
+                      编辑详情
+                    </el-dropdown-item>
+                    <el-dropdown-item 
+                      :icon="Download" 
+                      @click="handleWithdrawProduct(row)" 
+                      :disabled="!(row.auditStatus === 'Active')" 
+                      divided
+                    >
+                      下架商品
+                    </el-dropdown-item>
+                    <el-dropdown-item 
+                      :icon="Delete" 
+                      @click="handleDeleteProduct(row)"
+                      :disabled="row.auditStatus === 'Sold'" 
+                      class="danger-action"
+                    >
+                      删除商品
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -265,105 +320,49 @@
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
+          background
         />
       </div>
     </el-card>
-
-    <!-- 商品详情弹窗 -->
-    <el-dialog
-      v-model="productDetailVisible"
-      title="商品详情"
-      width="800px"
-      class="product-detail-dialog"
-    >
-      <div v-if="selectedProduct" class="product-detail-content">
-        <div class="detail-section">
-          <h4>商品图片</h4>
-          <div class="images-gallery">
-            <el-image
-              v-for="(img, index) in selectedProduct.images"
-              :key="index"
-              :src="img"
-              fit="cover"
-              class="gallery-image"
-              :preview-src-list="selectedProduct.images"
-              preview-teleported
-            />
-          </div>
-        </div>
-        
-        <div class="detail-section">
-          <h4>基本信息</h4>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="商品标题">{{ selectedProduct.title }}</el-descriptions-item>
-            <el-descriptions-item label="商品价格">¥{{ selectedProduct.price }}</el-descriptions-item>
-            <el-descriptions-item label="商品分类">{{ getCategoryName(selectedProduct.category) }}</el-descriptions-item>
-            <el-descriptions-item label="商品状态">{{ selectedProduct.condition }}</el-descriptions-item>
-            <el-descriptions-item label="发布时间">{{ formatDateTime(selectedProduct.createdAt) }}</el-descriptions-item>
-            <el-descriptions-item label="审核状态">
-              <el-tag :type="getStatusTagType(selectedProduct.auditStatus)">
-                {{ getStatusText(selectedProduct.auditStatus) }}
-              </el-tag>
-            </el-descriptions-item>
-          </el-descriptions>
-        </div>
-
-        <div class="detail-section">
-          <h4>商品描述</h4>
-          <div class="description-content">
-            {{ selectedProduct.description }}
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4>发布者信息</h4>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="用户名">{{ selectedProduct.user.username }}</el-descriptions-item>
-            <el-descriptions-item label="信用分">{{ selectedProduct.user.credit }}</el-descriptions-item>
-            <el-descriptions-item label="联系方式">{{ selectedProduct.user.phone || '未提供' }}</el-descriptions-item>
-            <el-descriptions-item label="注册时间">{{ formatDateTime(selectedProduct.user.joinTime) }}</el-descriptions-item>
-          </el-descriptions>
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="productDetailVisible = false">关闭</el-button>
-          <template v-if="selectedProduct?.auditStatus === 'pending'">
-            <el-button type="success" @click="approveProduct(selectedProduct)">
-              审核通过
-            </el-button>
-            <el-button type="danger" @click="rejectProduct(selectedProduct)">
-              审核拒绝
-            </el-button>
-          </template>
-        </div>
-      </template>
-    </el-dialog>
+    
+    <!-- 新的商品详情对话框 -->
+    <ProductDetail 
+      v-if="selectedProductIdForDetail"
+      :product-id="selectedProductIdForDetail"
+      :dialog-visible="isProductDetailDialogVisible"
+      @update:dialogVisible="isProductDetailDialogVisible = $event"
+      @close="selectedProductIdForDetail = null" 
+    />
 
     <!-- 审核拒绝原因弹窗 -->
     <el-dialog
       v-model="rejectDialogVisible"
       title="审核拒绝"
       width="500px"
+      append-to-body
+      destroy-on-close
+      class="reject-dialog"
+      :close-on-click-modal="false"
     >
-      <el-form :model="rejectForm" label-width="100px">
-        <el-form-item label="拒绝原因" required>
-          <el-select v-model="rejectForm.reason" placeholder="请选择拒绝原因">
+      <el-form :model="rejectForm" label-width="100px" ref="rejectFormRef" @submit.prevent="confirmReject">
+        <el-form-item label="拒绝原因" prop="reason" :rules="[{ required: true, message: '请选择拒绝原因', trigger: 'change' }]"
+        >
+          <el-select v-model="rejectForm.reason" placeholder="请选择拒绝原因" style="width:100%;">
             <el-option label="商品图片不清晰" value="图片不清晰" />
             <el-option label="商品描述不详细" value="描述不详细" />
             <el-option label="价格不合理" value="价格不合理" />
             <el-option label="违禁物品" value="违禁物品" />
             <el-option label="重复发布" value="重复发布" />
-            <el-option label="其他" value="其他" />
+            <el-option label="其他（请在详细说明中注明）" value="其他" />
           </el-select>
         </el-form-item>
-        <el-form-item label="详细说明">
+        <el-form-item label="详细说明" prop="detail">
           <el-input
             v-model="rejectForm.detail"
             type="textarea"
             :rows="4"
-            placeholder="请输入详细的拒绝说明（可选）"
+            placeholder="请输入详细的拒绝说明（选填，若选择'其他'原因则必填）"
+            :validate-event="false"
           />
         </el-form-item>
       </el-form>
@@ -374,6 +373,16 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 商品发布/编辑弹窗 (用于管理员修改) -->
+    <ProductPostDialog 
+      :isDialogVisible="isEditDialogVisible"
+      :isEditMode="isEditMode"
+      :productId="selectedProductForEdit ? selectedProductForEdit.id : null"
+      @update:isDialogVisible="isEditDialogVisible = $event"
+      @updateSuccess="() => { fetchData(); isEditDialogVisible = false; }"
+    />
+    
   </div>
 </template>
 
@@ -381,21 +390,31 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Search, Refresh, Bell, Download, View, Edit, Check, Close,
-  Clock, Box, Picture
-} from '@element-plus/icons-vue'
+      Search, Refresh, Bell, Download, View, Edit, Check, Close, Delete,
+      Clock, Box, Picture, Operation, ShoppingCartFull
+    } from '@element-plus/icons-vue'
+import api from '@/API_PRO.js';
+import FormatObject from '@/utils/format.js';
+import ProductPostDialog from "@/product/components/ProductPostDialog.vue"; 
+import ProductDetail from "@/product/components/ProductDetail.vue"; 
+
 
 // 响应式数据
 const loading = ref(false)
 const tableData = ref([])
-const selectedProducts = ref([])
+const selectedProducts = ref([]) // For batch operations
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
 
+// 编辑商品弹窗的状态
+const isEditDialogVisible = ref(false); 
+const selectedProductForEdit = ref(null); 
+const isEditMode = ref(false); 
+
 // 筛选条件
 const searchKeyword = ref('')
-const statusFilter = ref('')
+const statusFilter = ref('pending')
 const categoryFilter = ref('')
 const dateRange = ref([])
 
@@ -404,13 +423,19 @@ const stats = reactive({
   pending: 0,
   approved: 0,
   rejected: 0,
+  withdrawn: 0,
+  sold: 0,
   total: 0
 })
 
-// 弹窗状态
-const productDetailVisible = ref(false)
+// 新的商品详情弹窗状态
+const isProductDetailDialogVisible = ref(false);
+const selectedProductIdForDetail = ref(null);
+
+// 审核拒绝相关
 const rejectDialogVisible = ref(false)
-const selectedProduct = ref(null)
+const productToReject = ref(null); // Used specifically for the rejection process
+const rejectFormRef = ref(null); // Ref for reject form
 
 // 拒绝表单
 const rejectForm = reactive({
@@ -421,107 +446,121 @@ const rejectForm = reactive({
 // 计算属性
 const pendingCount = computed(() => stats.pending)
 
+// mapProductData 函数定义
+const mapProductData = (item) => ({
+  id: item.商品ID,
+  title: item.商品名称,
+  description: item.商品描述,
+  price: parseFloat(item.价格),
+  category: item.商品类别,
+  auditStatus: item.商品状态, 
+  condition: item.商品成色 || '', 
+  images: item.主图URL 
+    ? (Array.isArray(item.主图URL) 
+        ? item.主图URL.map(url => url.startsWith('http') || url.startsWith('//') ? url : FormatObject.formattedImgUrl(url))
+        : [item.主图URL.startsWith('http') || item.主图URL.startsWith('//') ? item.主图URL : FormatObject.formattedImgUrl(item.主图URL)])
+    : [],
+  auditReason: item.拒绝理由 || '',
+  createdAt: item.发布时间,
+  user: {
+    username: item.发布者用户名,
+    credit: item.发布者信用分 || 100, 
+    avatar: item.发布者头像 || '', 
+    phone: item.发布者联系方式 || '未提供', 
+    joinTime: item.发布者注册时间 || item.发布时间, 
+  }
+});
+
 // 方法
 const fetchData = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // 1. 获取全量数据用于统计 (使用新的特殊状态值)
+    const allProductsResponse = await api.getProductList({ status: '_FETCH_ALL_PRODUCTS_', page_size: 10000 }); 
+    const mappedAllProducts = allProductsResponse.map(mapProductData);
+    stats.pending = mappedAllProducts.filter(item => item.auditStatus === 'PendingReview').length;
+    stats.approved = mappedAllProducts.filter(item => item.auditStatus === 'Active').length;
+    stats.rejected = mappedAllProducts.filter(item => item.auditStatus === 'Rejected').length;
+    stats.withdrawn = mappedAllProducts.filter(item => item.auditStatus === 'Withdrawn').length;
+    stats.sold = mappedAllProducts.filter(item => item.auditStatus === 'Sold').length;
+    stats.total = mappedAllProducts.length;
+
+    // 2. 根据当前筛选条件（包括 statusFilter）准备参数获取表格数据
+    let currentStatusParam = undefined;
+    if (statusFilter.value === 'pending') currentStatusParam = 'PendingReview';
+    else if (statusFilter.value === 'approved') currentStatusParam = 'Active';
+    else if (statusFilter.value === 'rejected') currentStatusParam = 'Rejected';
+    else if (statusFilter.value === 'withdrawn') currentStatusParam = 'Withdrawn';
+    else if (statusFilter.value === 'sold') currentStatusParam = 'Sold';
+    // 如果 statusFilter.value 为空字符串或 null/undefined (即点击"总商品"卡片)，则 currentStatusParam 保持 undefined (后端sp_GetProductList在status为null时获取所有激活商品，需要调整为获取全部，或前端在此时不传status)
+    // 为了保持点击 "总商品" 卡片时显示所有商品，当 statusFilter.value 为 null 时，我们不传递 status 参数给后端，
+    // 或者传递一个后端能识别为"所有状态"的特殊值（如果后端支持）。
+    // 当前 sp_GetProductList 对于 status=null 会默认查询 Active，对于 _FETCH_ALL_PRODUCTS_ 会查询所有。
+    // 所以，当 statusFilter.value 为 null (点击总览卡片) 时，我们应该让 currentStatusParam 为 _FETCH_ALL_PRODUCTS_
+    if (statusFilter.value === null) {
+        currentStatusParam = '_FETCH_ALL_PRODUCTS_';
+    }
+
+    const params = {
+      page_number: currentPage.value,
+      page_size: pageSize.value,
+      category_name: categoryFilter.value || undefined,
+      status: currentStatusParam, 
+      keyword: searchKeyword.value || undefined,
+      // start_date: dateRange.value?.[0] || undefined,
+      // end_date: dateRange.value?.[1] || undefined,
+    };
+
+    // 3. 获取筛选后的数据用于表格和分页
+    const filteredProductsResponse = await api.getProductList(params);
     
-    // 模拟数据
-    const mockData = [
-      {
-        id: '1',
-        title: '全新MacBook Air M2 13寸',
-        description: '全新未拆封的MacBook Air，M2芯片，8GB内存，256GB存储，银色。因为重复购买所以出售。',
-        price: 8999,
-        category: 'electronics',
-        condition: '全新',
-        images: [
-          'https://picsum.photos/400/300?random=1',
-          'https://picsum.photos/400/300?random=2'
-        ],
-        auditStatus: 'pending',
-        auditReason: '',
-        createdAt: new Date(2024, 0, 15),
-        user: {
-          username: 'techuser',
-          avatar: null,
-          credit: 95,
-          phone: '138****1234',
-          joinTime: new Date(2023, 5, 10)
-        }
-      },
-      {
-        id: '2',
-        title: '计算机科学导论教材',
-        description: '计算机科学与技术专业必修教材，9成新，无划线笔记。',
-        price: 45,
-        category: 'books',
-        condition: '九成新',
-        images: ['https://picsum.photos/400/300?random=3'],
-        auditStatus: 'approved',
-        auditReason: '',
-        createdAt: new Date(2024, 0, 14),
-        user: {
-          username: 'bookworm',
-          avatar: null,
-          credit: 88,
-          phone: '139****5678',
-          joinTime: new Date(2023, 8, 20)
-        }
-      },
-      {
-        id: '3',
-        title: '违禁物品测试',
-        description: '这是一个测试违禁物品的描述',
-        price: 100,
-        category: 'others',
-        condition: '全新',
-        images: [],
-        auditStatus: 'rejected',
-        auditReason: '违禁物品',
-        createdAt: new Date(2024, 0, 13),
-        user: {
-          username: 'testuser',
-          avatar: null,
-          credit: 60,
-          phone: '137****9876',
-          joinTime: new Date(2023, 10, 5)
-        }
-      }
-    ]
+    tableData.value = filteredProductsResponse.map(mapProductData);
 
-    tableData.value = mockData
-    total.value = mockData.length
+    // 4. 设置分页总数
+    // 如果后端API能返回筛选后的总数，优先使用。否则根据当前筛选情况估算或使用全局总数。
+    // 当前getProductList的返回结构中，每个商品对象都带有 `总商品数`，这通常是全局总数。
+    // 因此，我们不能依赖它作为筛选后的总数。
+    // 如果有状态筛选，我们用当前返回的列表长度作为 total，这只对单页数据准确，多页分页不准。
+    // 最好的方式是后端API能够返回筛选后的总数。
+    // 鉴于当前情况，为了让列表筛选有效，当有筛选条件时，total 应该反映筛选后的数量。
+    // 但我们无法从后端直接获取，所以如果 statusFilter 有值，total 就是 tableData.value.length (当前页的)
+    // 这会导致分页器仅对当前页正确。一种折中是，如果筛选了，就不显示分页或总数，或者一直用stats.total
 
-    // 更新统计数据
-    stats.pending = mockData.filter(item => item.auditStatus === 'pending').length
-    stats.approved = mockData.filter(item => item.auditStatus === 'approved').length
-    stats.rejected = mockData.filter(item => item.auditStatus === 'rejected').length
-    stats.total = mockData.length
+    if (params.status && params.status !== '_FETCH_ALL_PRODUCTS_') {
+      // 如果有具体的状态筛选，我们无法从当前API得知该状态下的总商品数，
+      // 除非我们获取所有该状态的商品（不分页）然后计数，但这不高效。
+      // 暂时将 total 设置为当前页返回的数量，这使得分页仅对第一页有意义。
+      // 或者，更简单地，让 total 始终等于 stats.total (所有商品的总数)，分页器始终基于所有商品。
+      // 用户通过点击统计卡片或筛选器来过滤列表内容。
+      total.value = stats[statusFilter.value] || 0; // 使用对应状态的统计数量作为分页总数
+    } else {
+      total.value = stats.total; // 没有特定状态筛选（如查看全部或总商品）时，使用总商品数
+    }
 
   } catch (error) {
-    console.error('获取数据失败:', error)
-    ElMessage.error('获取数据失败')
+    console.error('获取数据失败:', error);
+    ElMessage.error('获取数据失败：' + (error.response?.data?.detail || error.message));
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const handleSearch = () => {
-  // 实现搜索逻辑
-  console.log('搜索:', searchKeyword.value)
-}
+  currentPage.value = 1; // Reset to first page on new search
+  fetchData();
+};
 
 const handleFilter = () => {
-  // 实现筛选逻辑
-  console.log('筛选条件:', {
-    status: statusFilter.value,
-    category: categoryFilter.value,
-    dateRange: dateRange.value
-  })
-}
+  currentPage.value = 1; // Reset to first page on filter change
+  fetchData();
+};
+
+// 新增：统计卡片点击处理
+const handleStatCardClick = (statusValue) => {
+  statusFilter.value = statusValue; // null 或 'pending', 'approved', 'rejected'
+  currentPage.value = 1;
+  fetchData();
+};
 
 const handleSelectionChange = (selection) => {
   selectedProducts.value = selection
@@ -529,6 +568,7 @@ const handleSelectionChange = (selection) => {
 
 const handleSizeChange = (size) => {
   pageSize.value = size
+  currentPage.value = 1; // Reset to first page on page size change
   fetchData()
 }
 
@@ -543,98 +583,150 @@ const refreshData = () => {
 }
 
 const viewProduct = (product) => {
-  selectedProduct.value = product
-  productDetailVisible.value = true
+  selectedProductIdForDetail.value = product.id;
+  isProductDetailDialogVisible.value = true;
 }
 
 const approveProduct = async (product) => {
   try {
     await ElMessageBox.confirm('确认通过该商品的审核？', '确认操作', {
       type: 'warning'
-    })
+    });
     
-    // 调用 API 审核通过
-    console.log('审核通过:', product.id)
+    await api.activateProduct(product.id);
     
-    // 更新本地数据
-    product.auditStatus = 'approved'
-    product.auditReason = ''
-    
-    ElMessage.success('审核通过成功')
-    productDetailVisible.value = false
-    
-    // 重新获取统计数据
-    fetchData()
+    ElMessage.success('审核通过成功');
+    if (isProductDetailDialogVisible.value && selectedProductIdForDetail.value === product.id) {
+      isProductDetailDialogVisible.value = false;
+    }
+    fetchData();
   } catch (error) {
-    // 用户取消操作
+    if (error !== 'cancel') {
+      console.error('审核通过失败:', error);
+      ElMessage.error('审核通过失败：' + (error.response?.data?.detail || error.message));
+    }
   }
-}
+};
 
 const rejectProduct = (product) => {
-  selectedProduct.value = product
-  rejectForm.reason = ''
-  rejectForm.detail = ''
-  rejectDialogVisible.value = true
-}
+  productToReject.value = product; 
+  rejectForm.reason = '';
+  rejectForm.detail = '';
+  if (rejectFormRef.value) { // Clear previous validation
+    rejectFormRef.value.clearValidate();
+  }
+  rejectDialogVisible.value = true;
+};
 
 const confirmReject = async () => {
-  if (!rejectForm.reason) {
-    ElMessage.warning('请选择拒绝原因')
-    return
-  }
+  if (!rejectFormRef.value) return;
+  rejectFormRef.value.validate(async (valid) => {
+    if (valid) {
+      if (!productToReject.value || !productToReject.value.id) {
+          ElMessage.error('无法确定要拒绝的商品');
+          return;
+      }
+      try {
+        const reasonDetail = rejectForm.reason + (rejectForm.detail ? `: ${rejectForm.detail}` : '');
+        await api.rejectProduct(productToReject.value.id, { reason: reasonDetail });
+        
+        ElMessage.success('审核拒绝成功');
+        rejectDialogVisible.value = false;
+        if (isProductDetailDialogVisible.value && selectedProductIdForDetail.value === productToReject.value.id) {
+          isProductDetailDialogVisible.value = false;
+        }
+        productToReject.value = null; 
+        fetchData();
+      } catch (error) {
+        console.error('审核拒绝失败:', error);
+        ElMessage.error('审核拒绝失败：' + (error.response?.data?.detail || error.message));
+      }
+    } else {
+      ElMessage.warning('请检查表单输入');
+    }
+  });
+};
 
-  try {
-    // 调用 API 审核拒绝
-    console.log('审核拒绝:', selectedProduct.value.id, rejectForm)
-    
-    // 更新本地数据
-    selectedProduct.value.auditStatus = 'rejected'
-    selectedProduct.value.auditReason = rejectForm.reason + (rejectForm.detail ? `: ${rejectForm.detail}` : '')
-    
-    ElMessage.success('审核拒绝成功')
-    rejectDialogVisible.value = false
-    productDetailVisible.value = false
-    
-    // 重新获取统计数据
-    fetchData()
-  } catch (error) {
-    console.error('审核拒绝失败:', error)
-    ElMessage.error('审核拒绝失败')
-  }
-}
-
-const editAuditStatus = (product) => {
-  // 修改审核状态
-  console.log('修改审核状态:', product.id)
-}
-
-const handleBatchAudit = () => {
+const handleBatchAudit = async () => {
   if (selectedProducts.value.length === 0) {
-    ElMessage.warning('请先选择要批量审核的商品')
-    return
+    ElMessage.warning('请先选择要批量审核的商品');
+    return;
+  }
+  const pendingProducts = selectedProducts.value.filter(p => p.auditStatus === 'PendingReview');
+  if (pendingProducts.length === 0) {
+    ElMessage.warning('选中的商品均非待审核状态，无需批量审核。');
+    return;
   }
   
-  ElMessageBox.confirm(
-    `确认批量通过选中的 ${selectedProducts.value.length} 个商品？`,
-    '批量审核',
-    {
-      type: 'warning'
+  try {
+    await ElMessageBox.confirm(
+      `确认批量通过选中的 ${pendingProducts.length} 个待审核商品？`,
+      '批量审核',
+      {
+        confirmButtonText: '确定通过',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    const productIdsToActivate = pendingProducts.map(p => p.id);
+    await api.batchActivateProducts({ product_ids: productIdsToActivate }); 
+    ElMessage.success(`批量审核通过 ${productIdsToActivate.length} 个商品成功`);
+    fetchData();
+    selectedProducts.value = []; // Clear selection
+  } catch (error) {
+    if (error !== 'cancel') {
+        console.error('批量审核失败:', error);
+        ElMessage.error('批量审核失败：' + (error.response?.data?.detail || error.message));
     }
-  ).then(() => {
-    selectedProducts.value.forEach(product => {
-      product.auditStatus = 'approved'
-      product.auditReason = ''
-    })
-    ElMessage.success('批量审核成功')
-    fetchData()
-  }).catch(() => {
-    // 用户取消
-  })
-}
+  }
+};
 
 const exportData = () => {
   ElMessage.info('导出功能开发中...')
 }
+
+const handleWithdrawProduct = async (product) => {
+  try {
+    await ElMessageBox.confirm(`确定要下架商品 "${product.title}" 吗？`, '确认下架', {
+      confirmButtonText: '确定下架',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    await api.withdrawProduct(product.id);
+    ElMessage.success('商品下架成功');
+    fetchData(); // 刷新列表和统计数据
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('下架商品失败:', error);
+      ElMessage.error('下架商品失败：' + (error.response?.data?.detail || error.message));
+    }
+  }
+};
+
+const handleDeleteProduct = async (product) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除商品 "${product.title}" 吗？此操作不可恢复。`, '确认删除', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'danger' 
+    });
+    await api.deleteProduct(product.id);
+    ElMessage.success('商品删除成功');
+    fetchData(); 
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除商品失败:', error);
+      ElMessage.error('删除商品失败：' + (error.response?.data?.detail || error.message));
+    }
+  }
+};
+
+const editAuditStatus = (product) => {
+      console.log("Admin attempting to edit product:", product.id);
+      selectedProductForEdit.value = product; 
+      isEditDialogVisible.value = true; 
+      isEditMode.value = true; 
+};
 
 // 工具函数
 const getCategoryName = (category) => {
@@ -645,62 +737,80 @@ const getCategoryName = (category) => {
     clothing: '服装配饰',
     others: '其他'
   }
-  return categoryMap[category] || category
+  return categoryMap[category] || category || '未知'
 }
 
 const getCategoryTagType = (category) => {
   const typeMap = {
     electronics: 'success',
-    books: 'info',
+    books: 'primary', // Changed to primary for better distinction
     daily: 'warning',
     clothing: 'danger',
-    others: ''
+    others: 'info'
   }
-  return typeMap[category] || ''
+  return typeMap[category] || 'info'
 }
 
 const getStatusText = (status) => {
   const statusMap = {
-    pending: '待审核',
-    approved: '已通过',
-    rejected: '已拒绝'
-  }
-  return statusMap[status] || status
-}
+    'PendingReview': '待审核', 
+    'Active': '已上架', 
+    'Rejected': '已拒绝',
+    'Withdrawn': '已下架',
+    'Sold': '已售罄'
+  };
+  return statusMap[status] || status || '未知';
+};
 
 const getStatusTagType = (status) => {
   const typeMap = {
-    pending: 'warning',
-    approved: 'success',
-    rejected: 'danger'
-  }
-  return typeMap[status] || ''
-}
+    'PendingReview': 'warning',
+    'Active': 'success',
+    'Rejected': 'danger',
+    'Withdrawn': 'info',
+    'Sold': 'info' 
+  };
+  return typeMap[status] || 'info';
+};
 
 const getStatusIcon = (status) => {
   const iconMap = {
-    pending: Clock,
-    approved: Check,
-    rejected: Close
+    'PendingReview': Clock, 
+    'Active': Check, 
+    'Rejected': Close,
+    'Withdrawn': Download, 
+    'Sold': Box 
   }
-  return iconMap[status]
+  return iconMap[status] || undefined;
 }
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString()
+  if (!date) return 'N/A';
+  try {
+    return new Date(date).toLocaleDateString();
+  } catch (e) { return '日期无效'; }
 }
 
 const formatTime = (date) => {
-  return new Date(date).toLocaleTimeString()
+ if (!date) return '';
+  try {
+    return new Date(date).toLocaleTimeString();
+  } catch (e) { return '时间无效'; }
 }
 
 const formatDateTime = (date) => {
-  return new Date(date).toLocaleString()
+  if (!date) return 'N/A';
+  try {
+    return new Date(date).toLocaleString();
+  } catch (e) { return '日期时间无效'; }
 }
 
 // 生命周期
 onMounted(() => {
-  fetchData()
+  // 初始加载时，如果 stats.pending 为0，则 statusFilter 设为 undefined (显示所有)
+  // 但 stats.pending 的计算在 fetchData 内部，所以这里不能直接用
+  // fetchData 内部会处理 statusFilter 的默认行为
+  fetchData();
 })
 </script>
 
@@ -765,11 +875,20 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   border-radius: 12px; /* Keep unique radius */
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); /* Keep unique shadow */
+  cursor: pointer; /* Add cursor pointer */
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Add transition */
+}
+
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02); /* Lift and slightly scale on hover */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* Enhance shadow on hover */
 }
 
 .stat-card.pending { border-left: 4px solid #f59e0b; }
 .stat-card.approved { border-left: 4px solid #10b981; }
 .stat-card.rejected { border-left: 4px solid #ef4444; }
+.stat-card.withdrawn { border-left: 4px solid #a0aec0; }
+.stat-card.sold { border-left: 4px solid #718096; }
 .stat-card.total { border-left: 4px solid #3b82f6; }
 
 .stat-icon {
@@ -787,6 +906,8 @@ onMounted(() => {
 .pending .stat-icon { background: linear-gradient(45deg, #f59e0b, #ffcf96); } /* Keep unique gradient */
 .approved .stat-icon { background: linear-gradient(45deg, #10b981, #6ee7b7); }
 .rejected .stat-icon { background: linear-gradient(45deg, #ef4444, #fca5a5); }
+.withdrawn .stat-icon { background: linear-gradient(45deg, #a0aec0, #cbd5e0); }
+.sold .stat-icon { background: linear-gradient(45deg, #718096, #a0aec0); }
 .total .stat-icon { background: linear-gradient(45deg, #3b82f6, #93c5fd); }
 
 

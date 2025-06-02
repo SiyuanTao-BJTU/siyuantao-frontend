@@ -1,42 +1,54 @@
 <script setup>
 import { onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router';
 
 // Assuming api.js exists and has getUserFavorites and removeFavorite methods
-// import api from '@/API_PRO.js';
+import api from '@/API_PRO.js';
+import FormatObject from '@/utils/format.js'; // 确保 FormatObject 已导入
 
 // Assuming PurchaseGoodsCard or a similar component exists for displaying products
-import PurchaseGoodsCard from '@/product/components/PurchaseGoodsCard.vue'; 
+// import PurchaseGoodsCard from '@/product/components/PurchaseGoodsCard.vue'; 
+import ProductCard from '@/product/components/ProductCard.vue'; // 导入 ProductCard
+import ProductDetail from '@/product/components/ProductDetail.vue'; // 导入 ProductDetail 组件
 
 const router = useRouter();
 
 const userFavorites = ref([]); // Array to hold user's favorite products
 const isLoading = ref(false); // Loading state
 
+// ProductDetail 对话框相关
+const selectedProductIdForDetail = ref(null);
+const isProductDetailDialogVisible = ref(false);
+
 // Fetch user's favorite products
 const fetchUserFavorites = async () => {
   isLoading.value = true;
   try {
-    // TODO: Call API to fetch user's favorites
-    // const response = await api.getUserFavorites();
-    // if (response && response.data && response.code === 0) {
-    //   userFavorites.value = response.data;
-    // } else {
-    //   console.warn('Fetch user favorites API response format incorrect or code not 0:', response);
-    //   ElMessage.error(t('userFavorites.fetch_failed_format')); // Add to i18n
-    //   userFavorites.value = [];
-    // }
-
-    // Dummy data for UI testing
-    userFavorites.value = [
-      { id: 'fav1', product: { id: 'prod1', name: "示例商品 1", description: "这是一个示例商品描述", price: 120, img: ['https://via.placeholder.com/150?text=Fav+Item+1'] } },
-      { id: 'fav2', product: { id: 'prod2', name: "示例商品 2", description: "这是另一个示例商品描述", price: 300, img: ['https://via.placeholder.com/150?text=Fav+Item+2'] } },
-    ];
-
+    const response = await api.getUserFavorites(); 
+    if (response && Array.isArray(response)) { 
+      userFavorites.value = response.map(fav => ({
+        id: fav.商品ID, 
+        // 将API返回的商品数据直接作为 product 对象，让 ProductCard 自己处理
+        product: {
+            id: fav.商品ID,
+            name: fav.商品名称,
+            description: fav.商品描述,
+            price: parseFloat(fav.价格), // 确保价格是数字
+            images: fav.主图URL ? (Array.isArray(fav.主图URL) ? fav.主图URL : [fav.主图URL.startsWith('http') || fav.主图URL.startsWith('//') ? fav.主图URL : FormatObject.formattedImgUrl(fav.主图URL)]) : [],
+            // 根据 ProductCard 的 props，可以添加其他字段，例如 category, status, user
+            category: fav.商品类别,
+            status: fav.商品状态,
+            user: { username: fav.发布者用户名 }
+        }
+      }));
+    } else {
+      ElMessage.error('获取收藏列表失败或数据格式不正确');
+      userFavorites.value = [];
+    }
   } catch (error) {
     console.error('Fetch user favorites failed:', error);
-    ElMessage.error('获取收藏列表失败'); // Add to i18n
+    ElMessage.error('获取收藏列表失败: ' + (error.response?.data?.detail || error.message));
     userFavorites.value = [];
   } finally {
     isLoading.value = false;
@@ -44,30 +56,33 @@ const fetchUserFavorites = async () => {
 };
 
 // Handle remove favorite button click
-const handleRemoveFavorite = async (favoriteId) => {
-  console.log('Remove favorite:', favoriteId);
-  // TODO: Implement confirmation dialog if needed
-  // try {
-  //   // const response = await api.removeFavorite(favoriteId);
-  //   // if (response && response.code === 0) {
-  //   //   ElMessage.success(t('userFavorites.remove_success')); // Add to i18n
-  //   //   fetchUserFavorites(); // Refresh list
-  //   // } else {
-  //   //   ElMessage.error(t('userFavorites.remove_failed')); // Add to i18n
-  //   // }
+const handleRemoveFavorite = async (productIdToRemove) => { 
+  try {
+    await ElMessageBox.confirm('确定要从收藏中移除该商品吗？', '确认移除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    });
 
-  // Dummy remove logic
-   ElMessage.success(`移除收藏项 ${favoriteId} 成功`); // Dummy success
-   userFavorites.value = userFavorites.value.filter(fav => fav.id !== favoriteId); // Remove from dummy list
+    await api.removeFavorite(productIdToRemove); 
+    ElMessage.success('已成功从收藏中移除');
+    fetchUserFavorites(); 
+  } catch (error) {
+    if (error !== 'cancel') { 
+      console.error('Remove favorite failed:', error);
+      ElMessage.error('移除收藏失败: ' + (error.response?.data?.detail || error.message));
+    }
+  }
+};
 
-  // } catch (error) {
-  //   console.error('Remove favorite failed:', error);
-  //   ElMessage.error('移除收藏失败'); // Add to i18n
-  // }
+// 打开商品详情对话框
+const viewProductDetail = (productId) => {
+  selectedProductIdForDetail.value = productId;
+  isProductDetailDialogVisible.value = true;
 };
 
 onMounted(() => {
-  fetchUserFavorites(); // Fetch favorites when the component is mounted
+  fetchUserFavorites(); 
 });
 
 </script>
@@ -81,34 +96,39 @@ onMounted(() => {
         <div v-loading="isLoading" class="favorite-list">
           <div v-if="userFavorites.length === 0 && !isLoading" class="empty-state">
             <el-empty description="暂无收藏商品"/>
-            <!-- TODO: Add a button to go to home page to browse products -->
-             <el-button type="primary" @click="router.push('/home')">去首页逛逛</el-button> <!-- Add to i18n -->
+            <el-button type="primary" @click="router.push('/home')">去首页逛逛</el-button>
           </div>
 
           <div v-else class="favorite-grid">
-            <!-- Loop through userFavorites and display each product -->
             <el-card
               v-for="favorite in userFavorites"
               :key="favorite.id"
               class="favorite-item"
               shadow="hover"
             >
-              <!-- Assuming favorite.product contains the product details -->
-               <PurchaseGoodsCard
-                 :img="favorite.product.img"
-                 :itemName="favorite.product.name"
-                 :price="favorite.product.price"
-                 :description="favorite.product.description"
-                 :itemID="favorite.product.id"
-               />
+              <div @click.stop="viewProductDetail(favorite.product.id)" class="product-card-wrapper">
+                 <ProductCard
+                   :product="favorite.product" 
+                 />
+              </div>
                <div class="favorite-actions">
-                 <el-button size="small" type="danger" @click="handleRemoveFavorite(favorite.id)">移除</el-button>
+                 <el-button size="small" type="danger" @click.stop="handleRemoveFavorite(favorite.id)">移除</el-button> 
+                 <!-- 使用 .stop 防止点击移除按钮时触发父级 el-card 的 click 事件 -->
                </div>
             </el-card>
           </div>
         </div>
       </el-card>
     </div>
+
+    <!-- 商品详情对话框 -->
+    <ProductDetail
+      v-if="selectedProductIdForDetail"
+      :product-id="selectedProductIdForDetail"
+      :dialog-visible="isProductDetailDialogVisible"
+      @update:dialogVisible="isProductDetailDialogVisible = $event"
+      @close="selectedProductIdForDetail = null"
+    />
   </div>
 </template>
 
@@ -217,6 +237,22 @@ onMounted(() => {
 
 .favorite-item .el-card__body {
     padding: 0; /* Remove default padding */
+    display: flex; /* Enable flex for vertical layout */
+    flex-direction: column; /* Stack card content and actions vertically */
+    height: 100%; /* Ensure the card body takes full height of the item */
+}
+
+/* New style for the wrapper around ProductCard to handle click and fill space */
+.product-card-wrapper {
+    flex-grow: 1; /* Allow ProductCard to take available space */
+    cursor: pointer;
+}
+
+/* Ensure ProductCard itself takes full height if needed */
+.favorite-item :deep(.product-card-container) {
+    height: 100%; 
+    display: flex;
+    flex-direction: column;
 }
 
 </style>

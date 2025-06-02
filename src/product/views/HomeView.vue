@@ -1,9 +1,22 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
-import {Refresh, Search} from "@element-plus/icons-vue";
+import { ref, onMounted, computed, watch } from "vue";
+import { Refresh, Search } from "@element-plus/icons-vue";
 import api from '@/API_PRO.js'; // 导入新的 API 服务
-import {ElMessage} from "element-plus";
-import PurchaseGoodsCard from "@/product/components/PurchaseGoodsCard.vue";
+import { ElMessage } from "element-plus";
+import ProductCard from "@/product/components/ProductCard.vue"; // 引入 ProductCard
+import ProductDetail from "@/product/components/ProductDetail.vue"; // 1. 导入 ProductDetail 组件
+
+const products = ref([]);
+const isLoading = ref(true);
+const error = ref(null);
+
+// 筛选条件
+const filters = ref({
+  searchKeyword: '',
+  category: '',
+  condition: '', // '全新', '几乎全新', '轻微使用痕迹', '明显使用痕迹'
+  priceRange: [0, 10000] // 假设价格范围
+});
 
 // 组件基本变量设置
 const colors = ['#ffffff', '#ffffff'] // 色块的颜色
@@ -11,111 +24,120 @@ const cardCount = 20; // 每页显示的卡片数量
 const cardList = ref([]); // 商品卡片列表
 const searchQuery = ref(''); // 搜索框内容
 const componentKey = ref(0); // 用于强制刷新组件
-
-// 模拟数据
-const mockCardList = [
-  {
-    id: 'mock1',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+1'],
-    name: "模拟商品 1",
-    description: "这是一个模拟商品描述 1",
-    price: 100,
-  },
-  {
-    id: 'mock2',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+2'],
-    name: "模拟商品 2",
-    description: "这是一个模拟商品描述 2",
-    price: 200,
-  },
-  {
-    id: 'mock3',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+3'],
-    name: "模拟商品 3",
-    description: "这是一个模拟商品描述 3",
-    price: 300,
-  },
-   {
-    id: 'mock4',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+4'],
-    name: "模拟商品 4",
-    description: "这是一个模拟商品描述 4",
-    price: 400,
-  },
-   {
-    id: 'mock5',
-    img: ['https://via.placeholder.com/150?text=Mock+Item+5'],
-    name: "模拟商品 5",
-    description: "这是一个模拟商品描述 5",
-    price: 500,
-  },
-];
+const categoryFilter = ref('');
+const priceMin = ref(null); // 初始化为 null 或 undefined
+const priceMax = ref(null); // 初始化为 null 或 undefined
+// const conditionFilter = ref(''); // 移除 conditionFilter，因为API不支持
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 
 // 顶部推荐商品 (如果API返回不足3个，会用空对象填充)
 const top_item_1 = ref({});
 const top_item_2 = ref({});
 const top_item_3 = ref({});
 
-const handleSearch = () => {
-  if (searchQuery.value === "") {
-    ElMessage.warning('搜索内容不能为空');
-    return;
+// 2. 添加控制 ProductDetail 对话框的 ref
+const isDetailDialogVisible = ref(false);
+const currentProductIdForDetail = ref(null);
+
+const fetchProductData = async () => {
+  isLoading.value = true;
+  error.value = null;
+  try {
+    const params = {
+      keyword: filters.value.searchKeyword || undefined,
+      category_name: filters.value.category || undefined,
+      // 后端目前不支持 condition 和 priceRange 筛选，所以不传递
+      // condition: filters.value.condition || undefined, 
+      // min_price: filters.value.priceRange[0],
+      // max_price: filters.value.priceRange[1],
+      page_number: 1, // 暂时获取第一页，后续可添加分页
+      page_size: 100, // 获取较多数据以便前端筛选（如果后端筛选不全）
+      // product_status: 'Active' // 确保只获取在售商品，如果API默认不是这样
+    };
+    const response = await api.getProductList(params);
+    products.value = response; // API直接返回数组
+  } catch (err) {
+    console.error("获取商品列表失败:", err);
+    error.value = "获取商品列表失败，请稍后重试。";
+    ElMessage.error(error.value);
+  } finally {
+    isLoading.value = false;
   }
-  api.getProductList({ search: searchQuery.value })
-    .then(data => {
-      // Ensure img is an array for PurchaseGoodsCard
-      cardList.value = data.map(item => ({
-        ...item,
-        img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
-      }));
-      if (!data || data.length === 0) {
-        ElMessage.info('未找到相关商品');
-        cardList.value = []; // 清空列表，显示"暂无商品"
-      }
-    })
-    .catch(error => {
-      console.error("Search API failure:", error);
-      ElMessage.error('搜索商品失败');
-      cardList.value = []; // 清空列表，显示错误或"暂无商品"
-    });
-  componentKey.value += 1;
+};
+
+const filteredProducts = computed(() => {
+  let tempProducts = products.value;
+
+  // 前端筛选（如果后端筛选不完善或未提供所有选项）
+  if (filters.value.condition) {
+    // 后端已返回商品成色字段，但如果后端API不直接支持按成色筛选，则在此进行前端筛选
+    // tempProducts = tempProducts.filter(p => p.商品成色 === filters.value.condition);
+  }
+  if (filters.value.priceRange) {
+    // tempProducts = tempProducts.filter(p => {
+    //   const price = parseFloat(p.价格);
+    //   return price >= filters.value.priceRange[0] && price <= filters.value.priceRange[1];
+    // });
+  }
+  return tempProducts;
+});
+
+const showProductDetail = (productId) => {
+  console.log('Attempting to show product detail for ID:', productId);
+  currentProductIdForDetail.value = productId;
+  isDetailDialogVisible.value = true;
+  console.log('isDetailDialogVisible:', isDetailDialogVisible.value, 'currentProductIdForDetail:', currentProductIdForDetail.value);
+};
+
+const mapToProductCardData = (apiItem) => {
+  return {
+    id: apiItem.商品ID,
+    name: apiItem.商品名称,
+    price: parseFloat(apiItem.价格),
+    description: apiItem.商品描述,
+    images: apiItem.主图URL ? [apiItem.主图URL] : [],
+    // category: apiItem.商品类别,
+    // status: apiItem.商品状态,
+    // user: { username: apiItem.发布者用户名 }
+  };
+};
+
+const resetFilters = () => {
+  filters.value = {
+    searchKeyword: '',
+    category: '',
+    condition: '',
+    priceRange: [0, 10000]
+  };
+  fetchProductData(); // 重置后重新获取数据
+};
+
+onMounted(() => {
+  fetchProductData();
+});
+
+// 监听筛选条件变化，重新获取数据
+watch(filters, fetchProductData, { deep: true });
+
+const handleSearch = () => {
+  // searchQuery 为空时，也应该允许搜索（即获取所有或基于其他筛选条件的商品）
+  // if (searchQuery.value === "") {
+  //   ElMessage.warning('搜索内容不能为空');
+  //   return;
+  // }
+  fetchProductData();
 };
 
 const recommendCall = () => {
-  // Passing null or empty object if no specific filters are needed for "recommendations"
-  // The API_PRO.js change will ensure it hits /products/
-  api.getProductList(null) 
-    .then(data => {
-      if (data && data.length > 0) { // 检查API是否返回数据
-        // Ensure img is an array for PurchaseGoodsCard
-        cardList.value = data.map(item => ({
-          ...item,
-          img: Array.isArray(item.img) ? item.img : (item.img ? [item.img] : [])
-        })); // 使用API数据
-        // 根据API数据填充顶部推荐商品，如果不足3个，保持空对象
-        top_item_1.value = data[0] || {}; 
-        top_item_2.value = data[1] || {};
-        top_item_3.value = data[2] || {};
-      } else { // 如果API没有返回数据，使用模拟数据
-        ElMessage.info('API未返回商品，显示模拟数据');
-        cardList.value = mockCardList;
-        // 使用模拟数据填充顶部推荐商品 (假设模拟数据至少有3个，否则也需要处理)
-         top_item_1.value = mockCardList[0] || {}; 
-         top_item_2.value = mockCardList[1] || {};
-         top_item_3.value = mockCardList[2] || {};
-      }
-    })
-    .catch(error => {
-      console.error("Recommend API failure:", error);
-      ElMessage.error('获取推荐商品失败，显示模拟数据');
-      cardList.value = mockCardList; // API 调用失败时也显示模拟数据
-       // 使用模拟数据填充顶部推荐商品 (假设模拟数据至少有3个)
-       top_item_1.value = mockCardList[0] || {}; 
-       top_item_2.value = mockCardList[1] || {};
-       top_item_3.value = mockCardList[2] || {};
-    });
-  componentKey.value += 1;
-  searchQuery.value = "";
+  // 首页推荐通常有自己的逻辑或调用特定API，或者就是默认的 getProductList 无特殊过滤
+  searchQuery.value = ''; // 清空搜索词
+  categoryFilter.value = ''; // 清空分类
+  priceMin.value = null;
+  priceMax.value = null;
+  currentPage.value = 1; // 重置到第一页
+  fetchProductData(); 
 };
 
 const handleTagClick = (tag) => {
@@ -124,29 +146,81 @@ const handleTagClick = (tag) => {
   handleSearch(); // handleSearch already uses { search: searchQuery.value }
 };
 
-onMounted(() => {
-  recommendCall()
-});
+const handleFilter = () => {
+  currentPage.value = 1; // 筛选时重置到第一页
+  handleSearch();
+}
+
+const handleSizeChange = (newSize) => {
+  pageSize.value = newSize;
+  currentPage.value = 1; // 改变每页数量时重置到第一页
+  handleSearch();
+}
+
+const handleCurrentChange = (newPage) => {
+  currentPage.value = newPage;
+  handleSearch();
+}
 </script>
 
 <template>
   <div class="basic-container">
     <div class="center-container">
-      <!-- 顶部搜索栏 -->
-      <el-input class="searching-bar"
-          v-model="searchQuery"
-          placeholder="请输入搜索内容"
-      >
-        <template #append>
-          <el-button @click="handleSearch">
-            <el-icon><Search /></el-icon>
-          </el-button>
-        </template>
-      </el-input>
+      <!-- 统一的搜索和筛选区域 -->
+      <el-card class="search-filter-card" shadow="never">
+        <!-- 主搜索栏 -->
+        <el-input class="searching-bar"
+            v-model="filters.searchKeyword" 
+            placeholder="请输入商品名称、描述等关键词"
+            @keyup.enter="handleFilter" 
+            clearable
+        >
+          <template #append>
+            <el-button @click="handleFilter">
+              <el-icon><Search /></el-icon>
+            </el-button>
+          </template>
+        </el-input>
 
+        <!-- 筛选条件行 -->
+        <div class="filter-options-row">
+          <el-select
+            v-model="filters.category" 
+            placeholder="商品分类"
+            clearable
+            @change="handleFilter"
+            class="filter-select"
+          >
+            <el-option label="电子产品" value="electronics" />
+            <el-option label="书籍文具" value="books" />
+            <el-option label="生活用品" value="daily" />
+            <el-option label="服装配饰" value="clothing" />
+            <el-option label="其他" value="others" />
+          </el-select>
+          
+          <el-input
+            v-model.number="filters.priceRange[0]" 
+            type="number"
+            placeholder="最低价格"
+            clearable
+            @input="handleFilter" 
+            class="price-input"
+          />
+          <span class->-</span>
+          <el-input
+            v-model.number="filters.priceRange[1]" 
+            type="number"
+            placeholder="最高价格"
+            clearable
+            @input="handleFilter"
+            class="price-input"
+          />
+          <el-button @click="resetFilters">重置筛选</el-button>
+        </div>
+      </el-card>
 
       <!-- 商品列表区域 -->
-      <div class="item-info-block" v-if="cardList.length !== 0">
+      <div class="item-info-block" v-if="filteredProducts.length > 0 || total > 0"> <!-- 修改判断条件，即使当前页为空但总数不为0也显示 -->
         <div class="button-block">
           <div class="title-font">商品列表</div>
           <el-button @click="recommendCall" type="primary">
@@ -154,27 +228,44 @@ onMounted(() => {
              刷新
           </el-button>
         </div>
-        <div class="block-for-content">
-          <div v-for="(card, index) in cardList" :key="card.id || index" class="card">
-            <PurchaseGoodsCard
-                :img="card.img"
-                :itemName="card.name"
-                :price="card.price"
-                :description="card.description"
-                :itemID="card.id"
-                :key="card.id || componentKey"
+        <div v-if="filteredProducts.length > 0" class="block-for-content">
+          <div v-for="(card, index) in filteredProducts" :key="card.商品ID || index" class="card" @click="showProductDetail(card.商品ID)"> <!-- 修正: 使用 card.商品ID -->
+            <ProductCard
+                :product="mapToProductCardData(card)"
             />
           </div>
         </div>
+        <el-empty v-else description="当前页无商品，请尝试调整筛选条件或页码" />
+        <!-- 分页 -->
+        <div class="pagination-wrapper" v-if="total > 0">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
       <div v-else class="empty-block">
-        <el-empty description="暂无商品可显示"/>
+        <el-empty description="暂无商品可显示，快去看看别的吧~"/>
         <el-button @click="recommendCall" type="primary" style="margin-bottom: 20px">
           <el-icon><Refresh /></el-icon>
-          刷新
+          刷新看看
         </el-button>
       </div>
     </div>
+
+    <!-- 5. 嵌入 ProductDetail 对话框 -->
+    <ProductDetail
+      v-if="currentProductIdForDetail" 
+      :product-id="currentProductIdForDetail"
+      :dialog-visible="isDetailDialogVisible"
+      @update:dialogVisible="isDetailDialogVisible = $event"
+      @close="currentProductIdForDetail = null" 
+    />
   </div>
 </template>
 
@@ -203,33 +294,65 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.searching-bar {
-  background-color: #ffffff; /* 白色背景 */
-  padding: 0; /* Remove padding here */
-  text-align: center;
-  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08); /* 柔和阴影 */
+/* 新的统一搜索筛选卡片样式 */
+.search-filter-card {
   width: 100%;
-  z-index: 1; /* Lower z-index than navbar */
-  height: 50px; /* Adjust height */
-  margin-bottom: 20px; /* Space below search bar */
-   border-radius: 8px; /* Rounded corners */
-   overflow: hidden; /* Ensure no overflow from inner elements */
+  margin-bottom: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.searching-bar {
+  /* background-color: #ffffff; */ /* No longer needed as parent card has bg */
+  /* padding: 0; */
+  /* text-align: center; */
+  /* box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08); */ /* Shadow now on parent card */
+  width: 100%;
+  /* z-index: 1; */
+  height: 40px; /* Reduced height */
+  margin-bottom: 15px; /* Space below search bar */
+  /* border-radius: 8px; */ /* Radius now on parent card */
+  /* overflow: hidden; */
 }
 
 .searching-bar :deep(.el-input__wrapper) {
-    padding: 0 15px; /* Add inner padding */
-    box-shadow: none !important; /* Remove default shadow */
-    background-color: transparent !important; /* Transparent background */
+    padding: 0 15px;
+    box-shadow: none !important;
+    /* background-color: transparent !important; */ /* Let it inherit for consistency */
+    border-radius: 6px 0 0 6px; /* Match button */
 }
 
 .searching-bar :deep(.el-input-group__append) {
-    background-color: #4A90E2; /* 强调蓝色背景 */
-    color: #fff; /* 白色文字 */
-    padding: 0 15px; /* Adjust padding */
+    background-color: #4A90E2;
+    color: #fff;
+    padding: 0 15px;
+    border-radius: 0 6px 6px 0;
 }
 
 .searching-bar :deep(.el-button) {
-     color: #fff; /* 白色图标 */
+     color: #fff;
+}
+
+.filter-options-row {
+  display: flex;
+  gap: 15px; /* Space between filter elements */
+  align-items: center;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.filter-select {
+  width: 180px; /* Adjust width as needed */
+}
+
+.price-input {
+  width: 120px; /* Adjust width as needed */
+}
+
+.filter-options-row > span {
+  margin: 0 5px;
 }
 
 /* New flex container for categories and featured items */
@@ -387,6 +510,7 @@ onMounted(() => {
   box-sizing: border-box;
   width: 100%;
   transition: transform 0.3s ease, box-shadow 0.3s ease; /* Add transition */
+  cursor: pointer; /* Add cursor pointer to indicate clickable */
 }
 
 .card:hover {

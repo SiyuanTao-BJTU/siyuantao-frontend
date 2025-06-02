@@ -1,3 +1,5 @@
+import BackendConfig from '@/../backend.config.js';
+
 const FormatObject = {
   formattedTransactionRecord: (recordList) => {
     if (!Array.isArray(recordList)) {
