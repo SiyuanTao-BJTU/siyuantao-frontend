@@ -189,6 +189,8 @@ router.beforeEach(async (to, from, next) => {
 
       if (to.meta.requiresAuth) {
          NProgress.done();
+         // 如果获取用户信息失败且目标路由需要认证，则重定向到登录
+         next({ name: 'login', query: { redirect: to.fullPath } }); 
          return; 
       }
     }
@@ -196,11 +198,16 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.meta.requiresAuth) {
     if (currentIsAuthenticated) {
-      if (to.meta.requiresVerified && !userInfo?.is_verified) {
+      // 使用中文键名 '是否已认证'
+      if (to.meta.requiresVerified && !userInfo?.是否已认证) {
           ElMessage.warning('请先完成邮箱验证以访问此页面');
           next({ name: 'StudentAuthRequest', query: { redirect: to.fullPath } });
       } else if (to.meta.requiresAdmin) {
-           const isAdmin = userInfo?.is_staff || localStorage.getItem('is_staff') === 'true';
+           // 使用中文键名 '是否管理员' 从 userInfo，并从 localStorage 获取 'isAdmin'
+           const isAdminFromStore = userInfo?.是否管理员;
+           const isAdminFromLocalStorage = localStorage.getItem('isAdmin') === 'true';
+           const isAdmin = isAdminFromStore || isAdminFromLocalStorage;
+
            if (isAdmin || store.getters['user/isSuperAdmin']) {
                next();
            } else {

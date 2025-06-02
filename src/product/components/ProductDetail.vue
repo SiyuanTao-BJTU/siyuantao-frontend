@@ -36,7 +36,7 @@ const store = useStore(); // 获取 Vuex store 实例
 const currentUser = computed(() => store.getters['user/getUserInfo']); // 从 Vuex store 获取用户信息
 
 // 新增计算属性，安全地获取 user_id
-const currentUserId = computed(() => currentUser.value?.user_id);
+const currentUserId = computed(() => currentUser.value?.用户ID);
 
 const fetchProductDetail = async (id) => {
   if (!id) return;
@@ -52,22 +52,22 @@ const fetchProductDetail = async (id) => {
       productDetail.value = {
         id: response.商品ID,
         name: response.商品名称,
-        description: response.商品描述,
-        price: response.价格,
-        quantity: response.库存,
-        category: response.商品类别, // 保持原始值，显示时转换
+        description: response.描述,
+        price: response.价格 !== null && response.价格 !== undefined ? parseFloat(response.价格) : null,
+        quantity: response.数量,
+        category: response.分类名称,
         condition: response.商品成色 || '未提供',
-        images: response.ImageURLs // 假设后端返回 ImageURLs 字段，是逗号分隔的字符串或数组
-          ? (Array.isArray(response.ImageURLs)
-              ? response.ImageURLs.map(url => url.startsWith('http') ? url : FormatObject.formattedImgUrl(url))
-              : response.ImageURLs.split(',').map(url => url.trim().startsWith('http') ? url.trim() : FormatObject.formattedImgUrl(url.trim()))
+        images: response.图片URL列表
+          ? (Array.isArray(response.图片URL列表)
+              ? response.图片URL列表.map(url => url.startsWith('http') ? url : FormatObject.formattedImgUrl(url))
+              : response.图片URL列表.split(',').map(url => url.trim().startsWith('http') ? url.trim() : FormatObject.formattedImgUrl(url.trim()))
             )
           : [],
         status: response.商品状态,
         postTime: response.发布时间,
         user: {
-          id: response.发布者用户ID || null,
-          username: response.发布者用户名 || '未知用户',
+          id: response.卖家ID || null,
+          username: response.卖家用户名 || '未知用户',
           // 这里可能需要调用另一个API获取更详细的卖家信息，或者后端在getProductDetail中提供
           // phone_number: response.发布者联系方式, // 假设有此字段
           // avatar_url: response.发布者头像, // 假设有此字段
@@ -178,7 +178,7 @@ const confirmTradeDetails = async () => {
             trade_location: tradeLocation.value,
         });
 
-        ElMessage.success('订单创建成功！订单号: ' + response.order_id);
+        ElMessage.success('订单创建成功！订单号: ' + response.订单ID);
         router.push({ name: 'my-orders' }); // 跳转到我的订单页面
     } catch (err) {
         console.error('创建订单失败:', err);
@@ -257,21 +257,21 @@ const canBuy = computed(() => {
          quantityToBuy.value > 0 && // 购买数量大于0
          quantityToBuy.value <= productDetail.value.quantity && // 购买数量不大于库存
          productDetail.value.status === 'Active' &&
-         (!productDetail.value?.user || currentUserId.value !== productDetail.value?.user?.id); // 不能购买自己的商品
+         (!productDetail.value?.user || currentUserId.value !== productDetail.value.user?.id); // 不能购买自己的商品
 });
 
 // 新增计算属性，用于收藏按钮的禁用逻辑
 const isFavoriteButtonDisabled = computed(() => {
   if (!productDetail.value) return true; // 如果商品详情为空，则禁用
   if (!currentUserId.value) return true; // 如果当前用户未登录，则禁用
-  return (productDetail.value.user?.id && currentUserId.value === productDetail.value.user.id) || isTogglingFavorite.value; // 不能收藏自己的商品，或正在收藏中
+  return (productDetail.value.user?.id && currentUserId.value === productDetail.value.user?.id) || isTogglingFavorite.value; // 不能收藏自己的商品，或正在收藏中
 });
 
 // 新增计算属性，用于联系卖家按钮的禁用逻辑
 const isContactSellerDisabled = computed(() => {
   if (!productDetail.value) return true; // 如果商品详情为空，则禁用
   if (!currentUserId.value) return true; // 如果当前用户未登录，则禁用
-  return !productDetail.value.user?.id || currentUserId.value === productDetail.value.user.id; // 不能联系自己，或卖家信息缺失
+  return !productDetail.value.user?.id || currentUserId.value === productDetail.value.user?.id; // 不能联系自己，或卖家信息缺失
 });
 </script>
 

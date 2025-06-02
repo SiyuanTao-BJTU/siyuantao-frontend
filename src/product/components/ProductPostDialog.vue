@@ -76,17 +76,20 @@ const fetchProductDetail = async (id) => {
     const response = await api.getProductDetail(id);
     if (response) {
       productForm.product_name = response.商品名称;
-      productForm.description = response.商品描述;
+      productForm.description = response.描述;
       productForm.price = parseFloat(response.价格) || null;
-      productForm.category = response.商品类别;
-      productForm.condition = response.商品成色 || '';
-      productForm.quantity = parseInt(response.库存, 10) || 1;
+      productForm.category = response.分类名称;
+      productForm.condition = response.成色 || '';
+      productForm.quantity = parseInt(response.数量, 10) || 1;
       
-      const imageUrlsString = response.ImageURLs;
+      const imageUrlsString = response.图片URL列表;
       if (imageUrlsString && typeof imageUrlsString === 'string') {
         productForm.image_urls = imageUrlsString.split(',').map(url => {
             const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
             const trimmedUrl = url.trim();
+            if (trimmedUrl.startsWith('http') || trimmedUrl.startsWith('//')) {
+                return trimmedUrl;
+            }
             return (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) + (trimmedUrl.startsWith('/') ? trimmedUrl : '/' + trimmedUrl);
         });
       } else {

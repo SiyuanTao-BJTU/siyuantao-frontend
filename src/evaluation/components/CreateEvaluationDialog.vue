@@ -25,7 +25,7 @@ const closeDialog = () => {
 };
 
 const submitEvaluation = async () => {
-    if (!props.order?.order_id) {
+    if (!props.order?.订单ID) {
         ElMessage.error('无法获取订单信息，无法评价。');
         return;
     }
@@ -33,7 +33,7 @@ const submitEvaluation = async () => {
     submitting.value = true;
     try {
         const response = await api.createEvaluation({
-            order_id: props.order.order_id,
+            order_id: props.order.订单ID,
             rating: rating.value,
             comment: comment.value,
         });
@@ -60,7 +60,7 @@ const submitEvaluation = async () => {
         <div v-if="order" class="evaluation-form-container">
             <el-form label-width="90px">
                 <el-form-item label="商品名称">
-                    <span class="product-name-display">{{ order?.product_name || '未知商品' }}</span>
+                    <span class="product-name-display">{{ order?.商品名称 || '未知商品' }}</span>
                 </el-form-item>
                 <el-form-item label="您的评分">
                     <el-rate v-model="rating" show-text :texts="['很差', '差', '一般', '好', '很好']" :max="5" />
@@ -84,7 +84,7 @@ const submitEvaluation = async () => {
         <template #footer>
             <span class="dialog-footer">
                 <el-button @click="closeDialog">取消</el-button>
-                <el-button type="primary" @click="submitEvaluation" :loading="submitting" :disabled="!order?.order_id || submitting">提交评价</el-button>
+                <el-button type="primary" @click="submitEvaluation" :loading="submitting" :disabled="!order?.订单ID || submitting">提交评价</el-button>
             </span>
         </template>
     </el-dialog>

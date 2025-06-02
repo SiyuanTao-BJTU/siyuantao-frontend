@@ -91,16 +91,6 @@ const showProductDetail = (productId) => {
   console.log('isDetailDialogVisible:', isDetailDialogVisible.value, 'currentProductIdForDetail:', currentProductIdForDetail.value);
 };
 
-const mapToProductCardData = (apiItem) => {
-  return {
-    id: apiItem.商品id,
-    name: apiItem.商品名称,
-    price: parseFloat(apiItem.价格),
-    description: apiItem.商品描述,
-    images: apiItem.主图url ? [apiItem.主图url] : [],
-  };
-};
-
 const resetFilters = () => {
   filters.value = {
     searchKeyword: '',
@@ -226,9 +216,9 @@ const handleCurrentChange = (newPage) => {
           </el-button>
         </div>
         <div v-if="filteredProducts.length > 0" class="block-for-content">
-          <div v-for="(card, index) in filteredProducts" :key="card.商品id || index" class="card" @click="showProductDetail(card.商品id)"> <!-- 修正: 使用 card.商品id -->
+          <div v-for="(card, index) in filteredProducts" :key="card.商品ID || index" class="card" @click="showProductDetail(card.商品ID)">
             <ProductCard
-                :product="mapToProductCardData(card)"
+                :product="card"
             />
           </div>
         </div>

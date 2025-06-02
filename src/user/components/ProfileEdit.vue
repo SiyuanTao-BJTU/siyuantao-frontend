@@ -58,13 +58,13 @@ watch(() => props.isProfileEditDialogVisible, (newValue) => {
   localDialogVisible.value = newValue;
   if (newValue && props.userInfo) {
     // Populate form with current user info when dialog opens
-    profileForm.username = props.userInfo.username || ''; // Display username
-    profileForm.major = props.userInfo.major || ''; // Use 'major' from backend schema
-    profileForm.bio = props.userInfo.bio || '';
-    profileForm.phoneNumber = props.userInfo.phone_number || ''; // Use 'phone_number' from backend schema
+    profileForm.username = props.userInfo.用户名 || ''; // 使用中文键名
+    profileForm.major = props.userInfo.专业 || ''; // 使用中文键名
+    profileForm.bio = props.userInfo.个人简介 || ''; // 使用中文键名
+    profileForm.phoneNumber = props.userInfo.手机号码 || ''; // 使用中文键名
     // Construct full avatar URL if avatarUrl is a relative path
-    profileForm.avatarUrl = props.userInfo.avatar_url ? 
-      BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (props.userInfo.avatar_url.startsWith('/') ? props.userInfo.avatar_url : '/' + props.userInfo.avatar_url) : null;
+    profileForm.avatarUrl = props.userInfo.头像URL ? 
+      BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (props.userInfo.头像URL.startsWith('/') ? props.userInfo.头像URL : '/' + props.userInfo.头像URL) : null;
   } else if (!newValue && profileFormRef.value) {
       // Optionally reset form when dialog closes
       profileFormRef.value.resetFields();
@@ -102,8 +102,8 @@ const handleAvatarHttpRequest = async (options) => {
 const handleAvatarUploadSuccess = (response) => {
   console.log('Avatar upload success:', response);
   // Update avatar preview with the URL from backend response, ensuring full path
-  profileForm.avatarUrl = response.avatar_url ? 
-    BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + response.avatar_url : null; 
+  profileForm.avatarUrl = response.头像URL ? 
+    BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + response.头像URL : null; 
   ElMessage.success('头像上传成功');
   emits('updateSuccess'); // Trigger profile update in parent to refresh user info
 };

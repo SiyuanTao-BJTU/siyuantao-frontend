@@ -58,18 +58,14 @@
        if (response) {
           const userInfo = response;
           userProfileResponseData.value = userInfo;
-          database_id.value = userInfo.id || userInfo.user_id;
-          username.value = userInfo.username;
-          email.value = userInfo.email || "";
-          contact.value = userInfo.contact_info || "";
-          firstName.value = userInfo.first_name || "";
-          lastName.value = userInfo.last_name || "";
-          bio.value = userInfo.bio || "";
-          // Construct full avatar URL if avatarUrl is a relative path
-          avatarUrl.value = userInfo.avatar_url ? 
-            BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (userInfo.avatar_url.startsWith('/') ? userInfo.avatar_url : '/' + userInfo.avatar_url) : "";
+          database_id.value = userInfo.用户ID;
+          username.value = userInfo.用户名;
+          email.value = userInfo.邮箱 || "";
+          bio.value = userInfo.个人简介 || "";
+          avatarUrl.value = userInfo.头像URL ? 
+            BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (userInfo.头像URL.startsWith('/') ? userInfo.头像URL : '/' + userInfo.头像URL) : "";
           // Also update userProfileResponseData to ensure correct URL is passed to child components
-          userProfileResponseData.value.avatar_url = avatarUrl.value;
+          userProfileResponseData.value.头像URL = avatarUrl.value;
 
           if (userInfo.student_profile) {
             student_id.value = userInfo.student_profile.student_id || "";
@@ -82,19 +78,19 @@
             dormitory.value = "";
             studentProfileData.value = null;
           }
-          localStorage.setItem("username", userInfo.username);
-          localStorage.setItem("userId", userInfo.id || userInfo.user_id);
+          localStorage.setItem("username", userInfo.用户名);
+          localStorage.setItem("userId", userInfo.用户ID);
           // 检查 is_staff 并存储
-          if (userInfo.is_staff !== undefined) {
-            localStorage.setItem("is_staff", userInfo.is_staff);
+          if (userInfo.是否管理员 !== undefined) {
+            localStorage.setItem("is_staff", userInfo.是否管理员);
           }
           // 检查 is_verified 并存储
-          if (userInfo.is_verified !== undefined) {
-            localStorage.setItem("is_verified", userInfo.is_verified);
+          if (userInfo.是否已认证 !== undefined) {
+            localStorage.setItem("is_verified", userInfo.是否已认证);
           }
 
-          if ((userInfo.id || userInfo.user_id) && WebSocketService.userId === 'undefined') {
-            WebSocketService.init(userInfo.id || userInfo.user_id);
+          if (userInfo.用户ID && WebSocketService.userId === 'undefined') {
+            WebSocketService.init(userInfo.用户ID);
           }
         } else {
           console.warn("获取用户信息API响应为空 ProfileView:", response);
@@ -147,9 +143,9 @@
   // Computed property for student verification status display
   const studentVerificationStatus = computed(() => {
     // Check the is_verified field directly from userProfileResponseData
-    if (userProfileResponseData.value && userProfileResponseData.value.is_verified) {
+    if (userProfileResponseData.value && userProfileResponseData.value.是否已认证) {
       return "已认证"; // Add to i18n
-    } else if (userProfileResponseData.value && !userProfileResponseData.value.is_verified) {
+    } else if (userProfileResponseData.value && !userProfileResponseData.value.是否已认证) {
         // If is_verified is false but student_profile exists, it might mean verification started but not completed.
         // For now, we'll just show "未认证". If more detailed statuses are needed, the backend needs to provide them.
         return "未认证"; // Add to i18n
@@ -191,11 +187,11 @@
           <p v-else class="user-bio-placeholder">这位用户很神秘，什么简介都没留下~</p>
           <div class="status-info">
             <el-tag type="primary" effect="light" class="status-tag">
-              <el-icon><CreditCard /></el-icon>&nbsp;信用分: {{ userProfileResponseData ? userProfileResponseData.credit : 'N/A' }}
+              <el-icon><CreditCard /></el-icon>&nbsp;信用分: {{ userProfileResponseData ? userProfileResponseData.信用分 : 'N/A' }}
             </el-tag>
-            <el-tag :type="userProfileResponseData && userProfileResponseData.is_verified ? 'success' : 'info'" effect="light" class="status-tag">
-              <el-icon><component :is="userProfileResponseData && userProfileResponseData.is_verified ? CircleCheckFilled : CircleCloseFilled" /></el-icon>
-              &nbsp;学生认证: {{ userProfileResponseData && userProfileResponseData.is_verified ? '已认证' : '未认证' }}
+            <el-tag :type="userProfileResponseData && userProfileResponseData.是否已认证 ? 'success' : 'info'" effect="light" class="status-tag">
+              <el-icon><component :is="userProfileResponseData && userProfileResponseData.是否已认证 ? CircleCheckFilled : CircleCloseFilled" /></el-icon>
+              &nbsp;学生认证: {{ userProfileResponseData && userProfileResponseData.是否已认证 ? '已认证' : '未认证' }}
             </el-tag>
           </div>
         </div>
@@ -227,7 +223,7 @@
           </el-card>
            <!-- 学生认证入口 (如果未认证) -->
            <el-card 
-             v-if="userProfileResponseData && !userProfileResponseData.is_verified" 
+             v-if="userProfileResponseData && !userProfileResponseData.是否已认证" 
              class="functional-card" 
              shadow="hover" 
              @click="handleCardClick('/request-student-auth')"
@@ -236,7 +232,7 @@
              <span>学生身份认证</span>
            </el-card>
            <!-- 管理员后台入口 (如果是管理员) -->
-           <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && (userProfileResponseData.is_staff || isSuperAdmin)" @click="handleAdminCardClick">
+           <el-card class="functional-card" shadow="hover" v-if="userProfileResponseData && (userProfileResponseData.是否管理员 || isSuperAdmin)" @click="handleAdminCardClick">
              <el-icon><Setting /></el-icon>
              <span>管理员后台</span>
            </el-card>
@@ -248,7 +244,7 @@
       :isPasswordDialogVisible="passwordDialogVisible"
       @updateCancel="passwordDialogVisible = false"
       @updateSuccess="passwordDialogVisible = false"
-  />’
+  />
   <ProfileEdit
       :isProfileEditDialogVisible="profileEditDialogVisible"
       :userInfo="userProfileResponseData"

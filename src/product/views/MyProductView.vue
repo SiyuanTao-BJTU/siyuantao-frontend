@@ -76,8 +76,8 @@ const fetchMyProducts = () => {
       itemList.value = data.map(item => ({
         id: item.商品ID,
         name: item.商品名称,
-        description: item.商品描述,
-        quantity: item.库存, 
+        description: item.描述,
+        quantity: item.数量,
         price: item.价格,
         post_time: item.发布时间,
         status: item.商品状态,
@@ -87,13 +87,13 @@ const fetchMyProducts = () => {
               : [item.主图URL.startsWith('http') || item.主图URL.startsWith('//') ? item.主图URL : FormatObject.formattedImgUrl(item.主图URL)])
           : ['/placeholder-image.png'], // 如果没有图片，提供一个占位图
         user: {
-            username: item.发布者用户名,
-            credit: item.发布者信用分 || 100, 
-            avatar: item.发布者头像 || '', 
+            username: item.卖家用户名,
+            // credit: item.发布者信用分 || 100, // ProductResponseSchema 中无此字段，暂时注释
+            // avatar: item.发布者头像 || '', // ProductResponseSchema 中无此字段，暂时注释
         },
         total_count: item.总商品数, 
-        category: item.商品类别, // 添加商品类别
-        condition: item.商品成色 // 添加商品成色
+        category: item.分类名称,
+        condition: item.商品成色
       }));
       if (itemList.value.length === 0) {
         // ElMessage.info("您还没有发布的商品。"); // 页面已有空状态提示
