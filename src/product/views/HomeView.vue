@@ -93,14 +93,11 @@ const showProductDetail = (productId) => {
 
 const mapToProductCardData = (apiItem) => {
   return {
-    id: apiItem.商品ID,
+    id: apiItem.商品id,
     name: apiItem.商品名称,
     price: parseFloat(apiItem.价格),
     description: apiItem.商品描述,
-    images: apiItem.主图URL ? [apiItem.主图URL] : [],
-    // category: apiItem.商品类别,
-    // status: apiItem.商品状态,
-    // user: { username: apiItem.发布者用户名 }
+    images: apiItem.主图url ? [apiItem.主图url] : [],
   };
 };
 
@@ -229,7 +226,7 @@ const handleCurrentChange = (newPage) => {
           </el-button>
         </div>
         <div v-if="filteredProducts.length > 0" class="block-for-content">
-          <div v-for="(card, index) in filteredProducts" :key="card.商品ID || index" class="card" @click="showProductDetail(card.商品ID)"> <!-- 修正: 使用 card.商品ID -->
+          <div v-for="(card, index) in filteredProducts" :key="card.商品id || index" class="card" @click="showProductDetail(card.商品id)"> <!-- 修正: 使用 card.商品id -->
             <ProductCard
                 :product="mapToProductCardData(card)"
             />

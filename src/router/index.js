@@ -40,16 +40,10 @@ const router = createRouter({
       component: MyProductView,
       meta: { requiresAuth: true }
     },
-    { // 交易记录页面 (保留原路径，如果需要也可以扁平化)
-      path: '/transactions',
-      name: 'Transactions',
-      component: { template: '<div>交易记录页面</div>' },
-      meta: { requiresAuth: true }
-    },
     { // 我的订单页面
       path: '/orders',
       name: 'my-orders',
-      component: { template: '<div>我的订单页面 (占位符)</div>' },
+      component: () => import('@/order/views/OrdersView.vue'),
       meta: { requiresAuth: true }
     },
     { // 我的收藏页面 
