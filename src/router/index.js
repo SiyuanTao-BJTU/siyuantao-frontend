@@ -52,9 +52,20 @@ const router = createRouter({
     },
     { // 我的订单页面 (原 /profile/my-orders)
       path: '/orders',
-      name: 'my-orders',
-      component: { template: '<div>我的订单页面 (占位符)</div>' },
-      meta: { requiresAuth: true }
+      name: 'Orders',
+      component: () => import('@/order/views/OrderSelectionView.vue'), // 新增的订单选择页面
+      children: [
+        {
+          path: 'buyer',
+          name: 'BuyerOrders',
+          component: () => import('@/order/views/BuyerOrderListView.vue')
+        },
+        {
+          path: 'seller',
+          name: 'SellerOrders',
+          component: () => import('@/order/views/SellerOrderListView.vue')
+        }
+      ]
     },
     { // 我的收藏页面 (原 /profile/my-favorites)
       path: '/favorites',
