@@ -253,11 +253,25 @@ onMounted(() => {
 });
 
 const canBuy = computed(() => {
-  return productDetail.value && 
-         quantityToBuy.value > 0 && // 购买数量大于0
-         quantityToBuy.value <= productDetail.value.quantity && // 购买数量不大于库存
+  return productDetail.value &&
+         productDetail.value.quantity > 0 && // Ensure quantity is positive
+         quantityToBuy.value > 0 &&
+         quantityToBuy.value <= productDetail.value.quantity &&
          productDetail.value.status === 'Active' &&
-         (!productDetail.value?.user || currentUserId.value !== productDetail.value.user?.id); // 不能购买自己的商品
+         (!productDetail.value?.user || currentUserId.value !== productDetail.value.user?.id);
+});
+
+// Computed property for el-input-number's max value
+const inputNumberMax = computed(() => {
+  if (productDetail.value && productDetail.value.quantity > 0) {
+    return productDetail.value.quantity;
+  }
+  return 1; // Default to 1 if quantity is 0 or less, to prevent min > max error
+});
+
+// Computed property to disable the input number
+const isInputNumberDisabled = computed(() => {
+  return !productDetail.value || productDetail.value.quantity <= 0 || productDetail.value.status !== 'Active';
 });
 
 // 新增计算属性，用于收藏按钮的禁用逻辑
@@ -349,7 +363,12 @@ const isContactSellerDisabled = computed(() => {
 
           <div class="quantity-selector">
             <span class="meta-label">购买数量:</span>
-            <el-input-number v-model="quantityToBuy" :min="1" :max="productDetail.quantity" />
+            <el-input-number 
+              v-model="quantityToBuy" 
+              :min="1" 
+              :max="inputNumberMax" 
+              :disabled="isInputNumberDisabled" 
+            />
           </div>
 
           <div class="action-buttons">

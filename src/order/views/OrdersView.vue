@@ -2,8 +2,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import OrderDetailDialog from './OrderDetailDialog.vue';
-import CreateEvaluationDialog from './CreateEvaluationDialog.vue';
+import OrderDetailDialog from '../components/OrderDetailDialog.vue';
+import CreateEvaluationDialog from '../../evaluation/components/CreateEvaluationDialog.vue';
 import api from '@/API_PRO.js'; // 确保路径正确
 
 const store = useStore();
