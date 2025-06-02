@@ -1,6 +1,5 @@
 <template>
   <div class="permission-management-container">
-    <!-- Page Header -->
     <div class="page-header">
       <div class="header-content">
         <div class="title-section">
@@ -11,12 +10,10 @@
           <el-button type="primary" :icon="Refresh" @click="fetchUsers" :loading="loading">
             刷新数据
           </el-button>
-          <!-- Add other actions like adding a new admin if needed later -->
-        </div>
+          </div>
       </div>
     </div>
 
-    <!-- User List Table -->
     <el-card class="table-card" shadow="never">
       <div class="table-header">
         <h3>用户列表</h3>
@@ -36,17 +33,17 @@
             <div class="user-info">
               <el-avatar
                 :size="40"
-                :src="row.avatar_url ? BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + row.avatar_url : ''"
+                :src="row['头像URL'] ? BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + row['头像URL'] : ''"
                 class="user-avatar"
               >
-                {{ row.username.charAt(0).toUpperCase() }}
+                {{ row['用户名']?.charAt(0)?.toUpperCase() }}
               </el-avatar>
               <div class="user-details">
                 <div class="user-name">
-                  {{ row.username }}
+                  {{ row['用户名'] }}
               </div>
-                <div class="user-email">{{ row.email }}</div>
-                <div class="user-phone" v-if="row.phone_number">{{ row.phone_number }}</div>
+                <div class="user-email">{{ row['邮箱'] }}</div>
+                <div class="user-phone" v-if="row['手机号码']">{{ row['手机号码'] }}</div>
               </div>
               </div>
            </template>
@@ -55,23 +52,22 @@
         <el-table-column label="管理员身份" width="150">
           <template #default="{ row }">
             <el-tag
-              :type="row.is_staff ? 'success' : 'info'"
+              :type="row['是否管理员'] ? 'success' : 'info'"
             >
-              {{ row.is_staff ? '是' : '否' }}
+              {{ row['是否管理员'] ? '是' : '否' }}
             </el-tag>
                 </template>
         </el-table-column>
 
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <!-- Prevent changing super admin's status -->
             <el-button
               type="primary"
               size="small"
               @click="toggleAdminStatus(row)"
               :disabled="isSuperAdminUser(row)"
             >
-              {{ row.is_staff ? '撤销管理员' : '设为管理员' }}
+              {{ row['是否管理员'] ? '撤销管理员' : '设为管理员' }}
             </el-button>
           </template>
         </el-table-column>
@@ -100,7 +96,7 @@ const superAdminEmail = computed(() => '23301132@bjtu.edu.cn');
 // Helper function to check if a user is the super admin
 const isSuperAdminUser = (user) => {
   // Compare user's email with the super admin email
-  return user.email === superAdminEmail.value;
+  return user['邮箱'] === superAdminEmail.value;
 };
 
 const fetchUsers = async () => {
@@ -115,17 +111,17 @@ const fetchUsers = async () => {
     console.error('获取用户列表失败:', error);
     ElMessage.error('获取用户列表失败');
   } finally {
-     loading.value = false;
+      loading.value = false;
   }
 };
 
 const toggleAdminStatus = async (user) => {
-  const newStatus = !user.is_staff;
+  const newStatus = !user['是否管理员'];
   const action = newStatus ? '设为管理员' : '撤销管理员';
 
   try {
     await ElMessageBox.confirm(
-      `确定要将用户 "${user.username}" ${action} 吗?`,
+      `确定要将用户 "${user['用户名']}" ${action} 吗?`,
       '确认操作',
       {
         confirmButtonText: '确定',
@@ -137,11 +133,11 @@ const toggleAdminStatus = async (user) => {
     // --- Call the new backend endpoint for toggling staff status ---
     // Assuming api.toggleUserStaffStatus corresponds to PUT /api/v1/users/{user_id}/toggle_staff
 
-    console.log(`Attempting to call toggleUserStaffStatus API for user ${user.username} (ID: ${user.user_id}) to set staff status to ${newStatus}`);
-    await api.toggleUserStaffStatus(user.user_id);
+    console.log(`Attempting to call toggleUserStaffStatus API for user ${user['用户名']} (ID: ${user['用户ID']}) to set staff status to ${newStatus}`);
+    await api.toggleUserStaffStatus(user['用户ID']);
 
     // If the API call succeeds, perform optimistic update and refresh data
-    // user.is_staff = newStatus; // Removed optimistic update
+    // user['是否管理员'] = newStatus; // Removed optimistic update
 
     ElMessage.success(`${action}操作成功！`);
     // Refresh data to ensure consistency
