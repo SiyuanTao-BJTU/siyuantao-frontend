@@ -696,7 +696,6 @@ const getTimeAgo = (dateString) => {
 }
 
 const isSuperAdminUser = computed(() => store.getters['user/isSuperAdmin'])
-const currentUserId = computed(() => store.getters['user/getUserInfo']?.['用户ID']) // Access user ID from store using Chinese field name
 
 onMounted(() => {
   refreshUsers()

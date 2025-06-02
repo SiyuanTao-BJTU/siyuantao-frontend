@@ -4,15 +4,6 @@ import { ElMessage } from 'element-plus'; // 确保 ElMessage 被导入
 import NProgress from 'nprogress'; // 导入 NProgress
 import 'nprogress/nprogress.css'; // 导入 NProgress 样式
 
-// 静态导入 ProfileView，暂时解决动态加载问题
-import ProfileView from '@/user/views/profile/ProfileView.vue';
-// 导入我的商品页面
-import MyProductView from '@/product/views/MyProductView.vue';
-// 导入学生认证请求页面
-import StudentAuthRequestView from '@/user/views/profile/StudentAuthRequestView.vue';
-// 导入通用的邮箱验证页面
-import EmailVerificationView from '@/user/views/auth/EmailVerificationView.vue';
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -37,7 +28,7 @@ const router = createRouter({
     { // 我的发布页面
       path: '/my-products',
       name: 'MyProductView',
-      component: MyProductView,
+      component: () => import('@/product/views/MyProductView.vue'),
       meta: { requiresAuth: true }
     },
     { // 我的订单页面
@@ -61,7 +52,7 @@ const router = createRouter({
     { // 个人中心概览页 (保留原路径)
       path: '/profile',
       name: 'profile',
-      component: ProfileView,
+      component: () => import('@/user/views/profile/ProfileView.vue'),
       meta: { requiresAuth: true }
     },
     { // 其他用户信息界面 (通过搜索等方式查看，路径不变)
@@ -73,15 +64,15 @@ const router = createRouter({
     { // 学生认证请求页面 (通过个人中心进入)
       path: '/profile/student-auth',
       name: 'StudentAuthRequest',
-      component: StudentAuthRequestView,
+      component: () => import('@/user/views/profile/StudentAuthRequestView.vue'),
       meta: { requiresAuth: true, title: '学生认证请求' }
     },
-    { // 偏好设置页面 (保留原路径)
-      path: '/settings',
-      name: 'settings',
-      component: { template: '<div>偏好设置页面 (占位符)</div>' },
-      meta: { requiresAuth: true }
-    },
+    // { // 偏好设置页面 (保留原路径)
+    //   path: '/settings',
+    //   name: 'settings',
+    //   component: () => import('@/user/views/profile/SettingsView.vue'),
+    //   meta: { requiresAuth: true }
+    // },
     // 独立页面，不显示导航栏 (hideNavbar: true)
     {
       path: '/login',
@@ -119,6 +110,18 @@ const router = createRouter({
           name: 'AdminProductAudit',
           component: () => import('@/admin/views/ProductsAuditView.vue'),
           meta: { title: '商品审核', requiresAuth: true, requiresAdmin: true }
+        },
+        { 
+          path: 'orders',
+          name: 'AdminOrderManagement',
+          component: () => import('@/admin/views/AdminOrdersView.vue'),
+          meta: { title: '订单管理', requiresAuth: true, requiresAdmin: true }
+        },
+        { 
+          path: 'evaluations',
+          name: 'AdminEvaluationManagement',
+          component: () => import('@/admin/views/AdminEvaluationsView.vue'),
+          meta: { title: '评价管理', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'returns',

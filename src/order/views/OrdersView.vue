@@ -4,11 +4,10 @@ import { useStore } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import OrderDetailDialog from '../components/OrderDetailDialog.vue';
 import CreateEvaluationDialog from '../../evaluation/components/CreateEvaluationDialog.vue';
+import OrderCard from '../components/OrderCard.vue'; 
 import api from '@/API_PRO.js'; // 确保路径正确
 
 const store = useStore();
-const currentUser = computed(() => store.getters['user/getUserInfo']);
-const currentUserId = computed(() => currentUser.value?.用户ID);
 const isBuyer = computed(() => currentUser.value?.role === 'buyer');
 const isSeller = computed(() => currentUser.value?.role === 'seller');
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
@@ -27,23 +26,29 @@ const currentOrder = ref(null);
 const showCreateEvaluationDialog = ref(false);
 const orderToEvaluate = ref(null);
 
+// 新增：用于切换买家/卖家订单视图的标签页
+const activeTab = ref('buyer'); // 默认为买家订单
+
 const orderStatusOptions = ref([
     { value: '', label: '全部' },
     { value: 'PendingSellerConfirmation', label: '待卖家确认' },
     { value: 'ConfirmedBySeller', label: '卖家已确认' },
     { value: 'Completed', label: '已完成' },
     { value: 'Cancelled', label: '已取消' },
+    { value: 'Rejected', label: '已拒绝' }, // 添加 Rejected 状态
 ]);
 
 const fetchOrders = async () => {
     loading.value = true;
     error.value = null;
     try {
-        const response = await api.getMyOrders({
+        const params = {
             status: selectedStatus.value || undefined,
             page_number: pageNumber.value,
             page_size: pageSize.value,
-        });
+            is_seller: activeTab.value === 'seller', // 根据 activeTab 传递 is_seller
+        };
+        const response = await api.getMyOrders(params);
         orderList.value = response; 
         // 假设API返回的数据中包含 total 字段用于分页
         total.value = response.total || response.length;
@@ -54,6 +59,13 @@ const fetchOrders = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+// 新增：处理 Tab 切换事件
+const handleTabChange = (tabName) => {
+    activeTab.value = tabName;
+    pageNumber.value = 1; // 切换 Tab 时重置页码
+    fetchOrders(); // 重新获取订单
 };
 
 const handleStatusChange = () => {
@@ -154,7 +166,7 @@ const handleRejectOrder = async (order) => {
         type: 'warning',
     }).then(async ({ value }) => {
         try {
-            await api.rejectOrder(order.订单ID, { reason: value }); // 更新为中文键名和参数结构
+            await api.rejectOrder(order.订单ID, { rejection_reason: value }); // 修改为 rejection_reason
             ElMessage.success('订单已拒绝');
             fetchOrders();
         } catch (err) {
@@ -186,6 +198,12 @@ const handleDeleteOrder = async (order) => {
 };
 
 onMounted(() => {
+    // 根据用户角色初始化 activeTab
+    if (isSeller.value && !isBuyer.value) { // 如果是卖家且不是买家
+        activeTab.value = 'seller';
+    } else { // 默认为买家视图，或者同时是买家卖家时也默认买家视图
+        activeTab.value = 'buyer';
+    }
     fetchOrders();
 });
 </script>
@@ -194,56 +212,56 @@ onMounted(() => {
     <div class="orders-view">
         <h1>我的订单</h1>
 
+        <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="order-tabs">
+            <el-tab-pane label="我买到的" name="buyer">
         <el-select v-model="selectedStatus" placeholder="选择订单状态" @change="handleStatusChange" style="margin-bottom: 20px;">
             <el-option v-for="item in orderStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
 
-        <el-table :data="orderList" v-loading="loading" stripe style="width: 100%">
-            <el-table-column prop="订单ID" label="订单号" width="280" />
-            <el-table-column prop="商品ID" label="商品ID" width="280" />
-            <el-table-column label="商品名称">
-                <template #default="scope">
-                    {{ scope.row.商品名称 || '未知商品' }}
+        <div class="order-card-list" v-loading="loading">
+            <OrderCard
+                v-for="order in orderList"
+                :key="order.订单ID"
+                :order="order"
+                @view-detail="openOrderDetail(order)"
+            >
+                <template #actions="{ order: cardOrder }">
+                    <el-button v-if="activeTab === 'buyer'">
+                        <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation' || cardOrder.订单状态 === 'ConfirmedBySeller'" type="warning" size="small" @click.stop="handleCancelOrder(cardOrder)">取消订单</el-button>
+                        <el-button v-if="cardOrder.订单状态 === 'Completed' && !cardOrder.是否已评价" type="success" size="small" @click.stop="openEvaluationDialog(cardOrder)">评价</el-button>
+                        <el-button v-if="cardOrder.订单状态 === 'ConfirmedBySeller'" type="primary" size="small" @click.stop="handleCompleteOrder(cardOrder)">确认收货</el-button>
+                    </el-button>
+                    <el-button v-if="isAdmin" type="danger" size="small" @click.stop="handleDeleteOrder(cardOrder)">删除</el-button>
                 </template>
-            </el-table-column>
-            <el-table-column prop="数量" label="数量" width="80" />
-            <el-table-column prop="交易时间" label="交易时间" width="180">
-                <template #default="scope">
-                    {{ new Date(scope.row.交易时间).toLocaleString() }}
-                </template>
-            </el-table-column>
-            <el-table-column prop="交易地点" label="交易地点" width="150" />
-            <el-table-column label="下单时间" width="180">
-                <template #default="scope">
-                     {{ new Date(scope.row.创建时间).toLocaleString() }}
-                </template>
-            </el-table-column>
-            <el-table-column label="状态" width="120">
-                <template #default="scope">
-                    <el-tag :type="
-                        scope.row.订单状态 === 'Completed' ? 'success' :
-                        scope.row.订单状态 === 'Cancelled' || scope.row.订单状态 === 'Rejected' ? 'danger' :
-                        scope.row.订单状态 === 'PendingSellerConfirmation' || scope.row.订单状态 === 'ConfirmedBySeller' ? 'warning' :
-                        'info'
-                    ">{{ scope.row.订单状态 }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column label="操作" width="280">
-                <template #default="scope">
-                    <el-button type="primary" size="small" @click="openOrderDetail(scope.row)">查看详情</el-button>
-                    <template v-if="isBuyer">
-                        <el-button v-if="scope.row.订单状态 === 'PendingSellerConfirmation' || scope.row.订单状态 === 'ConfirmedBySeller'" type="warning" size="small" @click="handleCancelOrder(scope.row)">取消订单</el-button>
-                        <el-button v-if="scope.row.订单状态 === 'Completed' && !scope.row.has_evaluated" type="success" size="small" @click="openEvaluationDialog(scope.row)">评价</el-button>
-                        <el-button v-if="scope.row.订单状态 === 'ConfirmedBySeller'" type="primary" size="small" @click="handleCompleteOrder(scope.row)">确认收货</el-button>
-                    </template>
-                    <template v-if="isSeller">
-                        <el-button v-if="scope.row.订单状态 === 'PendingSellerConfirmation'" type="success" size="small" @click="handleConfirmOrder(scope.row)">确认订单</el-button>
-                        <el-button v-if="scope.row.订单状态 === 'PendingSellerConfirmation'" type="danger" size="small" @click="handleRejectOrder(scope.row)">拒绝订单</el-button>
-                    </template>
-                    <el-button v-if="isAdmin" type="danger" size="small" @click="handleDeleteOrder(scope.row)">删除</el-button>
-                </template>
-            </el-table-column>
-        </el-table>
+            </OrderCard>
+            <p v-if="!loading && orderList.length === 0" class="no-orders-message">暂无订单</p>
+        </div>
+    </el-tab-pane>
+
+    <el-tab-pane label="我卖出的" name="seller">
+                <el-select v-model="selectedStatus" placeholder="选择订单状态" @change="handleStatusChange" style="margin-bottom: 20px;">
+                    <el-option v-for="item in orderStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+
+                <div class="order-card-list" v-loading="loading">
+                    <OrderCard
+                        v-for="order in orderList"
+                        :key="order.订单ID"
+                        :order="order"
+                        @view-detail="openOrderDetail(order)"
+                    >
+                        <template #actions="{ order: cardOrder }">
+                            <el-button v-if="activeTab === 'seller'">
+                                <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="success" size="small" @click.stop="handleConfirmOrder(cardOrder)">确认订单</el-button>
+                                <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="danger" size="small" @click.stop="handleRejectOrder(cardOrder)">拒绝订单</el-button>
+                            </el-button>
+                            <el-button v-if="isAdmin" type="danger" size="small" @click.stop="handleDeleteOrder(cardOrder)">删除</el-button>
+                        </template>
+                    </OrderCard>
+                    <p v-if="!loading && orderList.length === 0" class="no-orders-message">暂无订单</p>
+                </div>
+            </el-tab-pane>
+        </el-tabs>
 
         <el-pagination
             v-model:currentPage="pageNumber"
@@ -278,5 +296,21 @@ onMounted(() => {
 
 h1 {
     margin-bottom: 20px;
+}
+
+.order-tabs {
+    margin-bottom: 20px;
+}
+
+.order-card-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.no-orders-message {
+    text-align: center;
+    color: #909399;
+    padding: 20px;
 }
 </style>

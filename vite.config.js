@@ -5,7 +5,7 @@ import BackendConfig from "./backend.config";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [
     vue(),
   ],

@@ -33,10 +33,9 @@ const tradeDateTime = ref(new Date()); // 交易时间，默认当前时间
 const tradeLocation = ref(''); // 交易地点
 
 const store = useStore(); // 获取 Vuex store 实例
-const currentUser = computed(() => store.getters['user/getUserInfo']); // 从 Vuex store 获取用户信息
 
 // 新增计算属性，安全地获取 user_id
-const currentUserId = computed(() => currentUser.value?.用户ID);
+const currentUserId = computed(() => store.getters['user/getUserInfo']?.用户ID);
 
 const fetchProductDetail = async (id) => {
   if (!id) return;
