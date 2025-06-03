@@ -22,6 +22,33 @@ const isDetailDialogVisible = ref(false);
 const currentProductIdForDetail = ref(null);
 
 // 组件基本函数定义
+
+// 确定是否可以切换状态
+const canToggleStatus = (status) => {
+  return status === 'Active' || status === 'Withdrawn';
+};
+
+// 获取状态操作的提示文本
+const getStatusActionTooltip = (status) => {
+  if (status === 'Active') return '点击下架';
+  if (status === 'Withdrawn') return '点击上架';
+  return '当前状态不可操作';
+};
+
+// 获取状态操作按钮的文本
+const getStatusActionText = (status) => {
+  if (status === 'Active') return '下架';
+  if (status === 'Withdrawn') return '上架';
+  return '不可操作';
+};
+
+// 获取状态操作按钮的类型
+const getStatusButtonType = (status) => {
+  if (status === 'Active') return 'danger';
+  if (status === 'Withdrawn') return 'success';
+  return 'info';
+};
+
 const handleOtherAvatarClick = (username) => {
   router.push(`/profile/${username}`)
 }
@@ -76,8 +103,8 @@ const fetchMyProducts = () => {
       itemList.value = data.map(item => ({
         id: item.商品ID,
         name: item.商品名称,
-        description: item.描述,
-        quantity: item.数量,
+        description: item.商品描述,
+        quantity: item.库存, 
         price: item.价格,
         post_time: item.发布时间,
         status: item.商品状态,
@@ -87,13 +114,13 @@ const fetchMyProducts = () => {
               : [item.主图URL.startsWith('http') || item.主图URL.startsWith('//') ? item.主图URL : FormatObject.formattedImgUrl(item.主图URL)])
           : ['/placeholder-image.png'], // 如果没有图片，提供一个占位图
         user: {
-            username: item.卖家用户名,
-            // credit: item.发布者信用分 || 100, // ProductResponseSchema 中无此字段，暂时注释
-            // avatar: item.发布者头像 || '', // ProductResponseSchema 中无此字段，暂时注释
+            username: item.发布者用户名,
+            credit: item.发布者信用分 || 100, 
+            avatar: item.发布者头像 || '', 
         },
         total_count: item.总商品数, 
-        category: item.分类名称,
-        condition: item.商品成色
+        category: item.商品类别, // 添加商品类别
+        condition: item.商品成色 // 添加商品成色
       }));
       if (itemList.value.length === 0) {
         // ElMessage.info("您还没有发布的商品。"); // 页面已有空状态提示
@@ -111,16 +138,9 @@ const fetchMyProducts = () => {
 
 const handleToggleProductStatus = async (item) => {
   const originalStatus = item.status;
-  if (originalStatus === 'Sold') {
-    ElMessage.info('已售出的商品无法进行操作。');
-    return;
-  }
-  if (originalStatus === 'PendingReview') {
-    ElMessage.info('审核中的商品暂时无法操作，请等待审核结果。');
-    return;
-  }
-  if (originalStatus === 'Rejected') {
-    ElMessage.info('审核拒绝的商品无法直接上架，请编辑后重新提交或删除。');
+  // 仅处理可操作的状态
+  if (!canToggleStatus(originalStatus)) {
+    ElMessage.info(`当前状态 "${getProductStatusText(originalStatus)}" 不可操作`);
     return;
   }
 
@@ -291,20 +311,17 @@ onMounted(() => {
                     circle 
                     :disabled="item.status === 'Sold'" />
                 </el-tooltip>
-                <el-tooltip :content="item.status === 'Active' ? '点击下架' : (item.status === 'Withdrawn' ? '编辑后可重新提交审核' : '操作无效')" placement="top">
-                  <div> <!-- Tooltip需要一个单独的根元素来包裹disabled的el-switch -->
-                    <el-switch
-                      v-model="item.status"
-                      active-value="Active"
-                      inactive-value="Withdrawn"
-                      size="small"
-                      @change="handleToggleProductStatus(item)"
-                      :disabled="item.status === 'Sold' || item.status === 'PendingReview' || item.status === 'Rejected' || item.status === 'Withdrawn'" 
-                      style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949; margin-left: 8px;"
-                    />
-                  </div>
-                </el-tooltip>
-              </div>
+                <el-tooltip :content="getStatusActionTooltip(item.status)" placement="top">
+    <el-button
+      :type="getStatusButtonType(item.status)"
+      :disabled="!canToggleStatus(item.status)"
+      size="small"
+      @click="handleToggleProductStatus(item)"
+    >
+      {{ getStatusActionText(item.status) }}
+    </el-button>
+  </el-tooltip>
+</div>
             </el-card>
           </el-col>
         </el-row>
