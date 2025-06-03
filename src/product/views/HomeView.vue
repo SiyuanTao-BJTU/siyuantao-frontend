@@ -178,11 +178,12 @@ const handleCurrentChange = (newPage) => {
             @change="handleFilter"
             class="filter-select"
           >
-            <el-option label="电子产品" value="electronics" />
-            <el-option label="书籍文具" value="books" />
-            <el-option label="生活用品" value="daily" />
-            <el-option label="服装配饰" value="clothing" />
-            <el-option label="其他" value="others" />
+            <el-option label="电子产品" value="电子产品" />
+            <el-option label="书籍文具" value="书籍文具" />
+            <el-option label="生活用品" value="生活用品" />
+            <el-option label="服装配饰" value="服装配饰" />
+            <el-option label="运动户外" value="运动户外" />
+            <el-option label="其他" value="其他" />
           </el-select>
           
           <el-input
