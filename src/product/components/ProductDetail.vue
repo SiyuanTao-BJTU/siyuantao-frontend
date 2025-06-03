@@ -55,7 +55,21 @@ const fetchProductDetail = async (id) => {
         price: response.价格 !== null && response.价格 !== undefined ? parseFloat(response.价格) : null,
         quantity: response.数量,
         category: response.分类名称,
-        condition: response.商品成色 || '未提供',
+        condition: (
+    typeof response.商品成色 === 'string' && response.商品成色.trim() !== ''
+      ? response.商品成色
+      : typeof response.商品成色 === 'number'
+        ? String(response.商品成色)
+        : typeof response.成色 === 'string' && response.成色.trim() !== ''
+          ? response.成色
+          : typeof response.成色 === 'number'
+            ? String(response.成色)
+            : typeof response.condition === 'string' && response.condition.trim() !== ''
+              ? response.condition
+              : typeof response.condition === 'number'
+                ? String(response.condition)
+                : '未提供'
+),
         images: response.图片URL列表
           ? (Array.isArray(response.图片URL列表)
               ? response.图片URL列表.map(url => url.startsWith('http') ? url : FormatObject.formattedImgUrl(url))

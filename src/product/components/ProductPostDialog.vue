@@ -345,11 +345,19 @@ onMounted(() => {
         <el-col :span="12">
           <el-form-item label="商品分类" prop="category">
             <el-select v-model="productForm.category" placeholder="请选择商品分类" style="width: 100%;">
-              <el-option label="电子产品" value="electronics"></el-option>
-              <el-option label="书籍文具" value="books"></el-option>
-              <el-option label="生活用品" value="daily"></el-option>
-              <el-option label="服装配饰" value="clothing"></el-option>
-              <el-option label="其他" value="others"></el-option>
+              <el-option label="全部" value="" /> <!-- 新增全部选项 -->
+              <el-option label="电子产品" value="电子产品"></el-option>
+              <el-option label="书籍文具" value="书籍文具"></el-option>
+              <el-option label="生活用品" value="生活用品"></el-option>
+              <el-option label="服装配饰" value="服装配饰"></el-option>
+              <el-option label="运动户外" value="运动户外"></el-option>
+              <el-option label="服装鞋包" value="服装鞋包"></el-option>
+              <el-option label="文体用品" value="文体用品"></el-option>
+              <el-option label="乐器" value="乐器"></el-option>
+              <el-option label="家居日用" value="家居日用"></el-option>
+              <el-option label="影音娱乐" value="影音娱乐"></el-option>
+              <el-option label="游戏周边" value="游戏周边"></el-option>
+              <el-option label="其他" value="其他"></el-option>
             </el-select>
           </el-form-item>
         </el-col>
