@@ -96,7 +96,7 @@ onMounted(() => {
         <div v-loading="isLoading" class="favorite-list">
           <div v-if="userFavorites.length === 0 && !isLoading" class="empty-state">
             <el-empty description="暂无收藏商品"/>
-            <el-button type="primary" @click="router.push('/home')">去首页逛逛</el-button>
+            <el-button type="primary" @click="router.push('/products')">去首页逛逛</el-button>
           </div>
 
           <div v-else class="favorite-grid">

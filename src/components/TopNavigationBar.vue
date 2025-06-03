@@ -52,7 +52,7 @@ const fetchUserInfo = async () => {
         localStorage.setItem('userId', userInfo.用户ID); // Store userId
 
         // 将完整的 userInfo 对象（已经是中文键名）存入 Vuex
-        store.dispatch('user/setUserInfo', userInfo);
+        store.commit('user/SET_USER_INFO', userInfo);
 
         // 初始化 WebSocket
         // 使用中文键名 '用户ID'

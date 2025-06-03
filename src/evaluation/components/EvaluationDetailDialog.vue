@@ -1,5 +1,7 @@
 <script setup>
 import { ref, watch, defineProps, defineEmits } from 'vue';
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
+import { ElMessage } from 'element-plus';
 
 const props = defineProps({
     visible: {
@@ -15,6 +17,10 @@ const props = defineProps({
 const emit = defineEmits(['close', 'update:visible']);
 
 const dialogVisibleInternal = ref(props.visible);
+
+// 新增：用户详情对话框相关状态
+const showUserDetailDialog = ref(false);
+const selectedUserIdForDetail = ref(null);
 
 watch(() => props.visible, (newVal) => {
     dialogVisibleInternal.value = newVal;
@@ -37,6 +43,22 @@ const formatTime = (isoString) => {
         console.error('Error formatting date:', e);
         return isoString; // Fallback to original string if error
     }
+};
+
+// 新增：处理查看用户详情逻辑
+const handleViewUserDetail = (userId) => {
+  if (!userId) { // 检查 userId 是否有效
+    ElMessage.warning('无法获取用户ID。');
+    return;
+  }
+  selectedUserIdForDetail.value = String(userId); // 确保转换为字符串
+  showUserDetailDialog.value = true;
+};
+
+// 新增：关闭用户详情对话框时清空选择的用户
+const closeUserDetailDialog = () => {
+  selectedUserIdForDetail.value = null;
+  showUserDetailDialog.value = false;
 };
 </script>
 
@@ -63,13 +85,15 @@ const formatTime = (isoString) => {
                     <span class="detail-value">{{ evaluation.商品名称 }}</span>
                 </el-descriptions-item>
                 <el-descriptions-item label="买家用户名">
-                    <span class="detail-value">{{ evaluation.买家用户名 }}</span>
+                    <span class="detail-value" v-if="evaluation.买家ID" @click="handleViewUserDetail(evaluation.买家ID)" style="cursor: pointer; color: #409eff;">{{ evaluation.买家用户名 }}</span>
+                    <span class="detail-value" v-else>{{ evaluation.买家用户名 }}</span>
                 </el-descriptions-item>
                 <el-descriptions-item label="卖家用户名">
-                    <span class="detail-value">{{ evaluation.卖家用户名 }}</span>
+                    <span class="detail-value" v-if="evaluation.卖家ID" @click="handleViewUserDetail(evaluation.卖家ID)" style="cursor: pointer; color: #409eff;">{{ evaluation.卖家用户名 }}</span>
+                    <span class="detail-value" v-else>{{ evaluation.卖家用户名 }}</span>
                 </el-descriptions-item>
                 <el-descriptions-item label="评分">
-                    <el-rate v-model="evaluation.评分" disabled show-score text-color="#ff9900" />
+                    <el-rate v-model="evaluation.评分" disabled text-color="#ff9900" :max="5" />
                 </el-descriptions-item>
                 <el-descriptions-item label="创建时间">
                     <span class="detail-value">{{ formatTime(evaluation.创建时间) }}</span>
@@ -89,6 +113,14 @@ const formatTime = (isoString) => {
             </span>
         </template>
     </el-dialog>
+
+    <!-- 用户详情对话框 -->
+    <UserDetailDialog
+        v-if="showUserDetailDialog"
+        v-model:visible="showUserDetailDialog"
+        :user-id="selectedUserIdForDetail"
+        @close="closeUserDetailDialog"
+    />
 </template>
 
 <style scoped>

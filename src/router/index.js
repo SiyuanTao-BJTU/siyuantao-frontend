@@ -12,8 +12,12 @@ const router = createRouter({
       path: '/',
       redirect: to => {
         const isAuthenticated = localStorage.getItem("token");
+        const userRole = store.getters['user/userRole']; // Get role from store
         if (isAuthenticated) {
-          return '/products'; // If authenticated, go to products page
+          if (userRole === 'admin' || userRole === 'super_admin') {
+            return '/admin/dashboard'; // If authenticated and admin, go to admin dashboard
+          }
+          return '/products'; // If authenticated but not admin, go to products page
         } else {
           return '/login'; // If not authenticated, go to login page
         }
@@ -174,22 +178,15 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   NProgress.start(); // 启动顶部进度条
 
-  // 在从非管理员页面进入管理员页面时保存用户端路径
-  if (to.path.startsWith('/admin') && !from.path.startsWith('/admin')) {
-    localStorage.setItem('previousUserPath', from.fullPath);
-  }
-
   const token = localStorage.getItem('token');
   let userInfo = store.state.user.userInfo;
-  let currentIsAuthenticated = !!token; // Start by checking token presence
+  let currentIsAuthenticated = !!token;
 
   // 如果 token 存在但 store 中没有用户信息，则尝试获取
   if (token && !userInfo) {
     try {
-      // 使用 dispatch 并 await 确保获取用户信息完成后再继续
       userInfo = await store.dispatch('user/fetchUserInfo');
-      // fetchUserInfo 成功后，userInfo 和 isLoggedIn 状态会在 store 中更新
-      currentIsAuthenticated = store.getters['user/isAuthenticated']; // Re-evaluate after fetch
+      currentIsAuthenticated = store.getters['user/isAuthenticated'];
     } catch (error) {
       console.warn('路由守卫: fetchUserInfo 失败', error);
       await store.dispatch('user/logout', { inStoreLogout: false });
@@ -198,47 +195,61 @@ router.beforeEach(async (to, from, next) => {
 
       if (to.meta.requiresAuth) {
          NProgress.done();
-         // 如果获取用户信息失败且目标路由需要认证，则重定向到登录
-         next({ name: 'login', query: { redirect: to.fullPath } }); 
-         return; 
+         ElMessage.error('会话已过期，请重新登录。');
+         return next('/login');
       }
     }
   }
 
-  if (to.meta.requiresAuth) {
-    if (currentIsAuthenticated) {
-      // 使用中文键名 '是否已认证'
-      if (to.meta.requiresVerified && !userInfo?.是否已认证) {
-          ElMessage.warning('请先完成邮箱验证以访问此页面');
-          next({ name: 'StudentAuthRequest', query: { redirect: to.fullPath } });
-      } else if (to.meta.requiresAdmin) {
-           // 使用中文键名 '是否管理员' 从 userInfo，并从 localStorage 获取 'isAdmin'
-           const isAdminFromStore = userInfo?.是否管理员;
-           const isAdminFromLocalStorage = localStorage.getItem('isAdmin') === 'true';
-           const isAdmin = isAdminFromStore || isAdminFromLocalStorage;
+  // Admin path tracking
+  if (to.path.startsWith('/admin') && currentIsAuthenticated && userInfo && (userInfo.是否管理员 || userInfo.是否超级管理员)) {
+    localStorage.setItem('wasInAdmin', 'true');
+  } else if (!to.path.startsWith('/admin') && localStorage.getItem('wasInAdmin') === 'true') {
+    // If navigating out of admin, clear the flag
+    localStorage.removeItem('wasInAdmin');
+  }
 
-           if (isAdmin || store.getters['user/isSuperAdmin']) {
-               next();
-           } else {
-               ElMessage.warning('您没有访问此页面的权限');
-               next({ name: 'ProductList' }); 
-           }
-      } else {
-           next();
+  // Requires authentication
+  if (to.meta.requiresAuth && !currentIsAuthenticated) {
+    ElMessage.warning('请先登录才能访问。');
+    NProgress.done();
+    return next('/login');
+  }
+
+  // Requires admin role
+  if (to.meta.requiresAdmin) {
+      if (!userInfo || (!userInfo.是否管理员 && !userInfo.是否超级管理员)) {
+          ElMessage.error('您没有权限访问管理后台。');
+          NProgress.done();
+          return next('/products'); // Redirect to user home page
       }
-    } else {
-      ElMessage.warning('请先登录以访问此页面');
-      next({ name: 'login', query: { redirect: to.fullPath } });
-    }
-  } else if (to.name === 'login' && currentIsAuthenticated) {
-    next({ name: 'ProductList' });
+  }
+
+  // Requires super admin role
+  if (to.meta.requiresSuperAdmin) {
+      if (!userInfo || !userInfo.是否超级管理员) {
+          ElMessage.error('您没有超级管理员权限访问此页面。');
+          NProgress.done();
+          return next('/admin/dashboard'); // Redirect to admin dashboard
+      }
+  }
+
+  // Set document title
+  if (to.meta.title) {
+    document.title = to.meta.title + ' | 思源淘';
   } else {
-    next();
+    document.title = '思源淘';
   }
+
+  next();
 });
 
 router.afterEach(() => {
-  NProgress.done();
+  NProgress.done(); // 关闭顶部进度条
+  // Clear 'wasInAdmin' if token is no longer present (e.g., after explicit logout)
+  if (!localStorage.getItem('token')) {
+    localStorage.removeItem('wasInAdmin');
+  }
 });
 
 export default router;

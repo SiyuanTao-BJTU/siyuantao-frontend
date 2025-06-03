@@ -5,6 +5,8 @@ import { ElMessage, ElMessageBox, ElForm, ElDialog, ElUpload } from 'element-plu
 import { Plus, Close } from '@element-plus/icons-vue';
 import api from '@/API_PRO.js';
 import BackendConfig from '../../../backend.config'; // Import BackendConfig
+import { useStore } from 'vuex'; // 导入 useStore
+import { computed } from 'vue'; // 导入 computed
 
 const router = useRouter();
 
@@ -69,6 +71,12 @@ const rules = {
 };
 
 const productFormRef = ref(null); // 表单引用
+
+// 获取 Vuex store 实例
+const store = useStore();
+
+// 从 store 中获取商品分类
+const productCategories = computed(() => store.getters['product/getProductCategories']);
 
 // 获取商品详情 (编辑模式下)
 const fetchProductDetail = async (id) => {
@@ -283,6 +291,7 @@ onMounted(() => {
   if (props.isEditMode && props.productId) {
     fetchProductDetail(props.productId);
   }
+  store.dispatch('product/fetchProductCategories'); // 在组件挂载时获取商品分类
 });
 </script>
 
@@ -345,19 +354,12 @@ onMounted(() => {
         <el-col :span="12">
           <el-form-item label="商品分类" prop="category">
             <el-select v-model="productForm.category" placeholder="请选择商品分类" style="width: 100%;">
-              <el-option label="全部" value="" /> <!-- 新增全部选项 -->
-              <el-option label="电子产品" value="电子产品"></el-option>
-              <el-option label="书籍文具" value="书籍文具"></el-option>
-              <el-option label="生活用品" value="生活用品"></el-option>
-              <el-option label="服装配饰" value="服装配饰"></el-option>
-              <el-option label="运动户外" value="运动户外"></el-option>
-              <el-option label="服装鞋包" value="服装鞋包"></el-option>
-              <el-option label="文体用品" value="文体用品"></el-option>
-              <el-option label="乐器" value="乐器"></el-option>
-              <el-option label="家居日用" value="家居日用"></el-option>
-              <el-option label="影音娱乐" value="影音娱乐"></el-option>
-              <el-option label="游戏周边" value="游戏周边"></el-option>
-              <el-option label="其他" value="其他"></el-option>
+              <el-option
+                v-for="category in productCategories"
+                :key="category.value"
+                :label="category.label"
+                :value="category.value"
+              />
             </el-select>
           </el-form-item>
         </el-col>

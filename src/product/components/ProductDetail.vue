@@ -5,6 +5,7 @@ import api from '@/API_PRO.js';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import FormatObject from '@/utils/format.js'; // 假设有这个工具类处理图片URL
 import { useStore } from 'vuex'; // 从 vuex 导入 useStore
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 
 const props = defineProps({
   productId: {
@@ -244,6 +245,15 @@ const getCategoryName = (categoryKey) => {
   return map[categoryKey] || categoryKey || '未知分类';
 };
 
+// 用户详情对话框相关
+const showUserDetailDialog = ref(false);
+const selectedUserId = ref(null);
+
+const handleViewSellerDetails = (sellerId) => {
+  selectedUserId.value = sellerId;
+  showUserDetailDialog.value = true;
+};
+
 // Watch for productId changes to reload data if the dialog is reused for different products
 watch(() => props.productId, (newId) => {
   if (newId && props.dialogVisible) {
@@ -367,7 +377,7 @@ const isContactSellerDisabled = computed(() => {
             <h4>卖家信息</h4>
             <div class="meta-item">
                 <span class="meta-label">卖家:</span>
-                <span class="meta-value">{{ productDetail.user?.username || '未知用户' }}</span>
+                <span class="meta-value" @click="handleViewSellerDetails(productDetail.user.id)" style="cursor: pointer;">{{ productDetail.user?.username || '未知用户' }}</span>
             </div>
             <!-- <p>联系方式: {{ productDetail.user?.phone_number || '未提供' }}</p> -->
           </div>
@@ -455,6 +465,12 @@ const isContactSellerDisabled = computed(() => {
       </span>
     </template>
   </el-dialog>
+
+  <!-- 用户详情对话框 -->
+  <UserDetailDialog
+    v-model:visible="showUserDetailDialog"
+    :user-id="selectedUserId"
+  />
 </template>
 
 <style scoped>

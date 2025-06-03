@@ -96,6 +96,10 @@ const getUserProfile = () => { // read_users_me_api_v1_users_me_get
   return apiRequest('GET', '/api/v1/users/me');
 };
 
+const getUserPublicProfile = (userId) => { // 新增：获取用户公开资料
+  return apiRequest('GET', `/api/v1/users/${userId}/public_profile`);
+};
+
 const updateUserProfile = (profileData) => { // update_current_user_profile_api_v1_users_me_put
   return apiRequest('PUT', '/api/v1/users/me', profileData);
 };
@@ -200,6 +204,10 @@ const rejectProduct = (productId, reasonData) => { // reject_product_api_v1_prod
 
 const withdrawProduct = (productId) => { // withdraw_product_api_v1_products__product_id__status_withdraw_put
   return apiRequest('PUT', `/api/v1/products/${productId}/status/withdraw`);
+};
+
+const getProductStats = () => { // get_product_stats_api_v1_products_statistics_get
+  return apiRequest('GET', '/api/v1/products/statistics');
 };
 
 // Deprecated/Uncertain based on openapi.json:
@@ -349,6 +357,7 @@ export default {
 
   // Users
   getUserProfile,
+  getUserPublicProfile,
   updateUserProfile,
   userModifyPassword,
   uploadUserAvatar,
@@ -374,6 +383,7 @@ export default {
   activateProduct,      
   rejectProduct,        
   withdrawProduct,      
+  getProductStats,
 
   // Orders
   createOrder,                  

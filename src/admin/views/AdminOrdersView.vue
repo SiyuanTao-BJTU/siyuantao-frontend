@@ -4,6 +4,7 @@ import { useStore } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import OrderDetailDialog from '@/order/components/OrderDetailDialog.vue'; // 确保路径正确
 import api from '@/API_PRO.js'; // 确保路径正确
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 
 const store = useStore();
 const isAdmin = computed(() => store.getters['user/userRole'] === 'admin' || store.getters['user/userRole'] === 'super_admin');
@@ -18,6 +19,10 @@ const total = ref(0);
 
 const showOrderDetailDialog = ref(false);
 const currentOrder = ref(null);
+
+// 新增：用户详情对话框相关状态
+const showUserDetailDialog = ref(false);
+const selectedUserIdForDetail = ref(null);
 
 const orderStatusOptions = ref([
     { value: '', label: '全部' },
@@ -108,6 +113,22 @@ const handleDeleteOrder = async (order) => {
     });
 };
 
+// 新增：处理查看用户详情逻辑
+const handleViewUserDetail = (userId) => {
+  if (!userId) {
+    ElMessage.warning('无法获取用户ID。');
+    return;
+  }
+  selectedUserIdForDetail.value = userId;
+  showUserDetailDialog.value = true;
+};
+
+// 新增：关闭用户详情对话框时清空选择的用户
+const closeUserDetailDialog = () => {
+  selectedUserIdForDetail.value = null;
+  showUserDetailDialog.value = false;
+};
+
 onMounted(() => {
     console.log('AdminOrdersView mounted. isAdmin:', isAdmin.value); // Debug log
     if (isAdmin.value) {
@@ -132,8 +153,16 @@ onMounted(() => {
                 </template>
             </el-table-column>
             <el-table-column prop="数量" label="数量" width="80" />
-            <el-table-column prop="买家用户名" label="买家" width="100" />
-            <el-table-column prop="卖家用户名" label="卖家" width="100" />
+            <el-table-column prop="买家用户名" label="买家" width="100" >
+                <template #default="scope">
+                    <span class="user-link" @click="handleViewUserDetail(scope.row.买家ID)">{{ scope.row.买家用户名 }}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="卖家用户名" label="卖家" width="100" >
+                <template #default="scope">
+                    <span class="user-link" @click="handleViewUserDetail(scope.row.卖家ID)">{{ scope.row.卖家用户名 }}</span>
+                </template>
+            </el-table-column>
             <el-table-column label="交易时间" width="160">
                 <template #default="scope">
                     {{ new Date(scope.row.交易时间).toLocaleString() }}
@@ -186,6 +215,13 @@ onMounted(() => {
             :visible="showOrderDetailDialog"
             @close="closeOrderDetailDialog"
         />
+
+        <!-- 用户详情对话框 -->
+        <UserDetailDialog
+          v-model:visible="showUserDetailDialog"
+          :user-id="selectedUserIdForDetail"
+          @close="closeUserDetailDialog"
+        />
     </div>
 </template>
 
@@ -196,5 +232,15 @@ onMounted(() => {
 
 h1 {
     margin-bottom: 20px;
+}
+
+.user-link {
+  cursor: pointer;
+  color: #409eff; /* Element Plus primary color */
+  text-decoration: underline;
+}
+
+.user-link:hover {
+  color: #66b1ff; /* Lighter shade on hover */
 }
 </style>

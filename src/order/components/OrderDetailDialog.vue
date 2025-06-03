@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/API_PRO.js'; // 确保路径正确
 import { useStore } from 'vuex'; // 导入 useStore
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 
 const props = defineProps({
     order: {
@@ -23,6 +24,10 @@ const currentUserId = computed(() => currentUser.value?.用户ID);
 
 const isBuyer = computed(() => props.order?.买家ID === currentUserId.value);
 const isSeller = computed(() => props.order?.卖家ID === currentUserId.value);
+
+// 新增：用户详情对话框相关状态
+const showUserDetailDialog = ref(false);
+const selectedUserIdForDetail = ref(null);
 
 // 添加状态映射
 const statusMap = {
@@ -132,6 +137,18 @@ const handleContactBuyer = () => {
 const handleContactSeller = () => {
     ElMessage.info('联系卖家功能开发中...');
 };
+
+// 新增：处理查看用户详情逻辑
+const handleViewUserDetail = (userId) => {
+  selectedUserIdForDetail.value = userId;
+  showUserDetailDialog.value = true;
+};
+
+// 新增：关闭用户详情对话框时清空选择的用户
+const closeUserDetailDialog = () => {
+  selectedUserIdForDetail.value = null;
+  showUserDetailDialog.value = false;
+};
 </script>
 
 <template>
@@ -160,8 +177,12 @@ const handleContactSeller = () => {
                     ">{{ displayStatus }}</el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="下单时间">{{ new Date(order.创建时间).toLocaleString() }}</el-descriptions-item>
-                <el-descriptions-item label="买家ID">{{ order.买家ID }}</el-descriptions-item>
-                <el-descriptions-item label="卖家ID">{{ order.卖家ID }}</el-descriptions-item>
+                <el-descriptions-item label="买家">
+                    <span @click="handleViewUserDetail(order.买家ID)" style="cursor: pointer; color: #409eff;">{{ order.买家用户名 || '未知买家' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="卖家">
+                    <span @click="handleViewUserDetail(order.卖家ID)" style="cursor: pointer; color: #409eff;">{{ order.卖家用户名 || '未知卖家' }}</span>
+                </el-descriptions-item>
                 <el-descriptions-item label="完成时间" v-if="order.完成时间">{{ new Date(order.完成时间).toLocaleString() }}</el-descriptions-item>
                 <el-descriptions-item label="取消时间" v-if="order.取消时间">{{ new Date(order.取消时间).toLocaleString() }}</el-descriptions-item>
                 <el-descriptions-item label="取消原因" v-if="order.取消原因">{{ order.取消原因 }}</el-descriptions-item>
@@ -187,6 +208,13 @@ const handleContactSeller = () => {
             </span>
         </template>
     </el-dialog>
+
+    <!-- 用户详情对话框 -->
+    <UserDetailDialog
+        v-model:visible="showUserDetailDialog"
+        :user-id="selectedUserIdForDetail"
+        @close="closeUserDetailDialog"
+    />
 </template>
 
 <style scoped>

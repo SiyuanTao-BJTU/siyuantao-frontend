@@ -4,6 +4,7 @@ import { useStore } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/API_PRO.js'; // 确保路径正确
 import EvaluationDetailDialog from '@/evaluation/components/EvaluationDetailDialog.vue'; // 导入评价详情对话框组件
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 
 const store = useStore();
 const isAdmin = computed(() => store.getters['user/userRole'] === 'admin' || store.getters['user/userRole'] === 'super_admin');
@@ -25,6 +26,10 @@ const total = ref(0);
 // 新增：评价详情对话框相关状态
 const showDetailDialog = ref(false);
 const selectedEvaluation = ref(null);
+
+// 新增：用户详情对话框相关状态
+const showUserDetailDialog = ref(false);
+const selectedUserIdForDetail = ref(null);
 
 const fetchEvaluations = async () => {
     if (!isAdmin.value) {
@@ -98,6 +103,22 @@ const closeDetailDialog = () => {
     showDetailDialog.value = false;
 };
 
+// 新增：处理查看用户详情逻辑
+const handleViewUserDetail = (userId) => {
+  if (!userId) {
+    ElMessage.warning('无法获取用户ID。');
+    return;
+  }
+  selectedUserIdForDetail.value = userId;
+  showUserDetailDialog.value = true;
+};
+
+// 新增：关闭用户详情对话框时清空选择的用户
+const closeUserDetailDialog = () => {
+  selectedUserIdForDetail.value = null;
+  showUserDetailDialog.value = false;
+};
+
 onMounted(() => {
     if (isAdmin.value) {
         fetchEvaluations();
@@ -122,11 +143,21 @@ onMounted(() => {
             <!-- <el-table-column prop="评价ID" label="评价ID" width="200" /> -->
             <!-- <el-table-column prop="订单ID" label="订单ID" width="200" /> -->
             <el-table-column prop="商品名称" label="商品名称" width="150" />
-            <el-table-column prop="买家用户名" label="买家" width="100" />
-            <el-table-column prop="卖家用户名" label="卖家" width="100" />
-            <el-table-column prop="评分" label="评分" width="80">
+            <el-table-column prop="买家用户名" label="买家" width="100" >
                 <template #default="scope">
-                    <el-rate v-model="scope.row.评分" disabled show-score text-color="#ff9900" />
+                    <span v-if="scope.row.买家ID" class="user-link" @click="handleViewUserDetail(scope.row.买家ID)">{{ scope.row.买家用户名 }}</span>
+                    <span v-else>{{ scope.row.买家用户名 }}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="卖家用户名" label="卖家" width="100" >
+                <template #default="scope">
+                    <span v-if="scope.row.卖家ID" class="user-link" @click="handleViewUserDetail(scope.row.卖家ID)">{{ scope.row.卖家用户名 }}</span>
+                    <span v-else>{{ scope.row.卖家用户名 }}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="评分" label="评分" width="160">
+                <template #default="scope">
+                    <el-rate v-model="scope.row.评分" disabled show-score text-color="#ff9900" :max="5" />
                 </template>
             </el-table-column>
             <el-table-column prop="评价内容" label="评价内容" />
@@ -161,6 +192,14 @@ onMounted(() => {
         @close="closeDetailDialog"
         @update:visible="showDetailDialog = $event"
     />
+
+    <!-- 用户详情对话框 -->
+    <UserDetailDialog
+      v-if="showUserDetailDialog"
+      v-model:visible="showUserDetailDialog"
+      :user-id="selectedUserIdForDetail"
+      @close="closeUserDetailDialog"
+    />
 </template>
 
 <style scoped>
@@ -173,5 +212,14 @@ h1 {
 }
 .filter-bar .el-input-number {
     vertical-align: top; /* Align with input */
+}
+.user-link {
+  cursor: pointer;
+  color: #409eff; /* Element Plus primary color */
+  text-decoration: underline;
+}
+
+.user-link:hover {
+  color: #66b1ff; /* Lighter shade on hover */
 }
 </style>

@@ -5,6 +5,7 @@ import api from '@/API_PRO.js'; // 导入新的 API 服务
 import { ElMessage } from "element-plus";
 import ProductCard from "@/product/components/ProductCard.vue"; // 引入 ProductCard
 import ProductDetail from "@/product/components/ProductDetail.vue"; // 1. 导入 ProductDetail 组件
+import { useStore } from 'vuex'; // 导入 useStore
 
 const products = ref([]);
 const isLoading = ref(true);
@@ -40,6 +41,12 @@ const top_item_3 = ref({});
 // 2. 添加控制 ProductDetail 对话框的 ref
 const isDetailDialogVisible = ref(false);
 const currentProductIdForDetail = ref(null);
+
+// 获取 Vuex store 实例
+const store = useStore();
+
+// 从 store 中获取商品分类
+const productCategories = computed(() => store.getters['product/getProductCategories']);
 
 const fetchProductData = async () => {
   isLoading.value = true;
@@ -102,6 +109,7 @@ const resetFilters = () => {
 };
 
 onMounted(() => {
+  store.dispatch('product/fetchProductCategories'); // 在组件挂载时获取商品分类
   fetchProductData();
 });
 
@@ -179,18 +187,12 @@ const handleCurrentChange = (newPage) => {
             class="filter-select"
           >
             <el-option label="全部" value="" /> <!-- 新增全部选项 -->
-            <el-option label="电子产品" value="电子产品" />
-            <el-option label="书籍文具" value="书籍文具" />
-            <el-option label="生活用品" value="生活用品" />
-            <el-option label="服装配饰" value="服装配饰" />
-            <el-option label="运动户外" value="运动户外" />
-            <el-option label="服装鞋包" value="服装鞋包"></el-option>
-            <el-option label="文体用品" value="文体用品"></el-option>
-            <el-option label="乐器" value="乐器"></el-option>
-            <el-option label="家居日用" value="家居日用"></el-option>
-            <el-option label="影音娱乐" value="影音娱乐"></el-option>
-            <el-option label="游戏周边" value="游戏周边"></el-option>
-            <el-option label="其他" value="其他" />
+            <el-option
+              v-for="category in productCategories"
+              :key="category.value"
+              :label="category.label"
+              :value="category.value"
+            />
           </el-select>
           
           <el-input
