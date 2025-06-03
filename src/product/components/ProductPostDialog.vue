@@ -345,6 +345,7 @@ onMounted(() => {
         <el-col :span="12">
           <el-form-item label="商品分类" prop="category">
             <el-select v-model="productForm.category" placeholder="请选择商品分类" style="width: 100%;">
+              <el-option label="全部" value="" /> <!-- 新增全部选项 -->
               <el-option label="电子产品" value="电子产品"></el-option>
               <el-option label="书籍文具" value="书籍文具"></el-option>
               <el-option label="生活用品" value="生活用品"></el-option>

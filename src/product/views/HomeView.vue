@@ -178,6 +178,7 @@ const handleCurrentChange = (newPage) => {
             @change="handleFilter"
             class="filter-select"
           >
+            <el-option label="全部" value="" /> <!-- 新增全部选项 -->
             <el-option label="电子产品" value="电子产品" />
             <el-option label="书籍文具" value="书籍文具" />
             <el-option label="生活用品" value="生活用品" />
