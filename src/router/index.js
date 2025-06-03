@@ -43,6 +43,12 @@ const router = createRouter({
       component: () => import('@/product/views/UserFavoritesView.vue'),
       meta: { requiresAuth: true }
     },
+    { // 我的评价页面
+      path: '/my-evaluations',
+      name: 'my-evaluations',
+      component: () => import('@/evaluation/views/MyEvaluationsView.vue'),
+      meta: { requiresAuth: true }
+    },
     { // 我的消息页面 (原 /message)
       path: '/messages',
       name: 'messages',

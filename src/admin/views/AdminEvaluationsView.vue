@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/API_PRO.js'; // 确保路径正确
+import EvaluationDetailDialog from '@/evaluation/components/EvaluationDetailDialog.vue'; // 导入评价详情对话框组件
 
 const store = useStore();
 const isAdmin = computed(() => store.getters['user/userRole'] === 'admin' || store.getters['user/userRole'] === 'super_admin');
@@ -20,6 +21,10 @@ const maxRatingFilter = ref(null);
 const pageNumber = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
+
+// 新增：评价详情对话框相关状态
+const showDetailDialog = ref(false);
+const selectedEvaluation = ref(null);
 
 const fetchEvaluations = async () => {
     if (!isAdmin.value) {
@@ -81,6 +86,18 @@ const handleDeleteEvaluation = async (evaluationId) => {
     });
 };
 
+// 新增：处理查看详情逻辑
+const handleViewDetails = (evaluation) => {
+    selectedEvaluation.value = evaluation;
+    showDetailDialog.value = true;
+};
+
+// 新增：关闭详情对话框时清空选择的评价
+const closeDetailDialog = () => {
+    selectedEvaluation.value = null;
+    showDetailDialog.value = false;
+};
+
 onMounted(() => {
     if (isAdmin.value) {
         fetchEvaluations();
@@ -101,8 +118,9 @@ onMounted(() => {
         </div>
 
         <el-table :data="evaluationList" v-loading="loading" stripe style="width: 100%">
-            <el-table-column prop="评价ID" label="评价ID" width="200" />
-            <el-table-column prop="订单ID" label="订单ID" width="200" />
+            <!-- 移除评价ID和订单ID列 -->
+            <!-- <el-table-column prop="评价ID" label="评价ID" width="200" /> -->
+            <!-- <el-table-column prop="订单ID" label="订单ID" width="200" /> -->
             <el-table-column prop="商品名称" label="商品名称" width="150" />
             <el-table-column prop="买家用户名" label="买家" width="100" />
             <el-table-column prop="卖家用户名" label="卖家" width="100" />
@@ -111,7 +129,7 @@ onMounted(() => {
                     <el-rate v-model="scope.row.评分" disabled show-score text-color="#ff9900" />
                 </template>
             </el-table-column>
-            <el-table-column prop="内容" label="评价内容" />
+            <el-table-column prop="评价内容" label="评价内容" />
             <el-table-column label="评价时间" width="160">
                 <template #default="scope">
                     {{ new Date(scope.row.创建时间).toLocaleString() }}
@@ -119,6 +137,7 @@ onMounted(() => {
             </el-table-column>
             <el-table-column label="操作" width="auto">
                 <template #default="scope">
+                    <el-button size="small" @click="handleViewDetails(scope.row)">查看详情</el-button>
                     <el-button type="danger" size="small" @click="handleDeleteEvaluation(scope.row.评价ID)">删除</el-button>
                 </template>
             </el-table-column>
@@ -134,6 +153,14 @@ onMounted(() => {
             style="margin-top: 20px; justify-content: center; display: flex;"
         />
     </div>
+
+    <!-- 评价详情对话框 -->
+    <EvaluationDetailDialog
+        :visible="showDetailDialog"
+        :evaluation="selectedEvaluation"
+        @close="closeDetailDialog"
+        @update:visible="showDetailDialog = $event"
+    />
 </template>
 
 <style scoped>

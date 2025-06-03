@@ -3,7 +3,7 @@
       <div class="card-header">
         <div class="order-info">
           <span class="order-id">订单号: {{ order.订单ID.substring(0, 8) }}...</span>
-          <el-tag :type="statusTagType" size="small">{{ order.订单状态 }}</el-tag>
+          <el-tag :type="statusTagType" size="small">{{ displayStatus }}</el-tag>
         </div>
         <div class="product-info">
           <h3 class="product-name">{{ order.商品名称 || '未知商品' }}</h3>
@@ -40,6 +40,19 @@
   });
   
   const emit = defineEmits(['view-detail']);
+  
+  const statusMap = {
+    'PendingSellerConfirmation': '待卖家确认',
+    'ConfirmedBySeller': '卖家已确认',
+    'Completed': '已完成',
+    'Cancelled': '已取消',
+    'Rejected': '已拒绝',
+    // 可以根据需要添加更多状态
+  };
+  
+  const displayStatus = computed(() => {
+    return statusMap[props.order.订单状态] || props.order.订单状态; // 如果没有映射，则显示原始状态
+  });
   
   const statusTagType = computed(() => {
     switch (props.order.订单状态) {

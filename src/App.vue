@@ -14,13 +14,12 @@ const activeMenu = computed(() => route.path);
 // 前台侧边导航菜单数据源 - 按照新的职责排序和包含内容
 const commonNavMenus = [
   { path: '/products', title: '首页', icon: ShoppingBag }, // 主商品浏览入口
-  { path: '/my-products', title: '我的发布', icon: Upload }, // 个人管理模块
-  // { path: '/publish', title: '发布商品', icon: Box }, // 核心高频操作 - 移除，整合到我的发布
-  { path: '/messages', title: '我的消息', icon: ChatLineRound }, // 个人管理模块
-  { path: '/orders', title: '我的订单', icon: List }, // 个人管理模块
-  { path: '/favorites', title: '我的收藏', icon: Star }, // 个人管理模块
-  // { path: '/transactions', title: '交易记录', icon: Money }, // 个人管理模块
-  { path: '/profile', title: '个人中心', icon: UserFilled }, // 辅助功能
+  { path: '/my-products', title: '我的发布', icon: Upload }, // 商品模块
+  { path: '/messages', title: '我的消息', icon: ChatLineRound }, // 消息模块
+  { path: '/orders', title: '我的订单', icon: List }, // 订单模块
+  { path: '/my-evaluations', title: '我的评价', icon: Files }, // 评价模块
+  { path: '/favorites', title: '我的收藏', icon: Star }, // 收藏模块
+  { path: '/profile', title: '个人中心', icon: UserFilled }, // 个人中心模块
   { path: '/settings', title: '偏好设置', icon: Setting }, // 辅助功能
 ];
 
@@ -58,7 +57,7 @@ const handleLogout = () => {
         </el-header>
 
         <el-container class="common-content-wrapper">
-          <el-aside width="200px" class="common-aside">
+          <el-aside :width="isSidebarCollapsed ? '64px' : '200px'" class="common-aside">
             <el-menu
               :default-active="activeMenu"
               class="el-menu-vertical-demo"
@@ -69,6 +68,9 @@ const handleLogout = () => {
               :collapse="isSidebarCollapsed"
             >
               <div class="sidebar-header">
+                <el-icon @click="toggleSidebar" class="collapse-icon">
+                  <component :is="isSidebarCollapsed ? Expand : Fold" />
+                </el-icon>
               </div>
 
               <template v-for="menuItem in commonNavMenus" :key="menuItem.path">
@@ -84,7 +86,7 @@ const handleLogout = () => {
             </el-menu>
           </el-aside>
 
-          <el-main class="common-main-content">
+          <el-main class="common-main-content" :style="{ marginLeft: isSidebarCollapsed ? '64px' : '200px' }">
             <router-view />
           </el-main>
         </el-container>

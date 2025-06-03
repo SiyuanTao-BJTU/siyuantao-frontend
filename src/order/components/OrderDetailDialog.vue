@@ -24,6 +24,20 @@ const currentUserId = computed(() => currentUser.value?.用户ID);
 const isBuyer = computed(() => props.order?.买家ID === currentUserId.value);
 const isSeller = computed(() => props.order?.卖家ID === currentUserId.value);
 
+// 添加状态映射
+const statusMap = {
+    'PendingSellerConfirmation': '待卖家确认',
+    'ConfirmedBySeller': '卖家已确认',
+    'Completed': '已完成',
+    'Cancelled': '已取消',
+    'Rejected': '已拒绝',
+    // 可以根据需要添加更多状态
+};
+
+const displayStatus = computed(() => {
+    return statusMap[props.order.订单状态] || props.order.订单状态; // 如果没有映射，则显示原始状态
+});
+
 const closeDialog = () => {
     emit('close');
 };
@@ -143,7 +157,7 @@ const handleContactSeller = () => {
                         order.订单状态 === 'cancelled' || order.订单状态 === 'rejected' ? 'danger' :
                         order.订单状态 === 'pending' || order.订单状态 === 'unpaid' ? 'warning' :
                         'info'
-                    ">{{ order.订单状态 }}</el-tag>
+                    ">{{ displayStatus }}</el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="下单时间">{{ new Date(order.创建时间).toLocaleString() }}</el-descriptions-item>
                 <el-descriptions-item label="买家ID">{{ order.买家ID }}</el-descriptions-item>

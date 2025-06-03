@@ -8,6 +8,7 @@ import OrderCard from '../components/OrderCard.vue';
 import api from '@/API_PRO.js'; // 确保路径正确
 
 const store = useStore();
+const currentUser = computed(() => store.getters['user/getUserInfo']); // 定义 currentUser
 const isBuyer = computed(() => currentUser.value?.role === 'buyer');
 const isSeller = computed(() => currentUser.value?.role === 'seller');
 const isAdmin = computed(() => currentUser.value?.role === 'admin');

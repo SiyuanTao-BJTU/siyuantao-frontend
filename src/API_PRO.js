@@ -280,8 +280,12 @@ const getEvaluationsByProductId = (productId) => { // get_evaluations_by_product
   return apiRequest('GET', `/api/v1/evaluations/product/${productId}`);
 };
 
-const getEvaluationsByBuyerId = (buyerId) => { // get_evaluations_by_buyer_id_route_api_v1_evaluations_buyer__buyer_id__get
-  return apiRequest('GET', `/api/v1/evaluations/buyer/${buyerId}`);
+const getMyEvaluations = () => { // 新增：获取当前用户评价 (对应后端 /api/v1/evaluations/made)
+  return apiRequest('GET', '/api/v1/evaluations/made');
+};
+
+const getMyEvaluationsReceived = () => { // 新增：获取当前用户收到的评价 (对应后端 /api/v1/evaluations/received)
+  return apiRequest('GET', '/api/v1/evaluations/received');
 };
 
 const getAdminEvaluations = (params) => { // 新增：获取所有评价 (管理员视图)
@@ -388,7 +392,8 @@ export default {
   createEvaluation,             
   getEvaluationById,            
   getEvaluationsByProductId,    
-  getEvaluationsByBuyerId,      
+  getMyEvaluations,
+  getMyEvaluationsReceived,
   getAdminEvaluations,
   deleteAdminEvaluation, 
 

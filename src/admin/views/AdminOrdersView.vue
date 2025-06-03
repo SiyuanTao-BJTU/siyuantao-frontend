@@ -28,6 +28,19 @@ const orderStatusOptions = ref([
     { value: 'Rejected', label: '已拒绝' },
 ]);
 
+// 添加状态映射
+const statusMap = {
+    'PendingSellerConfirmation': '待卖家确认',
+    'ConfirmedBySeller': '卖家已确认',
+    'Completed': '已完成',
+    'Cancelled': '已取消',
+    'Rejected': '已拒绝',
+};
+
+const getDisplayStatus = (status) => {
+    return statusMap[status] || status; // 如果没有映射，则显示原始状态
+};
+
 const fetchOrders = async () => {
     if (!isAdmin.value) {
         error.value = '您没有权限查看此页面。';
@@ -138,7 +151,7 @@ onMounted(() => {
                         scope.row.订单状态 === 'Cancelled' || scope.row.订单状态 === 'Rejected' ? 'danger' :
                         scope.row.订单状态 === 'PendingSellerConfirmation' || scope.row.订单状态 === 'ConfirmedBySeller' ? 'warning' :
                         'info'
-                    ">{{ scope.row.订单状态 }}</el-tag>
+                    ">{{ getDisplayStatus(scope.row.订单状态) }}</el-tag>
                 </template>
             </el-table-column>
             <el-table-column label="是否已评价" width="100">
