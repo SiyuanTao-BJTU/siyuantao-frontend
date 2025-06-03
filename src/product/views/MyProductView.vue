@@ -161,17 +161,13 @@ const handleToggleProductStatus = async (item) => {
     failureMessage = '下架商品失败';
     apiCall = () => api.withdrawProduct(item.id);
   } else if (originalStatus === 'Withdrawn') {
-    // 卖家不能直接从 Withdrawn 状态上架，需要编辑后重新提交审核
-    // 但如果业务逻辑允许直接重新激活（跳过审核），可以启用此逻辑
-    // actionText = '重新上架';
-    // newStatus = 'Active'; // 或 PendingReview 如果需要重新审核
-    // confirmTitle = '确认重新上架';
-    // confirmMessage = `确定要重新上架商品 "${item.name}" 吗？`;
-    // successMessage = '商品已成功重新上架';
-    // failureMessage = '重新上架商品失败';
-    // apiCall = () => api.activateProduct(item.id); // 假设有这样一个接口，或通过updateProduct设置status
-    ElMessage.info('已下架的商品如需重新上架，请编辑商品信息后保存，系统将重新提交审核。');
-    return;
+    actionText = '上架';
+    newStatus = 'Active'; // 初始设定为Active，实际状态可能根据后端逻辑变为PendingReview
+    confirmTitle = '确认上架';
+    confirmMessage = `确定要将商品 "${item.name}" 重新上架吗？`;
+    successMessage = '商品已成功上架';
+    failureMessage = '上架商品失败';
+    apiCall = () => api.activateProduct(item.id);
   } else {
     ElMessage.warning(`商品状态 "${getProductStatusText(originalStatus)}" 不支持此操作。`);
     return;
@@ -186,17 +182,18 @@ const handleToggleProductStatus = async (item) => {
 
     await apiCall();
     ElMessage.success(successMessage);
-    item.status = newStatus;
-    // fetchMyProducts(); // 可以考虑仅更新当前项状态，或完全刷新
+    // 无论成功上架到 Active 还是变为 PendingReview，都重新获取列表以反映最新状态
+    fetchMyProducts(); 
+    // item.status = newStatus; // 不直接更新item.status，因为后端可能返回PendingReview
   } catch (error) {
     if (error !== 'cancel') {
       console.error(`${actionText}商品失败:`, error);
       ElMessage.error(`${failureMessage}: ` + (error.response?.data?.detail || error.message));
     }
-    // 如果操作失败或用户取消，状态应回滚
-    await nextTick(() => {
-      item.status = originalStatus;
-    });
+    // 如果操作失败或用户取消，不强制回滚状态，因为fetchMyProducts会更新最新状态
+    // await nextTick(() => {
+    //   item.status = originalStatus;
+    // });
   }
 };
 
