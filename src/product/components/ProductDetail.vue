@@ -310,6 +310,21 @@ const isContactSellerDisabled = computed(() => {
   if (!currentUserId.value) return true; // 如果当前用户未登录，则禁用
   return !productDetail.value.user?.id || currentUserId.value === productDetail.value.user?.id; // 不能联系自己，或卖家信息缺失
 });
+
+const disabledTradeDate = (time) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return time.getTime() < today.getTime();
+};
+
+const onTradeDateTimeChange = (val) => {
+  const now = new Date();
+  const selected = new Date(val);
+  if (selected.getTime() < now.getTime() - 60000) {
+    ElMessage.warning('不能选择当前时间之前的时刻');
+    tradeDateTime.value = now;
+  }
+};
 </script>
 
 <template>
@@ -452,6 +467,8 @@ const isContactSellerDisabled = computed(() => {
           format="YYYY-MM-DD HH:mm"
           value-format="YYYY-MM-DD HH:mm"
           style="width: 100%;"
+          :disabled-date="disabledTradeDate"
+          @change="onTradeDateTimeChange"
         />
       </el-form-item>
       <el-form-item label="交易地点">
