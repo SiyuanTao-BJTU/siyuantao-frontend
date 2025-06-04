@@ -2,13 +2,13 @@
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import OrderDetailDialog from './OrderDetailDialog.vue';
-import CreateEvaluationDialog from './CreateEvaluationDialog.vue';
+import OrderDetailDialog from '../components/OrderDetailDialog.vue';
+import CreateEvaluationDialog from '../../evaluation/components/CreateEvaluationDialog.vue';
+import OrderCard from '../components/OrderCard.vue'; 
 import api from '@/API_PRO.js'; // 确保路径正确
 
 const store = useStore();
-const currentUser = computed(() => store.getters['user/getUserInfo']);
-const currentUserId = computed(() => currentUser.value?.user_id);
+const currentUser = computed(() => store.getters['user/getUserInfo']); // 定义 currentUser
 const isBuyer = computed(() => currentUser.value?.role === 'buyer');
 const isSeller = computed(() => currentUser.value?.role === 'seller');
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
@@ -27,29 +27,32 @@ const currentOrder = ref(null);
 const showCreateEvaluationDialog = ref(false);
 const orderToEvaluate = ref(null);
 
+// 新增：用于切换买家/卖家订单视图的标签页
+const activeTab = ref('buyer'); // 默认为买家订单
+
 const orderStatusOptions = ref([
     { value: '', label: '全部' },
-    { value: 'pending', label: '待付款' },
-    { value: 'unpaid', label: '待付款' }, // 可能的别名
-    { value: 'processing', label: '待发货' },
-    { value: 'shipping', label: '待收货' },
-    { value: 'delivered', label: '已完成' },
-    { value: 'completed', label: '已完成' }, // 可能的别名
-    { value: 'cancelled', label: '已取消' },
-    { value: 'rejected', label: '已拒绝' },
+    { value: 'PendingSellerConfirmation', label: '待卖家确认' },
+    { value: 'ConfirmedBySeller', label: '卖家已确认' },
+    { value: 'Completed', label: '已完成' },
+    { value: 'Cancelled', label: '已取消' },
+    { value: 'Rejected', label: '已拒绝' }, // 添加 Rejected 状态
 ]);
 
 const fetchOrders = async () => {
     loading.value = true;
     error.value = null;
     try {
-        const response = await api.getMyOrders({
+        const params = {
             status: selectedStatus.value || undefined,
             page_number: pageNumber.value,
             page_size: pageSize.value,
-        });
-        orderList.value = response; // 假设 API 直接返回订单数组，你需要根据实际响应结构调整
-        total.value = response.length; // 假设返回的是数组，实际后端应该返回总数
+            is_seller: activeTab.value === 'seller', // 根据 activeTab 传递 is_seller
+        };
+        const response = await api.getMyOrders(params);
+        orderList.value = response; 
+        // 假设API返回的数据中包含 total 字段用于分页
+        total.value = response.total || response.length;
     } catch (err) {
         console.error('获取订单列表失败:', err);
         error.value = '加载订单列表失败，请稍后重试。';
@@ -57,6 +60,13 @@ const fetchOrders = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+// 新增：处理 Tab 切换事件
+const handleTabChange = (tabName) => {
+    activeTab.value = tabName;
+    pageNumber.value = 1; // 切换 Tab 时重置页码
+    fetchOrders(); // 重新获取订单
 };
 
 const handleStatusChange = () => {
@@ -77,6 +87,7 @@ const openOrderDetail = (order) => {
 const closeOrderDetailDialog = () => {
     showOrderDetailDialog.value = false;
     currentOrder.value = null;
+    fetchOrders(); // 关闭详情后刷新列表
 };
 
 const openEvaluationDialog = (order) => {
@@ -87,7 +98,6 @@ const openEvaluationDialog = (order) => {
 const closeEvaluationDialog = () => {
     showCreateEvaluationDialog.value = false;
     orderToEvaluate.value = null;
-    // 评价成功后可以刷新订单列表
     fetchOrders();
 };
 
@@ -98,7 +108,7 @@ const handleCancelOrder = async (order) => {
         type: 'warning',
     }).then(async () => {
         try {
-            await api.cancelOrder(order.order_id, {}); // 可以传递取消原因
+            await api.cancelOrder(order.订单ID, { cancel_reason: '用户取消' }); // 更新为中文键名，并添加取消原因
             ElMessage.success('订单已取消');
             fetchOrders();
         } catch (err) {
@@ -117,7 +127,7 @@ const handleConfirmOrder = async (order) => {
         type: 'info',
     }).then(async () => {
         try {
-            await api.confirmOrder(order.order_id);
+            await api.confirmOrder(order.订单ID); // 更新为中文键名
             ElMessage.success('订单已确认');
             fetchOrders();
         } catch (err) {
@@ -136,7 +146,7 @@ const handleCompleteOrder = async (order) => {
         type: 'success',
     }).then(async () => {
         try {
-            await api.completeOrder(order.order_id);
+            await api.completeOrder(order.订单ID); // 更新为中文键名
             ElMessage.success('订单已完成');
             fetchOrders();
         } catch (err) {
@@ -157,7 +167,7 @@ const handleRejectOrder = async (order) => {
         type: 'warning',
     }).then(async ({ value }) => {
         try {
-            await api.rejectOrder(order.order_id, { rejection_reason_data: { reason: value } }); // 根据API调整rejection_reason_data结构
+            await api.rejectOrder(order.订单ID, { rejection_reason: value }); // 修改为 rejection_reason
             ElMessage.success('订单已拒绝');
             fetchOrders();
         } catch (err) {
@@ -176,7 +186,7 @@ const handleDeleteOrder = async (order) => {
         type: 'error',
     }).then(async () => {
         try {
-            await api.deleteOrder(order.order_id);
+            await api.deleteOrder(order.订单ID); // 更新为中文键名
             ElMessage.success('订单已删除');
             fetchOrders();
         } catch (err) {
@@ -189,6 +199,12 @@ const handleDeleteOrder = async (order) => {
 };
 
 onMounted(() => {
+    // 根据用户角色初始化 activeTab
+    if (isSeller.value && !isBuyer.value) { // 如果是卖家且不是买家
+        activeTab.value = 'seller';
+    } else { // 默认为买家视图，或者同时是买家卖家时也默认买家视图
+        activeTab.value = 'buyer';
+    }
     fetchOrders();
 });
 </script>
@@ -197,53 +213,56 @@ onMounted(() => {
     <div class="orders-view">
         <h1>我的订单</h1>
 
+        <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="order-tabs">
+            <el-tab-pane label="我买到的" name="buyer">
         <el-select v-model="selectedStatus" placeholder="选择订单状态" @change="handleStatusChange" style="margin-bottom: 20px;">
             <el-option v-for="item in orderStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
 
-        <el-table :data="orderList" v-loading="loading" stripe style="width: 100%">
-            <el-table-column prop="order_id" label="订单号" width="180" />
-            <el-table-column prop="product_id" label="商品ID" width="180" />
-            <el-table-column label="商品名称">
-                <template #default="scope">
-                    {{ scope.row.product_name || '未知商品' }}
+        <div class="order-card-list" v-loading="loading">
+            <OrderCard
+                v-for="order in orderList"
+                :key="order.订单ID"
+                :order="order"
+                @view-detail="openOrderDetail(order)"
+            >
+                <template #actions="{ order: cardOrder }">
+                    <el-button v-if="activeTab === 'buyer'">
+                        <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation' || cardOrder.订单状态 === 'ConfirmedBySeller'" type="warning" size="small" @click.stop="handleCancelOrder(cardOrder)">取消订单</el-button>
+                        <el-button v-if="cardOrder.订单状态 === 'Completed' && !cardOrder.是否已评价" type="success" size="small" @click.stop="openEvaluationDialog(cardOrder)">评价</el-button>
+                        <el-button v-if="cardOrder.订单状态 === 'ConfirmedBySeller'" type="primary" size="small" @click.stop="handleCompleteOrder(cardOrder)">确认收货</el-button>
+                    </el-button>
+                    <el-button v-if="isAdmin" type="danger" size="small" @click.stop="handleDeleteOrder(cardOrder)">删除</el-button>
                 </template>
-            </el-table-column>
-            <el-table-column prop="quantity" label="数量" width="80" />
-            <el-table-column prop="trade_time" label="交易时间" width="160">
-                <template #default="scope">
-                    {{ new Date(scope.row.trade_time).toLocaleString() }}
-                </template>
-            </el-table-column>
-            <el-table-column prop="trade_location" label="交易地点" width="150" />
-            <el-table-column prop="created_at" label="下单时间" width="150" />
-            <el-table-column label="状态" width="120">
-                <template #default="scope">
-                    <el-tag :type="
-                        scope.row.status === 'completed' || scope.row.status === 'delivered' ? 'success' :
-                        scope.row.status === 'cancelled' || scope.row.status === 'rejected' ? 'danger' :
-                        scope.row.status === 'pending' || scope.row.status === 'unpaid' ? 'warning' :
-                        'info'
-                    ">{{ scope.row.status }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column prop="created_at" label="下单时间" width="150" />
-            <el-table-column label="操作">
-                <template #default="scope">
-                    <el-button type="primary" size="small" @click="openOrderDetail(scope.row)">查看详情</el-button>
-                    <template v-if="isBuyer">
-                        <el-button v-if="scope.row.status === 'pending' || scope.row.status === 'unpaid'" type="warning" size="small" @click="handleCancelOrder(scope.row)">取消订单</el-button>
-                        <el-button v-if="(scope.row.status === 'completed' || scope.row.status === 'delivered') && !scope.row.has_evaluated" type="success" size="small" @click="openEvaluationDialog(scope.row)">评价</el-button>
-                    </template>
-                    <template v-if="isSeller">
-                        <el-button v-if="scope.row.status === 'pending'" type="success" size="small" @click="handleConfirmOrder(scope.row)">确认订单</el-button>
-                        <el-button v-if="scope.row.status === 'processing' || scope.row.status === 'shipping'" type="primary" size="small" @click="handleCompleteOrder(scope.row)">标记完成</el-button>
-                        <el-button v-if="scope.row.status === 'pending'" type="danger" size="small" @click="handleRejectOrder(scope.row)">拒绝订单</el-button>
-                    </template>
-                    <el-button v-if="isAdmin" type="danger" size="small" @click="handleDeleteOrder(scope.row)">删除</el-button>
-                </template>
-            </el-table-column>
-        </el-table>
+            </OrderCard>
+            <p v-if="!loading && orderList.length === 0" class="no-orders-message">暂无订单</p>
+        </div>
+    </el-tab-pane>
+
+    <el-tab-pane label="我卖出的" name="seller">
+                <el-select v-model="selectedStatus" placeholder="选择订单状态" @change="handleStatusChange" style="margin-bottom: 20px;">
+                    <el-option v-for="item in orderStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+
+                <div class="order-card-list" v-loading="loading">
+                    <OrderCard
+                        v-for="order in orderList"
+                        :key="order.订单ID"
+                        :order="order"
+                        @view-detail="openOrderDetail(order)"
+                    >
+                        <template #actions="{ order: cardOrder }">
+                            <el-button v-if="activeTab === 'seller'">
+                                <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="success" size="small" @click.stop="handleConfirmOrder(cardOrder)">确认订单</el-button>
+                                <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="danger" size="small" @click.stop="handleRejectOrder(cardOrder)">拒绝订单</el-button>
+                            </el-button>
+                            <el-button v-if="isAdmin" type="danger" size="small" @click.stop="handleDeleteOrder(cardOrder)">删除</el-button>
+                        </template>
+                    </OrderCard>
+                    <p v-if="!loading && orderList.length === 0" class="no-orders-message">暂无订单</p>
+                </div>
+            </el-tab-pane>
+        </el-tabs>
 
         <el-pagination
             v-model:currentPage="pageNumber"
@@ -264,7 +283,7 @@ onMounted(() => {
 
         <CreateEvaluationDialog
             v-if="showCreateEvaluationDialog"
-            :order="orderToEvaluate"
+            :order="orderToEvaluate" 
             :visible="showCreateEvaluationDialog"
             @close="closeEvaluationDialog"
         />
@@ -278,5 +297,21 @@ onMounted(() => {
 
 h1 {
     margin-bottom: 20px;
+}
+
+.order-tabs {
+    margin-bottom: 20px;
+}
+
+.order-card-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.no-orders-message {
+    text-align: center;
+    color: #909399;
+    padding: 20px;
 }
 </style>

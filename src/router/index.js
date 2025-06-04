@@ -4,15 +4,6 @@ import { ElMessage } from 'element-plus'; // 确保 ElMessage 被导入
 import NProgress from 'nprogress'; // 导入 NProgress
 import 'nprogress/nprogress.css'; // 导入 NProgress 样式
 
-// 静态导入 ProfileView，暂时解决动态加载问题
-import ProfileView from '@/user/views/profile/ProfileView.vue';
-// 导入我的商品页面
-import MyProductView from '@/product/views/MyProductView.vue';
-// 导入学生认证请求页面
-import StudentAuthRequestView from '@/user/views/profile/StudentAuthRequestView.vue';
-// 导入通用的邮箱验证页面
-import EmailVerificationView from '@/user/views/auth/EmailVerificationView.vue';
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -21,8 +12,12 @@ const router = createRouter({
       path: '/',
       redirect: to => {
         const isAuthenticated = localStorage.getItem("token");
+        const userRole = store.getters['user/userRole']; // Get role from store
         if (isAuthenticated) {
-          return '/products'; // If authenticated, go to products page
+          if (userRole === 'admin' || userRole === 'super_admin') {
+            return '/admin/dashboard'; // If authenticated and admin, go to admin dashboard
+          }
+          return '/products'; // If authenticated but not admin, go to products page
         } else {
           return '/login'; // If not authenticated, go to login page
         }
@@ -37,7 +32,7 @@ const router = createRouter({
     { // 我的发布页面
       path: '/my-products',
       name: 'MyProductView',
-      component: MyProductView,
+      component: () => import('@/product/views/MyProductView.vue'),
       meta: { requiresAuth: true }
     },
     { // 我的订单页面
@@ -52,6 +47,12 @@ const router = createRouter({
       component: () => import('@/product/views/UserFavoritesView.vue'),
       meta: { requiresAuth: true }
     },
+    { // 我的评价页面
+      path: '/my-evaluations',
+      name: 'my-evaluations',
+      component: () => import('@/evaluation/views/MyEvaluationsView.vue'),
+      meta: { requiresAuth: true }
+    },
     { // 我的消息页面 (原 /message)
       path: '/messages',
       name: 'messages',
@@ -61,7 +62,7 @@ const router = createRouter({
     { // 个人中心概览页 (保留原路径)
       path: '/profile',
       name: 'profile',
-      component: ProfileView,
+      component: () => import('@/user/views/profile/ProfileView.vue'),
       meta: { requiresAuth: true }
     },
     { // 其他用户信息界面 (通过搜索等方式查看，路径不变)
@@ -73,15 +74,15 @@ const router = createRouter({
     { // 学生认证请求页面 (通过个人中心进入)
       path: '/profile/student-auth',
       name: 'StudentAuthRequest',
-      component: StudentAuthRequestView,
+      component: () => import('@/user/views/profile/StudentAuthRequestView.vue'),
       meta: { requiresAuth: true, title: '学生认证请求' }
     },
-    { // 偏好设置页面 (保留原路径)
-      path: '/settings',
-      name: 'settings',
-      component: { template: '<div>偏好设置页面 (占位符)</div>' },
-      meta: { requiresAuth: true }
-    },
+    // { // 偏好设置页面 (保留原路径)
+    //   path: '/settings',
+    //   name: 'settings',
+    //   component: () => import('@/user/views/profile/SettingsView.vue'),
+    //   meta: { requiresAuth: true }
+    // },
     // 独立页面，不显示导航栏 (hideNavbar: true)
     {
       path: '/login',
@@ -119,6 +120,18 @@ const router = createRouter({
           name: 'AdminProductAudit',
           component: () => import('@/admin/views/ProductsAuditView.vue'),
           meta: { title: '商品审核', requiresAuth: true, requiresAdmin: true }
+        },
+        { 
+          path: 'orders',
+          name: 'AdminOrderManagement',
+          component: () => import('@/admin/views/AdminOrdersView.vue'),
+          meta: { title: '订单管理', requiresAuth: true, requiresAdmin: true }
+        },
+        { 
+          path: 'evaluations',
+          name: 'AdminEvaluationManagement',
+          component: () => import('@/admin/views/AdminEvaluationsView.vue'),
+          meta: { title: '评价管理', requiresAuth: true, requiresAdmin: true }
         },
         {
           path: 'returns',
@@ -165,22 +178,15 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   NProgress.start(); // 启动顶部进度条
 
-  // 在从非管理员页面进入管理员页面时保存用户端路径
-  if (to.path.startsWith('/admin') && !from.path.startsWith('/admin')) {
-    localStorage.setItem('previousUserPath', from.fullPath);
-  }
-
   const token = localStorage.getItem('token');
   let userInfo = store.state.user.userInfo;
-  let currentIsAuthenticated = !!token; // Start by checking token presence
+  let currentIsAuthenticated = !!token;
 
   // 如果 token 存在但 store 中没有用户信息，则尝试获取
   if (token && !userInfo) {
     try {
-      // 使用 dispatch 并 await 确保获取用户信息完成后再继续
       userInfo = await store.dispatch('user/fetchUserInfo');
-      // fetchUserInfo 成功后，userInfo 和 isLoggedIn 状态会在 store 中更新
-      currentIsAuthenticated = store.getters['user/isAuthenticated']; // Re-evaluate after fetch
+      currentIsAuthenticated = store.getters['user/isAuthenticated'];
     } catch (error) {
       console.warn('路由守卫: fetchUserInfo 失败', error);
       await store.dispatch('user/logout', { inStoreLogout: false });
@@ -189,40 +195,61 @@ router.beforeEach(async (to, from, next) => {
 
       if (to.meta.requiresAuth) {
          NProgress.done();
-         return; 
+         ElMessage.error('会话已过期，请重新登录。');
+         return next('/login');
       }
     }
   }
 
-  if (to.meta.requiresAuth) {
-    if (currentIsAuthenticated) {
-      if (to.meta.requiresVerified && !userInfo?.is_verified) {
-          ElMessage.warning('请先完成邮箱验证以访问此页面');
-          next({ name: 'StudentAuthRequest', query: { redirect: to.fullPath } });
-      } else if (to.meta.requiresAdmin) {
-           const isAdmin = userInfo?.is_staff || localStorage.getItem('is_staff') === 'true';
-           if (isAdmin || store.getters['user/isSuperAdmin']) {
-               next();
-           } else {
-               ElMessage.warning('您没有访问此页面的权限');
-               next({ name: 'ProductList' }); 
-           }
-      } else {
-           next();
-      }
-    } else {
-      ElMessage.warning('请先登录以访问此页面');
-      next({ name: 'login', query: { redirect: to.fullPath } });
-    }
-  } else if (to.name === 'login' && currentIsAuthenticated) {
-    next({ name: 'ProductList' });
-  } else {
-    next();
+  // Admin path tracking
+  if (to.path.startsWith('/admin') && currentIsAuthenticated && userInfo && (userInfo.是否管理员 || userInfo.是否超级管理员)) {
+    localStorage.setItem('wasInAdmin', 'true');
+  } else if (!to.path.startsWith('/admin') && localStorage.getItem('wasInAdmin') === 'true') {
+    // If navigating out of admin, clear the flag
+    localStorage.removeItem('wasInAdmin');
   }
+
+  // Requires authentication
+  if (to.meta.requiresAuth && !currentIsAuthenticated) {
+    ElMessage.warning('请先登录才能访问。');
+    NProgress.done();
+    return next('/login');
+  }
+
+  // Requires admin role
+  if (to.meta.requiresAdmin) {
+      if (!userInfo || (!userInfo.是否管理员 && !userInfo.是否超级管理员)) {
+          ElMessage.error('您没有权限访问管理后台。');
+          NProgress.done();
+          return next('/products'); // Redirect to user home page
+      }
+  }
+
+  // Requires super admin role
+  if (to.meta.requiresSuperAdmin) {
+      if (!userInfo || !userInfo.是否超级管理员) {
+          ElMessage.error('您没有超级管理员权限访问此页面。');
+          NProgress.done();
+          return next('/admin/dashboard'); // Redirect to admin dashboard
+      }
+  }
+
+  // Set document title
+  if (to.meta.title) {
+    document.title = to.meta.title + ' | 思源淘';
+  } else {
+    document.title = '思源淘';
+  }
+
+  next();
 });
 
 router.afterEach(() => {
-  NProgress.done();
+  NProgress.done(); // 关闭顶部进度条
+  // Clear 'wasInAdmin' if token is no longer present (e.g., after explicit logout)
+  if (!localStorage.getItem('token')) {
+    localStorage.removeItem('wasInAdmin');
+  }
 });
 
 export default router;

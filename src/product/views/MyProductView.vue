@@ -22,6 +22,33 @@ const isDetailDialogVisible = ref(false);
 const currentProductIdForDetail = ref(null);
 
 // 组件基本函数定义
+
+// 确定是否可以切换状态
+const canToggleStatus = (status) => {
+  return status === 'Active' || status === 'Withdrawn';
+};
+
+// 获取状态操作的提示文本
+const getStatusActionTooltip = (status) => {
+  if (status === 'Active') return '点击下架';
+  if (status === 'Withdrawn') return '点击上架';
+  return '当前状态不可操作';
+};
+
+// 获取状态操作按钮的文本
+const getStatusActionText = (status) => {
+  if (status === 'Active') return '下架';
+  if (status === 'Withdrawn') return '上架';
+  return '不可操作';
+};
+
+// 获取状态操作按钮的类型
+const getStatusButtonType = (status) => {
+  if (status === 'Active') return 'danger';
+  if (status === 'Withdrawn') return 'success';
+  return 'info';
+};
+
 const handleOtherAvatarClick = (username) => {
   router.push(`/profile/${username}`)
 }
@@ -111,16 +138,9 @@ const fetchMyProducts = () => {
 
 const handleToggleProductStatus = async (item) => {
   const originalStatus = item.status;
-  if (originalStatus === 'Sold') {
-    ElMessage.info('已售出的商品无法进行操作。');
-    return;
-  }
-  if (originalStatus === 'PendingReview') {
-    ElMessage.info('审核中的商品暂时无法操作，请等待审核结果。');
-    return;
-  }
-  if (originalStatus === 'Rejected') {
-    ElMessage.info('审核拒绝的商品无法直接上架，请编辑后重新提交或删除。');
+  // 仅处理可操作的状态
+  if (!canToggleStatus(originalStatus)) {
+    ElMessage.info(`当前状态 "${getProductStatusText(originalStatus)}" 不可操作`);
     return;
   }
 
@@ -141,17 +161,13 @@ const handleToggleProductStatus = async (item) => {
     failureMessage = '下架商品失败';
     apiCall = () => api.withdrawProduct(item.id);
   } else if (originalStatus === 'Withdrawn') {
-    // 卖家不能直接从 Withdrawn 状态上架，需要编辑后重新提交审核
-    // 但如果业务逻辑允许直接重新激活（跳过审核），可以启用此逻辑
-    // actionText = '重新上架';
-    // newStatus = 'Active'; // 或 PendingReview 如果需要重新审核
-    // confirmTitle = '确认重新上架';
-    // confirmMessage = `确定要重新上架商品 "${item.name}" 吗？`;
-    // successMessage = '商品已成功重新上架';
-    // failureMessage = '重新上架商品失败';
-    // apiCall = () => api.activateProduct(item.id); // 假设有这样一个接口，或通过updateProduct设置status
-    ElMessage.info('已下架的商品如需重新上架，请编辑商品信息后保存，系统将重新提交审核。');
-    return;
+    actionText = '上架';
+    newStatus = 'Active'; // 初始设定为Active，实际状态可能根据后端逻辑变为PendingReview
+    confirmTitle = '确认上架';
+    confirmMessage = `确定要将商品 "${item.name}" 重新上架吗？`;
+    successMessage = '商品已成功上架';
+    failureMessage = '上架商品失败';
+    apiCall = () => api.activateProduct(item.id);
   } else {
     ElMessage.warning(`商品状态 "${getProductStatusText(originalStatus)}" 不支持此操作。`);
     return;
@@ -166,17 +182,18 @@ const handleToggleProductStatus = async (item) => {
 
     await apiCall();
     ElMessage.success(successMessage);
-    item.status = newStatus;
-    // fetchMyProducts(); // 可以考虑仅更新当前项状态，或完全刷新
+    // 无论成功上架到 Active 还是变为 PendingReview，都重新获取列表以反映最新状态
+    fetchMyProducts(); 
+    // item.status = newStatus; // 不直接更新item.status，因为后端可能返回PendingReview
   } catch (error) {
     if (error !== 'cancel') {
       console.error(`${actionText}商品失败:`, error);
       ElMessage.error(`${failureMessage}: ` + (error.response?.data?.detail || error.message));
     }
-    // 如果操作失败或用户取消，状态应回滚
-    await nextTick(() => {
-      item.status = originalStatus;
-    });
+    // 如果操作失败或用户取消，不强制回滚状态，因为fetchMyProducts会更新最新状态
+    // await nextTick(() => {
+    //   item.status = originalStatus;
+    // });
   }
 };
 
@@ -291,20 +308,17 @@ onMounted(() => {
                     circle 
                     :disabled="item.status === 'Sold'" />
                 </el-tooltip>
-                <el-tooltip :content="item.status === 'Active' ? '点击下架' : (item.status === 'Withdrawn' ? '编辑后可重新提交审核' : '操作无效')" placement="top">
-                  <div> <!-- Tooltip需要一个单独的根元素来包裹disabled的el-switch -->
-                    <el-switch
-                      v-model="item.status"
-                      active-value="Active"
-                      inactive-value="Withdrawn"
-                      size="small"
-                      @change="handleToggleProductStatus(item)"
-                      :disabled="item.status === 'Sold' || item.status === 'PendingReview' || item.status === 'Rejected' || item.status === 'Withdrawn'" 
-                      style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949; margin-left: 8px;"
-                    />
-                  </div>
-                </el-tooltip>
-              </div>
+                <el-tooltip :content="getStatusActionTooltip(item.status)" placement="top">
+    <el-button
+      :type="getStatusButtonType(item.status)"
+      :disabled="!canToggleStatus(item.status)"
+      size="small"
+      @click="handleToggleProductStatus(item)"
+    >
+      {{ getStatusActionText(item.status) }}
+    </el-button>
+  </el-tooltip>
+</div>
             </el-card>
           </el-col>
         </el-row>

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/API_PRO.js'; // 确保路径正确
 import { useStore } from 'vuex'; // 导入 useStore
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 
 const props = defineProps({
     order: {
@@ -19,10 +20,28 @@ const emit = defineEmits(['close']);
 
 const store = useStore(); // 获取 Vuex store 实例
 const currentUser = computed(() => store.getters['user/getUserInfo']);
-const currentUserId = computed(() => currentUser.value?.user_id);
+const currentUserId = computed(() => currentUser.value?.用户ID);
 
-const isBuyer = computed(() => props.order?.buyer_id === currentUserId.value); // 使用 currentUserId.value
-const isSeller = computed(() => props.order?.seller_id === currentUserId.value); // 使用 currentUserId.value
+const isBuyer = computed(() => props.order?.买家ID === currentUserId.value);
+const isSeller = computed(() => props.order?.卖家ID === currentUserId.value);
+
+// 新增：用户详情对话框相关状态
+const showUserDetailDialog = ref(false);
+const selectedUserIdForDetail = ref(null);
+
+// 添加状态映射
+const statusMap = {
+    'PendingSellerConfirmation': '待卖家确认',
+    'ConfirmedBySeller': '卖家已确认',
+    'Completed': '已完成',
+    'Cancelled': '已取消',
+    'Rejected': '已拒绝',
+    // 可以根据需要添加更多状态
+};
+
+const displayStatus = computed(() => {
+    return statusMap[props.order.订单状态] || props.order.订单状态; // 如果没有映射，则显示原始状态
+});
 
 const closeDialog = () => {
     emit('close');
@@ -35,7 +54,7 @@ const handleCancelOrder = async () => {
         type: 'warning',
     }).then(async () => {
         try {
-            await api.cancelOrder(props.order.order_id, {}); // 可以传递取消原因
+            await api.cancelOrder(props.order.订单ID, {}); // 可以传递取消原因
             ElMessage.success('订单已取消');
             emit('close');
             // 可以通知父组件刷新订单列表
@@ -55,7 +74,7 @@ const handleConfirmOrder = async () => {
         type: 'info',
     }).then(async () => {
         try {
-            await api.confirmOrder(props.order.order_id);
+            await api.confirmOrder(props.order.订单ID);
             ElMessage.success('订单已确认');
             emit('close');
             // 可以通知父组件刷新订单列表
@@ -75,7 +94,7 @@ const handleCompleteOrder = async () => {
         type: 'success',
     }).then(async () => {
         try {
-            await api.completeOrder(props.order.order_id);
+            await api.completeOrder(props.order.订单ID);
             ElMessage.success('订单已完成');
             emit('close');
             // 可以通知父组件刷新订单列表
@@ -97,7 +116,7 @@ const handleRejectOrder = async () => {
         type: 'warning',
     }).then(async ({ value }) => {
         try {
-            await api.rejectOrder(props.order.order_id, { rejection_reason_data: { reason: value } }); // 根据API调整rejection_reason_data结构
+            await api.rejectOrder(props.order.订单ID, { rejection_reason_data: { reason: value } }); // 根据API调整rejection_reason_data结构
             ElMessage.success('订单已拒绝');
             emit('close');
             // 可以通知父组件刷新订单列表
@@ -118,6 +137,18 @@ const handleContactBuyer = () => {
 const handleContactSeller = () => {
     ElMessage.info('联系卖家功能开发中...');
 };
+
+// 新增：处理查看用户详情逻辑
+const handleViewUserDetail = (userId) => {
+  selectedUserIdForDetail.value = userId;
+  showUserDetailDialog.value = true;
+};
+
+// 新增：关闭用户详情对话框时清空选择的用户
+const closeUserDetailDialog = () => {
+  selectedUserIdForDetail.value = null;
+  showUserDetailDialog.value = false;
+};
 </script>
 
 <template>
@@ -129,39 +160,43 @@ const handleContactSeller = () => {
     >
         <template v-if="order">
             <el-descriptions :column="2" border>
-                <el-descriptions-item label="订单号">{{ order.order_id }}</el-descriptions-item>
-                <el-descriptions-item label="商品ID">{{ order.product_id }}</el-descriptions-item>
-                <el-descriptions-item label="商品名称">{{ order.product_name || '未知商品' }}</el-descriptions-item>
-                <el-descriptions-item label="数量">{{ order.quantity }}</el-descriptions-item>
+                <el-descriptions-item label="订单号">{{ order.订单ID }}</el-descriptions-item>
+                <el-descriptions-item label="商品ID">{{ order.商品ID }}</el-descriptions-item>
+                <el-descriptions-item label="商品名称">{{ order.商品名称 || '未知商品' }}</el-descriptions-item>
+                <el-descriptions-item label="数量">{{ order.数量 }}</el-descriptions-item>
                 <el-descriptions-item label="交易时间">
-                    {{ new Date(order.trade_time).toLocaleString() }}
+                    {{ new Date(order.交易时间).toLocaleString() }}
                 </el-descriptions-item>
-                <el-descriptions-item label="交易地点">{{ order.trade_location }}</el-descriptions-item>
+                <el-descriptions-item label="交易地点">{{ order.交易地点 }}</el-descriptions-item>
                 <el-descriptions-item label="状态">
                     <el-tag :type="
-                        order.status === 'completed' || order.status === 'delivered' ? 'success' :
-                        order.status === 'cancelled' || order.status === 'rejected' ? 'danger' :
-                        order.status === 'pending' || order.status === 'unpaid' ? 'warning' :
+                        order.订单状态 === 'completed' || order.订单状态 === 'delivered' ? 'success' :
+                        order.订单状态 === 'cancelled' || order.订单状态 === 'rejected' ? 'danger' :
+                        order.订单状态 === 'pending' || order.订单状态 === 'unpaid' ? 'warning' :
                         'info'
-                    ">{{ order.status }}</el-tag>
+                    ">{{ displayStatus }}</el-tag>
                 </el-descriptions-item>
-                <el-descriptions-item label="下单时间">{{ order.created_at }}</el-descriptions-item>
-                <el-descriptions-item label="买家ID">{{ order.buyer_id }}</el-descriptions-item>
-                <el-descriptions-item label="卖家ID">{{ order.seller_id }}</el-descriptions-item>
-                <el-descriptions-item label="完成时间" v-if="order.complete_time">{{ order.complete_time }}</el-descriptions-item>
-                <el-descriptions-item label="取消时间" v-if="order.cancel_time">{{ order.cancel_time }}</el-descriptions-item>
-                <el-descriptions-item label="取消原因" v-if="order.cancel_reason">{{ order.cancel_reason }}</el-descriptions-item>
+                <el-descriptions-item label="下单时间">{{ new Date(order.创建时间).toLocaleString() }}</el-descriptions-item>
+                <el-descriptions-item label="买家">
+                    <span @click="handleViewUserDetail(order.买家ID)" style="cursor: pointer; color: #409eff;">{{ order.买家用户名 || '未知买家' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="卖家">
+                    <span @click="handleViewUserDetail(order.卖家ID)" style="cursor: pointer; color: #409eff;">{{ order.卖家用户名 || '未知卖家' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="完成时间" v-if="order.完成时间">{{ new Date(order.完成时间).toLocaleString() }}</el-descriptions-item>
+                <el-descriptions-item label="取消时间" v-if="order.取消时间">{{ new Date(order.取消时间).toLocaleString() }}</el-descriptions-item>
+                <el-descriptions-item label="取消原因" v-if="order.取消原因">{{ order.取消原因 }}</el-descriptions-item>
                 <el-descriptions-item label="物流信息" v-if="order.shipping_info">{{ order.shipping_info }}</el-descriptions-item>
                 </el-descriptions>
 
             <div style="margin-top: 20px;">
                 <h3>操作</h3>
-                <el-button v-if="isBuyer" type="warning" @click="handleCancelOrder" :disabled="order.status !== 'pending' && order.status !== 'unpaid'">取消订单</el-button>
-                <el-button v-if="isSeller" type="success" @click="handleConfirmOrder" :disabled="order.status !== 'pending'">确认订单</el-button>
-                <el-button v-if="isSeller" type="primary" @click="handleCompleteOrder" :disabled="order.status !== 'processing' && order.status !== 'shipping'">标记完成</el-button>
-                <el-button v-if="isSeller" type="danger" @click="handleRejectOrder" :disabled="order.status !== 'pending'">拒绝订单</el-button>
-                <el-button v-if="isBuyer && order.seller_id" @click="handleContactSeller">联系卖家</el-button>
-                <el-button v-if="isSeller && order.buyer_id" @click="handleContactBuyer">联系买家</el-button>
+                <el-button v-if="isBuyer" type="warning" @click="handleCancelOrder" :disabled="order.订单状态 !== 'PendingSellerConfirmation' && order.订单状态 !== 'ConfirmedBySeller'">取消订单</el-button>
+                <el-button v-if="isSeller" type="success" @click="handleConfirmOrder" :disabled="order.订单状态 !== 'PendingSellerConfirmation'">确认订单</el-button>
+                <el-button v-if="isBuyer" type="primary" @click="handleCompleteOrder" :disabled="order.订单状态 !== 'ConfirmedBySeller'">标记完成</el-button>
+                <el-button v-if="isSeller" type="danger" @click="handleRejectOrder" :disabled="order.订单状态 !== 'PendingSellerConfirmation'">拒绝订单</el-button>
+                <el-button v-if="isBuyer && order.卖家ID" @click="handleContactSeller">联系卖家</el-button>
+                <el-button v-if="isSeller && order.买家ID" @click="handleContactBuyer">联系买家</el-button>
                 </div>
         </template>
         <template v-else>
@@ -173,6 +208,13 @@ const handleContactSeller = () => {
             </span>
         </template>
     </el-dialog>
+
+    <!-- 用户详情对话框 -->
+    <UserDetailDialog
+        v-model:visible="showUserDetailDialog"
+        :user-id="selectedUserIdForDetail"
+        @close="closeUserDetailDialog"
+    />
 </template>
 
 <style scoped>

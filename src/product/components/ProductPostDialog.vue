@@ -5,6 +5,8 @@ import { ElMessage, ElMessageBox, ElForm, ElDialog, ElUpload } from 'element-plu
 import { Plus, Close } from '@element-plus/icons-vue';
 import api from '@/API_PRO.js';
 import BackendConfig from '../../../backend.config'; // Import BackendConfig
+import { useStore } from 'vuex'; // 导入 useStore
+import { computed } from 'vue'; // 导入 computed
 
 const router = useRouter();
 
@@ -70,23 +72,32 @@ const rules = {
 
 const productFormRef = ref(null); // 表单引用
 
+// 获取 Vuex store 实例
+const store = useStore();
+
+// 从 store 中获取商品分类
+const productCategories = computed(() => store.getters['product/getProductCategories']);
+
 // 获取商品详情 (编辑模式下)
 const fetchProductDetail = async (id) => {
   try {
     const response = await api.getProductDetail(id);
     if (response) {
       productForm.product_name = response.商品名称;
-      productForm.description = response.商品描述;
+      productForm.description = response.描述;
       productForm.price = parseFloat(response.价格) || null;
-      productForm.category = response.商品类别;
-      productForm.condition = response.商品成色 || '';
-      productForm.quantity = parseInt(response.库存, 10) || 1;
+      productForm.category = response.分类名称;
+      productForm.condition = response.成色 || '';
+      productForm.quantity = parseInt(response.数量, 10) || 1;
       
-      const imageUrlsString = response.ImageURLs;
+      const imageUrlsString = response.图片URL列表;
       if (imageUrlsString && typeof imageUrlsString === 'string') {
         productForm.image_urls = imageUrlsString.split(',').map(url => {
             const baseUrl = BackendConfig.RESTFUL_API_URL.replace('/api', '');
             const trimmedUrl = url.trim();
+            if (trimmedUrl.startsWith('http') || trimmedUrl.startsWith('//')) {
+                return trimmedUrl;
+            }
             return (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) + (trimmedUrl.startsWith('/') ? trimmedUrl : '/' + trimmedUrl);
         });
       } else {
@@ -280,6 +291,7 @@ onMounted(() => {
   if (props.isEditMode && props.productId) {
     fetchProductDetail(props.productId);
   }
+  store.dispatch('product/fetchProductCategories'); // 在组件挂载时获取商品分类
 });
 </script>
 
@@ -342,11 +354,12 @@ onMounted(() => {
         <el-col :span="12">
           <el-form-item label="商品分类" prop="category">
             <el-select v-model="productForm.category" placeholder="请选择商品分类" style="width: 100%;">
-              <el-option label="电子产品" value="electronics"></el-option>
-              <el-option label="书籍文具" value="books"></el-option>
-              <el-option label="生活用品" value="daily"></el-option>
-              <el-option label="服装配饰" value="clothing"></el-option>
-              <el-option label="其他" value="others"></el-option>
+              <el-option
+                v-for="category in productCategories"
+                :key="category.value"
+                :label="category.label"
+                :value="category.value"
+              />
             </el-select>
           </el-form-item>
         </el-col>

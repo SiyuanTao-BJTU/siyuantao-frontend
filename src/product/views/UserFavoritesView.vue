@@ -29,17 +29,17 @@ const fetchUserFavorites = async () => {
     if (response && Array.isArray(response)) { 
       userFavorites.value = response.map(fav => ({
         id: fav.商品ID, 
-        // 将API返回的商品数据直接作为 product 对象，让 ProductCard 自己处理
         product: {
             id: fav.商品ID,
-            name: fav.商品名称,
-            description: fav.商品描述,
-            price: parseFloat(fav.价格), // 确保价格是数字
-            images: fav.主图URL ? (Array.isArray(fav.主图URL) ? fav.主图URL : [fav.主图URL.startsWith('http') || fav.主图URL.startsWith('//') ? fav.主图URL : FormatObject.formattedImgUrl(fav.主图URL)]) : [],
-            // 根据 ProductCard 的 props，可以添加其他字段，例如 category, status, user
-            category: fav.商品类别,
-            status: fav.商品状态,
-            user: { username: fav.发布者用户名 }
+            商品名称: fav.商品名称,
+            描述: fav.描述,
+            价格: parseFloat(fav.价格),
+            主图URL: fav.主图URL,
+            图片URL列表: fav.图片URL列表,
+            分类名称: fav.分类名称,
+            商品状态: fav.商品状态,
+            卖家用户名: fav.卖家用户名,
+            成色: fav.成色
         }
       }));
     } else {
@@ -96,7 +96,7 @@ onMounted(() => {
         <div v-loading="isLoading" class="favorite-list">
           <div v-if="userFavorites.length === 0 && !isLoading" class="empty-state">
             <el-empty description="暂无收藏商品"/>
-            <el-button type="primary" @click="router.push('/home')">去首页逛逛</el-button>
+            <el-button type="primary" @click="router.push('/products')">去首页逛逛</el-button>
           </div>
 
           <div v-else class="favorite-grid">

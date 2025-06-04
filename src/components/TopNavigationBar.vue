@@ -33,44 +33,59 @@ onMounted(() => {
 // 获取用户信息的函数
 const fetchUserInfo = async () => {
   const token = localStorage.getItem('token');
-  // console.log("TopNav: Checking for token:", token);
   if (token) {
     try {
       const response = await api.getUserProfile();
-      // console.log("TopNav: Fetch user info API response:", response);
-      // 修改判断逻辑，检查响应中是否包含用户数据字段，例如 user_id 或 username
-      if (response && (response.user_id || response.username)) {
+      // 使用中文键名检查用户数据字段
+      if (response && (response.用户ID || response.用户名)) {
         const userInfo = response; // API 直接返回用户信息对象
-        username.value = userInfo.username;
-        // Construct full avatar URL if avatarUrl is a relative path
-        avatarUrl.value = userInfo.avatar_url ? 
-          BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + userInfo.avatar_url : null;
-        isAdmin.value = userInfo.is_staff || false; // 假设 is_staff 字段表示管理员
-        isLoggedIn.value = true; // 成功获取用户信息即视为登录
-        localStorage.setItem('username', userInfo.username);
-        localStorage.setItem('userId', userInfo.user_id); // 假设用户ID字段是 user_id
+        username.value = userInfo.用户名;
+        // 使用中文键名 '头像URL'
+        avatarUrl.value = userInfo.头像URL ? 
+          BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + (userInfo.头像URL.startsWith('/') ? userInfo.头像URL : '/' + userInfo.头像URL) : null;
+        // 使用中文键名 '是否管理员'
+        isAdmin.value = userInfo.是否管理员 || false;
+        isLoggedIn.value = true;
+        localStorage.setItem('username', userInfo.用户名);
+        localStorage.setItem('userAvatar', avatarUrl.value || ''); // Store full or empty string
+        localStorage.setItem('isAdmin', isAdmin.value.toString()); // Store boolean as string
+        localStorage.setItem('userId', userInfo.用户ID); // Store userId
+
+        // 将完整的 userInfo 对象（已经是中文键名）存入 Vuex
+        store.commit('user/SET_USER_INFO', userInfo);
 
         // 初始化 WebSocket
-        if (userInfo.user_id && (!WebSocketService.userId || WebSocketService.userId === 'undefined')) {
-          WebSocketService.init(userInfo.user_id);
-        } else if (userInfo.user_id && WebSocketService.userId !== userInfo.user_id) {
+        // 使用中文键名 '用户ID'
+        if (userInfo.用户ID && (!WebSocketService.userId || WebSocketService.userId === 'undefined')) {
+          WebSocketService.init(userInfo.用户ID);
+        // 使用中文键名 '用户ID'
+        } else if (userInfo.用户ID && WebSocketService.userId !== userInfo.用户ID) {
           WebSocketService.close();
-          WebSocketService.init(userInfo.user_id);
+          WebSocketService.init(userInfo.用户ID);
         }
       } else {
-        console.warn("TopNav: 获取用户信息API响应不包含用户数据或格式不正确:", response);
-        // 如果 API 返回非预期格式，视为未登录
-        resetLoginState();
+        console.warn("User info from API is missing ID or username:", response);
+        // 清理本地存储和状态
+        // logout(); // 调用 logout 可能会导致循环或意外行为，直接清理
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        localStorage.removeItem('userAvatar');
+        localStorage.removeItem('isAdmin');
+        localStorage.removeItem('userId');
+        store.dispatch('user/logoutUser');
+        isLoggedIn.value = false;
+        username.value = '';
+        avatarUrl.value = null;
+        isAdmin.value = false;
       }
     } catch (error) {
-      console.error("获取用户信息失败 TopNav:", error);
-      // API 调用失败（如 401 Unauthorized），视为未登录
-      resetLoginState();
+      console.error("Failed to fetch user info:", error);
+      // Don't logout on fetch failure, token might still be valid for other things
+      // or it's a temporary network issue.
+      // logout(); // Avoid aggressive logout
     }
   } else {
-    // 没有 token，视为未登录
-    console.log("TopNav: No token found, user is not logged in.");
-    resetLoginState(); // 调用时不带参数，isExplicitLogout 会是 false
+    isLoggedIn.value = false; // Ensure loggedIn state is false if no token
   }
 };
 

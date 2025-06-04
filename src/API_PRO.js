@@ -1,11 +1,5 @@
 import axiosClient from './axios_client/index.js'; // 导入 axiosClient
 
-// 假设项目中使用了 axios 作为 HTTP 客户端
-// import axios from 'axios'; // 在实际 Vue 项目中取消注释，并确保已安装 axios
-
-// 后端 API 的基础 URL - 请根据您的环境修改
-// const BASE_URL = 'http://127.0.0.1:8000/api'; // 开发环境示例  // REMOVED
-
 /**
  * 辅助函数，用于发起 API 请求
  * @param {string} method - HTTP 方法 (GET, POST, PUT, DELETE, etc.)
@@ -16,23 +10,7 @@ import axiosClient from './axios_client/index.js'; // 导入 axiosClient
  * @returns {Promise<any>} - API 响应数据
  */
 const apiRequest = async (method, path, data = null, params = null, contentType = 'application/json') => {
-  // const url = `${BASE_URL}${path}`; // REMOVED
-  
-  // ---- 实际项目中需要处理认证 Token ----
-  // const token = localStorage.getItem('accessToken'); // 或从 Vuex/Pinia store 获取
-  // const headers = {
-  //   'Content-Type': isFormData ? 'multipart/form-data' : 'application/json',
-  // };
-  // if (token) {
-  //   headers['Authorization'] = `Bearer ${token}`;
-  // }
-  // -------------------------------------
-  
-  // 为了生成文件，这里使用模拟的 headers // REMOVED
-  // const headers = { // REMOVED
-  //   'Content-Type': isFormData ? 'multipart/form-data' : 'application/json', // REMOVED
-  //   // 'Authorization': `Bearer MOCK_TOKEN` // 模拟 Token // REMOVED
-  // }; // REMOVED
+
 
   const config = {
     method,
@@ -52,34 +30,13 @@ const apiRequest = async (method, path, data = null, params = null, contentType 
     config.params = params;
   }
 
-  // console.log(`Simulating ${method} request to ${url}`); // REMOVED
-  // console.log('Headers:', headers); // REMOVED
-  // console.log('Data:', data); // REMOVED
-  // console.log('Params:', params); // REMOVED
-
-  // ---- 在实际 Vue 项目中使用 axios ----
+  // ---- Vue 项目中使用 axios ----
   try { // UNCOMMENTED
     const response = await axiosClient(config); // MODIFIED: use axiosClient
     return response.data; // 通常返回 response.data
   } catch (error) { // UNCOMMENTED
-    // console.error(`API Error ${method} ${path}:`, error.response || error.message); // Keep or remove based on preference
-    // The existing axiosClient interceptor already handles general error messages (ElMessage)
-    // and 401 redirection. So, specific error handling here might be redundant
-    // unless additional, component-specific error processing is needed.
-    // if (error.response && error.response.status === 401) {
-    //   // 处理 Token 过期或无效，例如跳转登录页
-    //   // window.location.href = '/login'; // Handled by axiosClient interceptor
-    // }
     throw error; // 重新抛出错误，让调用组件或 axiosClient 拦截器处理
   }
-  // ------------------------------------
-  
-  // 返回一个模拟的 Promise，方便前端代码结构 // REMOVED
-  // return Promise.resolve({ // REMOVED
-  //   code: 0, // 模拟成功响应 // REMOVED
-  //   message: `Simulated ${method} to ${url} successful.`,  // REMOVED
-  //   data: data || params || {} // REMOVED
-  // }); // REMOVED
 };
 
 // ========================================================================
@@ -137,6 +94,10 @@ const userRefreshToken = (refreshTokenData) => { // refreshTokenData should be {
 
 const getUserProfile = () => { // read_users_me_api_v1_users_me_get
   return apiRequest('GET', '/api/v1/users/me');
+};
+
+const getUserPublicProfile = (userId) => { // 新增：获取用户公开资料
+  return apiRequest('GET', `/api/v1/users/${userId}/public_profile`);
 };
 
 const updateUserProfile = (profileData) => { // update_current_user_profile_api_v1_users_me_put
@@ -245,6 +206,10 @@ const withdrawProduct = (productId) => { // withdraw_product_api_v1_products__pr
   return apiRequest('PUT', `/api/v1/products/${productId}/status/withdraw`);
 };
 
+const getProductStats = () => { // get_product_stats_api_v1_products_statistics_get
+  return apiRequest('GET', '/api/v1/products/statistics');
+};
+
 // Deprecated/Uncertain based on openapi.json:
 // const addProductComment = (productId, commentData) => {
 //   return apiRequest('POST', `/api/v1/products/${productId}/comments`, commentData); // Path in openapi is under /evaluations
@@ -298,6 +263,14 @@ const rejectOrder = (orderId, rejectionData) => { // reject_order_route_api_v1_o
   return apiRequest('PUT', `/api/v1/orders/${orderId}/reject`, rejectionData);
 };
 
+const getAdminOrders = (params) => { // get_all_orders_for_admin_route_api_v1_admin_orders__get
+  return apiRequest('GET', '/api/v1/orders/admin', null, params);
+};
+
+// const deleteAdminOrder = (orderId) => { // delete_order_route_api_v1_admin_orders__order_id__delete
+//   return apiRequest('DELETE', `/api/v1/admin/orders/${orderId}`);
+// };
+
 
 // ========================================================================
 // Evaluations Module (Tag: Evaluations)
@@ -315,8 +288,20 @@ const getEvaluationsByProductId = (productId) => { // get_evaluations_by_product
   return apiRequest('GET', `/api/v1/evaluations/product/${productId}`);
 };
 
-const getEvaluationsByBuyerId = (buyerId) => { // get_evaluations_by_buyer_id_route_api_v1_evaluations_buyer__buyer_id__get
-  return apiRequest('GET', `/api/v1/evaluations/buyer/${buyerId}`);
+const getMyEvaluations = () => { // 新增：获取当前用户评价 (对应后端 /api/v1/evaluations/made)
+  return apiRequest('GET', '/api/v1/evaluations/made');
+};
+
+const getMyEvaluationsReceived = () => { // 新增：获取当前用户收到的评价 (对应后端 /api/v1/evaluations/received)
+  return apiRequest('GET', '/api/v1/evaluations/received');
+};
+
+const getAdminEvaluations = (params) => { // 新增：获取所有评价 (管理员视图)
+  return apiRequest('GET', '/api/v1/evaluations/admin', null, params);
+};
+
+const deleteAdminEvaluation = (evaluationId) => { // 新增：管理员删除评价
+  return apiRequest('DELETE', `/api/v1/evaluations/admin/${evaluationId}`);
 };
 
 
@@ -328,46 +313,6 @@ const uploadImage = (formData) => { // upload_image_api_v1_upload_image_post
   return apiRequest('POST', '/api/v1/upload/image', formData, null, 'multipart/form-data');
 };
 
-// ========================================================================
-// APIs from previous API_PRO.js NOT clearly in openapi.json or potentially misplaced
-// Review and confirm if these are still needed or how they map to current backend.
-// ========================================================================
-
-// const getUserTradeComments = (userId) => {
-//   // This path /v1/users/{userId}/comments/ is NOT in openapi.json.
-//   // Evaluations/comments are typically linked to products or trades.
-//   // Consider using getEvaluationsByProductId or similar if that's the intent.
-//   return apiRequest('GET', `/api/v1/users/${userId}/comments/`);
-// };
-
-// const getUserBoughtRecords = () => {
-//   // Path /api/v1/users/me/bought is NOT in openapi.json.
-//   // Use getMyOrders with appropriate filters if this is for orders.
-//   return apiRequest('GET', '/api/v1/users/me/bought');
-// };
-
-// const getUserSoldRecords = () => {
-//   // Path /api/v1/users/me/sold is NOT in openapi.json.
-//   // Use getMyOrders with appropriate filters if this is for orders.
-//   return apiRequest('GET', '/api/v1/users/me/sold');
-// };
-
-// const getChatRoomList = () => {
-//   // Path /api/v1/trades/chatrooms is NOT in openapi.json.
-//   // Backend needs to define how chat rooms are listed.
-//   return apiRequest('GET', '/api/v1/trades/chatrooms');
-// };
-
-// const getTransactionMessages = (transactionId) => {
-//   // Path /api/v1/trades/{transactionId}/messages is NOT in openapi.json.
-//   // Backend needs to define how chat messages are retrieved via HTTP.
-//   return apiRequest('GET', `/api/v1/trades/${transactionId}/messages`);
-// };
-
-// const sendTransactionMessage = (transactionId, messageData) => {
-//   // Path /api/v1/trades/{transactionId}/messages is NOT in openapi.json.
-//   return apiRequest('post', `/api/v1/trades/${transactionId}/messages`, messageData);
-// };
 
 const getChatWebSocketUrl = (userId) => {
   let wsBaseUrl = axiosClient.defaults.baseURL;
@@ -389,17 +334,6 @@ const getChatWebSocketUrl = (userId) => {
   return `${wsBaseUrl}/ws/chat/${userId}/`; 
 };
 
-// const submitStudentAuth = (authData) => {
-//   // Path /api/v1/user/student-auth/ is NOT in openapi.json
-//   return apiRequest('post', '/api/v1/user/student-auth/', authData);
-// };
-
-// const imagesUploadCreate = (imageData) => { // This seems redundant with uploadImage
-//   // Path /api/v1/images/upload/ is NOT in openapi.json
-//   // uploadImage uses /api/v1/upload/image which IS in openapi.json
-//   return apiRequest('POST', '/api/v1/images/upload/', imageData, null, true);
-// };
-
 // Admin Dashboard Mock APIs (No corresponding entries in openapi.json)
 const getNewUsersToday = () => Promise.resolve(10);
 const getProductsPendingReviewCount = () => Promise.resolve(5);
@@ -419,15 +353,16 @@ export default {
   verifyOtpAndResetPassword,
   requestLoginOtp,
   verifyLoginOtp,
-  userRefreshToken, // Review if needed/correct path
+  userRefreshToken, 
 
   // Users
   getUserProfile,
+  getUserPublicProfile,
   updateUserProfile,
   userModifyPassword,
   uploadUserAvatar,
   getUserProfileById,
-  updateUserProfileById, // Added
+  updateUserProfileById, 
   deleteUser,
   getAllUsersApi,
   updateUserStatus,
@@ -440,54 +375,45 @@ export default {
   getProductDetail,
   updateProduct,
   deleteProduct,
-  getUserFavorites,     // Added
-  addFavorite,          // Added
-  removeFavorite,       // Added
-  batchActivateProducts,// Added
-  batchRejectProducts,  // Added
-  activateProduct,      // Added
-  rejectProduct,        // Added
-  withdrawProduct,      // Added
-  // addProductComment, // Commented out, use Evaluations module
-  // getProductComments, // Commented out, use Evaluations module
+  getUserFavorites,    
+  addFavorite,          
+  removeFavorite,       
+  batchActivateProducts,
+  batchRejectProducts,  
+  activateProduct,      
+  rejectProduct,        
+  withdrawProduct,      
+  getProductStats,
 
   // Orders
-  createOrder,                  // Added
-  getMyOrders,                  // Added
-  getOrderById,                 // Added
-  updateOrderStatus,            // Added
-  deleteOrder,                  // Added
-  cancelOrder,                  // Added
-  confirmOrder,                 // Added
-  completeOrder,                // Added
-  rejectOrder,                  // Added
-  // Old transaction functions (might be superseded by Orders module)
-  // createTransaction,
-  // getTransactionDetail,
-  // updateTransactionStatus,
-  // addTransactionComment,
+  createOrder,                  
+  getMyOrders,                  
+  getOrderById,                 
+  updateOrderStatus,            
+  deleteOrder,                  
+  cancelOrder,                  
+  confirmOrder,                 
+  completeOrder,                
+  rejectOrder,                  
+  getAdminOrders,
+
 
   // Evaluations
-  createEvaluation,             // Added
-  getEvaluationById,            // Added
-  getEvaluationsByProductId,    // Added
-  getEvaluationsByBuyerId,      // Added
+  createEvaluation,             
+  getEvaluationById,            
+  getEvaluationsByProductId,    
+  getMyEvaluations,
+  getMyEvaluationsReceived,
+  getAdminEvaluations,
+  deleteAdminEvaluation, 
 
   // Upload
-  uploadImage, // This is from openapi.json
+  uploadImage, 
 
   // Chat (WebSocket helper)
   getChatWebSocketUrl,
 
-  // Deprecated/Uncertain/Mock (Review if needed)
-  // getUserTradeComments,
-  // getUserBoughtRecords,
-  // getUserSoldRecords,
-  // getChatRoomList,
-  // getTransactionMessages,
-  // sendTransactionMessage,
-  // submitStudentAuth,
-  // imagesUploadCreate,
+  // Admin Dashboard Mock APIs（TODO: Remove if not needed）
   getNewUsersToday,
   getProductsPendingReviewCount,
   getPendingReturnsCount,

@@ -128,18 +128,18 @@
             <div class="user-info">
               <el-avatar
                 :size="40"
-                :src="row.avatar_url ? BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + row.avatar_url : ''"
+                :src="row['头像URL'] ? BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + row['头像URL'] : ''"
                 class="user-avatar"
               >
-                {{ row.username ? row.username.slice(0, 2).toUpperCase() : '??' }}
+                {{ row['用户名'] ? row['用户名'].slice(0, 2).toUpperCase() : '??' }}
               </el-avatar>
               <div class="user-details">
                 <div class="user-name">
-                  {{ row.username }}
-                  <el-tag v-if="row.is_staff" type="warning" size="small" class="admin-tag">管理员</el-tag>
+                  {{ row['用户名'] }}
+                  <el-tag v-if="row['是否管理员']" type="warning" size="small" class="admin-tag">管理员</el-tag>
                 </div>
-                <div class="user-email">{{ row.email || 'N/A' }}</div>
-                <div class="user-phone" v-if="row.phone_number">{{ row.phone_number }}</div>
+                <div class="user-email">{{ row['邮箱'] || 'N/A' }}</div>
+                <div class="user-phone" v-if="row['手机号码']">{{ row['手机号码'] }}</div>
               </div>
             </div>
           </template>
@@ -147,17 +147,17 @@
 
         <el-table-column label="专业" prop="major" width="120">
           <template #default="{ row }">
-            <span class="major-text">{{ row.major || '未填写' }}</span>
+            <span class="major-text">{{ row['专业'] || '未填写' }}</span>
           </template>
         </el-table-column>
 
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag
-              :type="getStatusType(row.status)"
+              :type="getStatusType(row['账户状态'])"
               class="status-tag"
             >
-              {{ getStatusText(row.status) }}
+              {{ getStatusText(row['账户状态']) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -165,17 +165,17 @@
         <el-table-column label="认证状态" width="100">
           <template #default="{ row }">
             <div class="verification-status">
-              <el-icon v-if="row.is_verified" class="verified-icon"><CircleCheck /></el-icon>
+              <el-icon v-if="row['是否已认证']" class="verified-icon"><CircleCheck /></el-icon>
               <el-icon v-else class="unverified-icon"><CircleClose /></el-icon>
-              <span>{{ row.is_verified ? '已认证' : '未认证' }}</span>
+              <span>{{ row['是否已认证'] ? '已认证' : '未认证' }}</span>
             </div>
           </template>
         </el-table-column>
 
         <el-table-column label="信用分" width="120" sortable>
           <template #default="{ row }">
-            <el-tag :color="getCreditColor(row.credit)" effect="dark">
-              {{ row.credit }}
+            <el-tag :color="getCreditColor(row['信用分'])" effect="dark">
+              {{ row['信用分'] }}
             </el-tag>
           </template>
         </el-table-column>
@@ -183,8 +183,8 @@
         <el-table-column label="注册时间" width="160">
           <template #default="{ row }">
             <div class="join-time">
-              <div>{{ formatDate(row.join_time) }}</div>
-              <div class="time-ago">{{ getTimeAgo(row.join_time) }}</div>
+              <div>{{ formatDate(row['注册时间']) }}</div>
+              <div class="time-ago">{{ getTimeAgo(row['注册时间']) }}</div>
             </div>
           </template>
         </el-table-column>
@@ -216,14 +216,14 @@
                   <el-dropdown-menu>
                     <el-dropdown-item command="credit">调整信用分</el-dropdown-item>
                     <el-dropdown-item
-                      :command="row.status === 'Active' ? 'disable' : 'enable'"
+                      :command="row['账户状态'] === 'Active' ? 'disable' : 'enable'"
                     >
-                      {{ row.status === 'Active' ? '禁用用户' : '启用用户' }}
+                      {{ row['账户状态'] === 'Active' ? '禁用用户' : '启用用户' }}
                     </el-dropdown-item>
                     <el-dropdown-item
                       command="delete"
                       divided
-                      :disabled="!isSuperAdminUser || row.user_id === currentUserId"
+                      :disabled="!isSuperAdminUser || row['用户ID'] === currentUserId"
                     >
                       删除用户
                     </el-dropdown-item>
@@ -261,20 +261,20 @@
       <div v-loading="loadingUserDetail">
         <div v-if="selectedUserDetail">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="用户ID">{{ selectedUserDetail.user_id }}</el-descriptions-item>
-            <el-descriptions-item label="用户名">{{ selectedUserDetail.username }}</el-descriptions-item>
-            <el-descriptions-item label="邮箱">{{ selectedUserDetail.email || '未填写' }}</el-descriptions-item>
-            <el-descriptions-item label="手机号">{{ selectedUserDetail.phone_number || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="用户ID">{{ selectedUserDetail['用户ID'] }}</el-descriptions-item>
+            <el-descriptions-item label="用户名">{{ selectedUserDetail['用户名'] }}</el-descriptions-item>
+            <el-descriptions-item label="邮箱">{{ selectedUserDetail['邮箱'] || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="手机号">{{ selectedUserDetail['手机号码'] || '未填写' }}</el-descriptions-item>
             <el-descriptions-item label="状态">
-              <el-tag :type="getStatusType(selectedUserDetail.status)">{{ getStatusText(selectedUserDetail.status) }}</el-tag>
+              <el-tag :type="getStatusType(selectedUserDetail['账户状态'])">{{ getStatusText(selectedUserDetail['账户状态']) }}</el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="信用分">{{ selectedUserDetail.credit }}</el-descriptions-item>
-            <el-descriptions-item label="管理员">{{ selectedUserDetail.is_staff ? '是' : '否' }}</el-descriptions-item>
-            <el-descriptions-item label="超级管理员">{{ selectedUserDetail.is_super_admin ? '是' : '否' }}</el-descriptions-item>
-            <el-descriptions-item label="已认证">{{ selectedUserDetail.is_verified ? '是' : '否' }}</el-descriptions-item>
-            <el-descriptions-item label="专业" :span="2">{{ selectedUserDetail.major || '未填写' }}</el-descriptions-item>
-            <el-descriptions-item label="个人简介" :span="2">{{ selectedUserDetail.bio || '未填写' }}</el-descriptions-item>
-            <el-descriptions-item label="注册时间" :span="2">{{ formatDate(selectedUserDetail.join_time) }} ({{ getTimeAgo(selectedUserDetail.join_time) }})</el-descriptions-item>
+            <el-descriptions-item label="信用分">{{ selectedUserDetail['信用分'] }}</el-descriptions-item>
+            <el-descriptions-item label="管理员">{{ selectedUserDetail['是否管理员'] ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="超级管理员">{{ selectedUserDetail['是否超级管理员'] ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="已认证">{{ selectedUserDetail['是否已认证'] ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="专业" :span="2">{{ selectedUserDetail['专业'] || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="个人简介" :span="2">{{ selectedUserDetail['个人简介'] || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="注册时间" :span="2">{{ formatDate(selectedUserDetail['注册时间']) }} ({{ getTimeAgo(selectedUserDetail['注册时间']) }})</el-descriptions-item>
           </el-descriptions>
         </div>
         <div v-else-if="userDetailError">
@@ -334,7 +334,7 @@
       width="30%"
       center
     >
-      <span>确认要{{ currentChangeStatusAction === 'disable' ? '禁用' : '启用' }}用户 <strong>{{ selectedUser ? selectedUser.username : '' }}</strong> 吗？</span>
+      <span>确认要{{ currentChangeStatusAction === 'disable' ? '禁用' : '启用' }}用户 <strong>{{ selectedUser ? selectedUser['用户名'] : '' }}</strong> 吗？</span>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="isConfirmChangeStatusDialogVisible = false">取消</el-button>
@@ -350,7 +350,7 @@
       width="30%"
       center
     >
-      <span>确认要删除用户 <strong>{{ selectedUser ? selectedUser.username : '' }}</strong> 吗？删除后数据不可恢复。</span>
+      <span>确认要删除用户 <strong>{{ selectedUser ? selectedUser['用户名'] : '' }}</strong> 吗？删除后数据不可恢复。</span>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="isConfirmDeleteDialogVisible = false">取消</el-button>
@@ -427,9 +427,9 @@ const users = ref([])
 
 const userStats = computed(() => ({
   total: users.value.length,
-  active: users.value.filter(u => u.status === 'Active').length,
-  disabled: users.value.filter(u => u.status === 'Disabled').length,
-  verified: users.value.filter(u => u.is_verified).length
+  active: users.value.filter(u => u['账户状态'] === 'Active').length,
+  disabled: users.value.filter(u => u['账户状态'] === 'Disabled').length,
+  verified: users.value.filter(u => u['是否已认证']).length
 }))
 
 const filteredUsers = computed(() => {
@@ -438,26 +438,26 @@ const filteredUsers = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(user =>
-      user.username.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query) ||
-      (user.phone_number && user.phone_number.includes(query))
+      user['用户名']?.toLowerCase().includes(query) ||
+      user['邮箱']?.toLowerCase().includes(query) ||
+      (user['手机号码'] && user['手机号码'].includes(query))
     )
   }
 
   if (statusFilter.value) {
-    filtered = filtered.filter(user => user.status === statusFilter.value)
+    filtered = filtered.filter(user => user['账户状态'] === statusFilter.value)
   }
 
   if (verificationFilter.value !== '') {
     const isVerified = verificationFilter.value === 'true'
-    filtered = filtered.filter(user => user.is_verified === isVerified)
+    filtered = filtered.filter(user => user['是否已认证'] === isVerified)
   }
 
   if (typeFilter.value) {
     if (typeFilter.value === 'admin') {
-      filtered = filtered.filter(user => user.is_staff)
+      filtered = filtered.filter(user => user['是否管理员'])
     } else if (typeFilter.value === 'user') {
-      filtered = filtered.filter(user => !user.is_staff)
+      filtered = filtered.filter(user => !user['是否管理员'])
     }
   }
 
@@ -525,7 +525,7 @@ const viewUserDetail = async (user) => {
   selectedUserDetail.value = null
   userDetailDialogVisible.value = true
   try {
-    const detail = await api.getUserProfileById(user.user_id)
+    const detail = await api.getUserProfileById(user['用户ID'])
     selectedUserDetail.value = detail
   } catch (error) {
     console.error('获取用户详情失败:', error)
@@ -547,7 +547,7 @@ const handleProfileEditSuccess = () => {
 }
 
 const openAdjustCreditDialog = (user) => {
-  currentEditingUser.value = user;
+  selectedUser.value = user; // Use selectedUser here for consistency
   creditAdjustmentForm.credit_adjustment = 0;
   creditAdjustmentForm.reason = '';
   adjustCreditDialogVisible.value = true;
@@ -565,7 +565,7 @@ const saveCreditAdjustment = async () => {
     if (valid) {
       try {
         await api.adjustUserCredit(
-          currentEditingUser.value.user_id,
+          selectedUser.value['用户ID'], // Use selectedUser
           {
             credit_adjustment: creditAdjustmentForm.credit_adjustment,
             reason: creditAdjustmentForm.reason,
@@ -573,7 +573,7 @@ const saveCreditAdjustment = async () => {
         );
         ElMessage.success('信用分调整成功');
         adjustCreditDialogVisible.value = false;
-        fetchUsers();
+        refreshUsers();
       } catch (error) {
         console.error('调整信用分失败:', error);
         const errorMessage = error.response?.data?.detail || '调整信用分失败，请稍后重试';
@@ -585,7 +585,7 @@ const saveCreditAdjustment = async () => {
 
 const cancelCreditAdjustment = () => {
   adjustCreditDialogVisible.value = false;
-  currentEditingUser.value = null;
+  selectedUser.value = null;
   if (creditFormRef.value) {
     creditFormRef.value.resetFields();
   }
@@ -610,7 +610,7 @@ const handleUserAction = (command, row) => {
         ElMessage.error('您没有权限删除用户。')
         return
       }
-      if (row.user_id === currentUserId.value) {
+      if (row['用户ID'] === currentUserId.value) {
         ElMessage.warning('您不能删除您自己的账户。')
         return
       }
@@ -626,14 +626,14 @@ const confirmChangeStatus = async () => {
   loading.value = true
   try {
     const newStatus = currentChangeStatusAction.value === 'disable' ? 'Disabled' : 'Active'
-    await api.updateUserStatus(selectedUser.value.user_id, { status: newStatus })
+    await api.updateUserStatus(selectedUser.value['用户ID'], { status: newStatus })
     ElMessage.success(`用户已${currentChangeStatusAction.value === 'disable' ? '禁用' : '启用'}`)
     isConfirmChangeStatusDialogVisible.value = false
     selectedUser.value = null
     refreshUsers()
   } catch (error) {
     console.error('更改用户状态失败:', error)
-    ElMessage.error(`更改用户 ${selectedUser.value.username} 状态失败: ${error.response?.data?.detail || error.message}`)
+    ElMessage.error(`更改用户 ${selectedUser.value['用户名']} 状态失败: ${error.response?.data?.detail || error.message}`)
   } finally {
     loading.value = false
   }
@@ -643,7 +643,7 @@ const confirmDeleteUser = async () => {
   if (!selectedUser.value) return
   loading.value = true
   try {
-    await api.deleteUser(selectedUser.value.user_id)
+    await api.deleteUser(selectedUser.value['用户ID'])
     ElMessage.success('用户已删除')
     isConfirmDeleteDialogVisible.value = false
     selectedUser.value = null
@@ -696,7 +696,6 @@ const getTimeAgo = (dateString) => {
 }
 
 const isSuperAdminUser = computed(() => store.getters['user/isSuperAdmin'])
-const currentUserId = computed(() => store.getters['user/getUserInfo']?.user_id)
 
 onMounted(() => {
   refreshUsers()

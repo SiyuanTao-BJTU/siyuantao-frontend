@@ -5,6 +5,7 @@ import api from '@/API_PRO.js'; // 导入新的 API 服务
 import { ElMessage } from "element-plus";
 import ProductCard from "@/product/components/ProductCard.vue"; // 引入 ProductCard
 import ProductDetail from "@/product/components/ProductDetail.vue"; // 1. 导入 ProductDetail 组件
+import { useStore } from 'vuex'; // 导入 useStore
 
 const products = ref([]);
 const isLoading = ref(true);
@@ -40,6 +41,12 @@ const top_item_3 = ref({});
 // 2. 添加控制 ProductDetail 对话框的 ref
 const isDetailDialogVisible = ref(false);
 const currentProductIdForDetail = ref(null);
+
+// 获取 Vuex store 实例
+const store = useStore();
+
+// 从 store 中获取商品分类
+const productCategories = computed(() => store.getters['product/getProductCategories']);
 
 const fetchProductData = async () => {
   isLoading.value = true;
@@ -91,16 +98,6 @@ const showProductDetail = (productId) => {
   console.log('isDetailDialogVisible:', isDetailDialogVisible.value, 'currentProductIdForDetail:', currentProductIdForDetail.value);
 };
 
-const mapToProductCardData = (apiItem) => {
-  return {
-    id: apiItem.商品id,
-    name: apiItem.商品名称,
-    price: parseFloat(apiItem.价格),
-    description: apiItem.商品描述,
-    images: apiItem.主图url ? [apiItem.主图url] : [],
-  };
-};
-
 const resetFilters = () => {
   filters.value = {
     searchKeyword: '',
@@ -112,6 +109,7 @@ const resetFilters = () => {
 };
 
 onMounted(() => {
+  store.dispatch('product/fetchProductCategories'); // 在组件挂载时获取商品分类
   fetchProductData();
 });
 
@@ -188,11 +186,13 @@ const handleCurrentChange = (newPage) => {
             @change="handleFilter"
             class="filter-select"
           >
-            <el-option label="电子产品" value="electronics" />
-            <el-option label="书籍文具" value="books" />
-            <el-option label="生活用品" value="daily" />
-            <el-option label="服装配饰" value="clothing" />
-            <el-option label="其他" value="others" />
+            <el-option label="全部" value="" /> <!-- 新增全部选项 -->
+            <el-option
+              v-for="category in productCategories"
+              :key="category.value"
+              :label="category.label"
+              :value="category.value"
+            />
           </el-select>
           
           <el-input
@@ -226,9 +226,9 @@ const handleCurrentChange = (newPage) => {
           </el-button>
         </div>
         <div v-if="filteredProducts.length > 0" class="block-for-content">
-          <div v-for="(card, index) in filteredProducts" :key="card.商品id || index" class="card" @click="showProductDetail(card.商品id)"> <!-- 修正: 使用 card.商品id -->
+          <div v-for="(card, index) in filteredProducts" :key="card.商品ID || index" class="card" @click="showProductDetail(card.商品ID)">
             <ProductCard
-                :product="mapToProductCardData(card)"
+                :product="card"
             />
           </div>
         </div>

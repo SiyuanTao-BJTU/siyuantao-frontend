@@ -10,14 +10,20 @@ const props = defineProps({
 });
 
 const firstImageUrl = computed(() => {
-  if (props.product && props.product.images) {
-    if (Array.isArray(props.product.images) && props.product.images.length > 0) {
-      return FormatObject.formattedImgUrl(props.product.images[0]);
-    } else if (typeof props.product.images === 'string' && props.product.images) {
-      return FormatObject.formattedImgUrl(props.product.images);
+  if (props.product) {
+    // 优先使用已定义的中文名 '主图URL'
+    if (props.product.主图URL) {
+      return FormatObject.formattedImgUrl(props.product.主图URL);
+    }
+    // 如果 '主图URL' 不存在，则尝试从 '图片URL列表' (假设是逗号分隔的字符串) 中获取第一个
+    if (props.product.图片URL列表 && typeof props.product.图片URL列表 === 'string') {
+      const imageUrls = props.product.图片URL列表.split(',');
+      if (imageUrls.length > 0 && imageUrls[0].trim()) {
+        return FormatObject.formattedImgUrl(imageUrls[0].trim());
+      }
     }
   }
-  return '';
+  return ''; // 返回空字符串或默认占位图URL
 });
 
 const formatImgUrl = (img) => {
@@ -28,20 +34,22 @@ const formatImgUrl = (img) => {
 <template>
   <el-card class="product-card" shadow="hover">
     <div class="product-content">
-      <img v-if="firstImageUrl" :src="firstImageUrl" class="product-image" :alt="product.name" />
+      <img v-if="firstImageUrl" :src="firstImageUrl" class="product-image" :alt="product.商品名称" />
       <div v-else class="product-image-placeholder">无图</div>
       <div class="product-details">
-        <h3 class="product-title" :title="product.name">{{ product.name }}</h3>
-        <p class="product-description" :title="product.description">{{ product.description }}</p>
-        <p class="product-price">￥{{ product.price }}</p>
-        <div class="product-meta" v-if="product.user">
+        <h3 class="product-title" :title="product.商品名称">{{ product.商品名称 }}</h3>
+        <p class="product-description" :title="product.描述">{{ product.描述 }}</p>
+        <p class="product-price">￥{{ product.价格 }}</p>
+        <div class="product-meta" v-if="product.卖家用户名">
           <div class="user-info">
-            <el-avatar :size="32" :src="product.user.avatar">
-              {{ product.user.username?.[0] }}
+            <!-- 
+            <el-avatar :size="32" :src="formatImgUrl(product.卖家头像URL)"> 
+              {{ product.卖家用户名?.[0] }}
             </el-avatar>
+            -->
             <div class="user-details">
-              <span class="username">{{ product.user.username }}</span>
-              <span class="user-credit">信用: {{ product.user.credit }}</span>
+              <span class="username">{{ product.卖家用户名 }}</span>
+              <!-- <span class="user-credit">信用: {{ product.卖家信用分 }}</span> -->
             </div>
           </div>
         </div>

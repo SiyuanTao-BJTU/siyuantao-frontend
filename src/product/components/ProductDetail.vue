@@ -5,6 +5,7 @@ import api from '@/API_PRO.js';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import FormatObject from '@/utils/format.js'; // 假设有这个工具类处理图片URL
 import { useStore } from 'vuex'; // 从 vuex 导入 useStore
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 
 const props = defineProps({
   productId: {
@@ -33,10 +34,9 @@ const tradeDateTime = ref(new Date()); // 交易时间，默认当前时间
 const tradeLocation = ref(''); // 交易地点
 
 const store = useStore(); // 获取 Vuex store 实例
-const currentUser = computed(() => store.getters['user/getUserInfo']); // 从 Vuex store 获取用户信息
 
 // 新增计算属性，安全地获取 user_id
-const currentUserId = computed(() => currentUser.value?.user_id);
+const currentUserId = computed(() => store.getters['user/getUserInfo']?.用户ID);
 
 const fetchProductDetail = async (id) => {
   if (!id) return;
@@ -52,22 +52,36 @@ const fetchProductDetail = async (id) => {
       productDetail.value = {
         id: response.商品ID,
         name: response.商品名称,
-        description: response.商品描述,
-        price: response.价格,
-        quantity: response.库存,
-        category: response.商品类别, // 保持原始值，显示时转换
-        condition: response.商品成色 || '未提供',
-        images: response.ImageURLs // 假设后端返回 ImageURLs 字段，是逗号分隔的字符串或数组
-          ? (Array.isArray(response.ImageURLs)
-              ? response.ImageURLs.map(url => url.startsWith('http') ? url : FormatObject.formattedImgUrl(url))
-              : response.ImageURLs.split(',').map(url => url.trim().startsWith('http') ? url.trim() : FormatObject.formattedImgUrl(url.trim()))
+        description: response.描述,
+        price: response.价格 !== null && response.价格 !== undefined ? parseFloat(response.价格) : null,
+        quantity: response.数量,
+        category: response.分类名称,
+        condition: (
+    typeof response.商品成色 === 'string' && response.商品成色.trim() !== ''
+      ? response.商品成色
+      : typeof response.商品成色 === 'number'
+        ? String(response.商品成色)
+        : typeof response.成色 === 'string' && response.成色.trim() !== ''
+          ? response.成色
+          : typeof response.成色 === 'number'
+            ? String(response.成色)
+            : typeof response.condition === 'string' && response.condition.trim() !== ''
+              ? response.condition
+              : typeof response.condition === 'number'
+                ? String(response.condition)
+                : '未提供'
+),
+        images: response.图片URL列表
+          ? (Array.isArray(response.图片URL列表)
+              ? response.图片URL列表.map(url => url.startsWith('http') ? url : FormatObject.formattedImgUrl(url))
+              : response.图片URL列表.split(',').map(url => url.trim().startsWith('http') ? url.trim() : FormatObject.formattedImgUrl(url.trim()))
             )
           : [],
         status: response.商品状态,
         postTime: response.发布时间,
         user: {
-          id: response.发布者用户ID || null,
-          username: response.发布者用户名 || '未知用户',
+          id: response.卖家ID || null,
+          username: response.卖家用户名 || '未知用户',
           // 这里可能需要调用另一个API获取更详细的卖家信息，或者后端在getProductDetail中提供
           // phone_number: response.发布者联系方式, // 假设有此字段
           // avatar_url: response.发布者头像, // 假设有此字段
@@ -178,7 +192,7 @@ const confirmTradeDetails = async () => {
             trade_location: tradeLocation.value,
         });
 
-        ElMessage.success('订单创建成功！订单号: ' + response.order_id);
+        ElMessage.success('订单创建成功！订单号: ' + response.订单ID);
         router.push({ name: 'my-orders' }); // 跳转到我的订单页面
     } catch (err) {
         console.error('创建订单失败:', err);
@@ -231,6 +245,15 @@ const getCategoryName = (categoryKey) => {
   return map[categoryKey] || categoryKey || '未知分类';
 };
 
+// 用户详情对话框相关
+const showUserDetailDialog = ref(false);
+const selectedUserId = ref(null);
+
+const handleViewSellerDetails = (sellerId) => {
+  selectedUserId.value = sellerId;
+  showUserDetailDialog.value = true;
+};
+
 // Watch for productId changes to reload data if the dialog is reused for different products
 watch(() => props.productId, (newId) => {
   if (newId && props.dialogVisible) {
@@ -253,25 +276,39 @@ onMounted(() => {
 });
 
 const canBuy = computed(() => {
-  return productDetail.value && 
-         quantityToBuy.value > 0 && // 购买数量大于0
-         quantityToBuy.value <= productDetail.value.quantity && // 购买数量不大于库存
+  return productDetail.value &&
+         productDetail.value.quantity > 0 && // Ensure quantity is positive
+         quantityToBuy.value > 0 &&
+         quantityToBuy.value <= productDetail.value.quantity &&
          productDetail.value.status === 'Active' &&
-         (!productDetail.value?.user || currentUserId.value !== productDetail.value?.user?.id); // 不能购买自己的商品
+         (!productDetail.value?.user || currentUserId.value !== productDetail.value.user?.id);
+});
+
+// Computed property for el-input-number's max value
+const inputNumberMax = computed(() => {
+  if (productDetail.value && productDetail.value.quantity > 0) {
+    return productDetail.value.quantity;
+  }
+  return 1; // Default to 1 if quantity is 0 or less, to prevent min > max error
+});
+
+// Computed property to disable the input number
+const isInputNumberDisabled = computed(() => {
+  return !productDetail.value || productDetail.value.quantity <= 0 || productDetail.value.status !== 'Active';
 });
 
 // 新增计算属性，用于收藏按钮的禁用逻辑
 const isFavoriteButtonDisabled = computed(() => {
   if (!productDetail.value) return true; // 如果商品详情为空，则禁用
   if (!currentUserId.value) return true; // 如果当前用户未登录，则禁用
-  return (productDetail.value.user?.id && currentUserId.value === productDetail.value.user.id) || isTogglingFavorite.value; // 不能收藏自己的商品，或正在收藏中
+  return (productDetail.value.user?.id && currentUserId.value === productDetail.value.user?.id) || isTogglingFavorite.value; // 不能收藏自己的商品，或正在收藏中
 });
 
 // 新增计算属性，用于联系卖家按钮的禁用逻辑
 const isContactSellerDisabled = computed(() => {
   if (!productDetail.value) return true; // 如果商品详情为空，则禁用
   if (!currentUserId.value) return true; // 如果当前用户未登录，则禁用
-  return !productDetail.value.user?.id || currentUserId.value === productDetail.value.user.id; // 不能联系自己，或卖家信息缺失
+  return !productDetail.value.user?.id || currentUserId.value === productDetail.value.user?.id; // 不能联系自己，或卖家信息缺失
 });
 </script>
 
@@ -340,7 +377,7 @@ const isContactSellerDisabled = computed(() => {
             <h4>卖家信息</h4>
             <div class="meta-item">
                 <span class="meta-label">卖家:</span>
-                <span class="meta-value">{{ productDetail.user?.username || '未知用户' }}</span>
+                <span class="meta-value" @click="handleViewSellerDetails(productDetail.user.id)" style="cursor: pointer;">{{ productDetail.user?.username || '未知用户' }}</span>
             </div>
             <!-- <p>联系方式: {{ productDetail.user?.phone_number || '未提供' }}</p> -->
           </div>
@@ -349,7 +386,12 @@ const isContactSellerDisabled = computed(() => {
 
           <div class="quantity-selector">
             <span class="meta-label">购买数量:</span>
-            <el-input-number v-model="quantityToBuy" :min="1" :max="productDetail.quantity" />
+            <el-input-number 
+              v-model="quantityToBuy" 
+              :min="1" 
+              :max="inputNumberMax" 
+              :disabled="isInputNumberDisabled" 
+            />
           </div>
 
           <div class="action-buttons">
@@ -423,6 +465,12 @@ const isContactSellerDisabled = computed(() => {
       </span>
     </template>
   </el-dialog>
+
+  <!-- 用户详情对话框 -->
+  <UserDetailDialog
+    v-model:visible="showUserDetailDialog"
+    :user-id="selectedUserId"
+  />
 </template>
 
 <style scoped>

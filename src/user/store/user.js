@@ -9,8 +9,7 @@ const state = () => ({
   authLoading: false, // 认证相关操作的加载状态
   notifications: [], // 系统通知列表
   unreadNotificationCount: 0, // 未读通知数量
-  // 可能需要的其他状态：
-  // userProfile: null, // 查看其他用户资料时使用
+  publicUserProfiles: {}, // 新增：缓存其他用户的公开资料，以用户ID为键
 })
 
 const mutations = {
@@ -33,10 +32,30 @@ const mutations = {
   UPDATE_UNREAD_COUNT(state, count) {
     state.unreadNotificationCount = count;
   },
+  SET_PUBLIC_USER_PROFILE(state, { userId, profile }) { // 新增：设置单个用户公开资料的mutation
+    state.publicUserProfiles[userId] = profile;
+  },
   // 可能需要的其他 mutations：
   // SET_USER_PROFILE(state, userProfile) { state.userProfile = userProfile; },
   // ADD_NOTIFICATION(state, notification) { state.notifications.unshift(notification); },
   // REMOVE_NOTIFICATION(state, notificationId) { state.notifications = state.notifications.filter(n => n.id !== notificationId); },
+  async fetchUserPublicProfile({ commit, state }, userId) { // 新增：获取用户公开资料的action
+    // 尝试从缓存中获取，如果存在则直接返回
+    if (state.publicUserProfiles[userId]) {
+      console.log(`从缓存中获取用户 ${userId} 的公开资料。`);
+      return state.publicUserProfiles[userId];
+    }
+    try {
+      const publicProfile = await api.getUserPublicProfile(userId); // 调用后端新接口
+      commit('SET_PUBLIC_USER_PROFILE', { userId, profile: publicProfile });
+      console.log(`成功获取用户 ${userId} 的公开资料。`);
+      return publicProfile;
+    } catch (error) {
+      console.error(`获取用户 ${userId} 的公开资料失败:`, error);
+      ElMessage.error(`获取用户 ${userId} 的公开资料失败: ` + (error.response?.data?.detail || error.message));
+      throw error;
+    }
+  },
 }
 
 const actions = {
@@ -63,9 +82,8 @@ const actions = {
 
         // 在 fetchUserInfo 成功后，用户信息应该已经被设置到 state 中了
         // 从 state.userInfo 中获取 userId 并存储到 localStorage
-        // 尝试使用 id 或 user_id 作为用户 ID
         const userInfo = this.state.user.userInfo;
-        const userId = userInfo ? (userInfo.id || userInfo.user_id) : null;
+        const userId = userInfo ? userInfo.用户ID : null; // 直接使用中文键名 用户ID
 
         if (userId) {
           localStorage.setItem("userId", userId);
@@ -178,26 +196,30 @@ const actions = {
 
 const getters = {
   // 用户模块的 getters (从 state 计算派生数据)
-  isAuthenticated: state => !!state.token, // Check if token exists
-  // New getter to check if the user is a regular admin (based on is_staff)
-  isAdmin: (state) => state.userInfo?.is_staff === true,
-  // New getter to check if the user is the super admin (based on email)
-  isSuperAdmin: (state) => state.userInfo?.email === '23301132@bjtu.edu.cn',
-  // You might want a combined role getter for menu filtering
+  isAuthenticated: state => !!state.isLoggedIn, // 根据 isLoggedIn 状态判断是否认证
+  // New getter to check if the user is a regular admin (based on 是否管理员)
+  isAdmin: state => state.userInfo && state.userInfo.是否管理员 === true,
+  // New getter to check if the user is a super admin (based on 是否超级管理员)
+  isSuperAdmin: state => state.userInfo && state.userInfo.是否超级管理员 === true,
+
   userRole: (state, getters) => {
+    if (!state.isLoggedIn || !state.userInfo) {
+      return 'guest';
+    }
     if (getters.isSuperAdmin) {
       return 'super_admin';
     } else if (getters.isAdmin) {
       return 'admin';
+    } else if (state.userInfo.是否已认证) {
+      return 'verified_user'; // 假设认证用户是普通用户
     } else {
-      return 'user'; // Or null, depending on your needs for non-admin users
+      return 'user'; // 未认证但已登录的用户
     }
   },
   getUserInfo: state => state.userInfo,
   getNotifications: state => state.notifications,
   getUnreadNotificationCount: state => state.unreadNotificationCount,
-  // 可能需要的其他 getters：
-  // getUserProfile: state => state.userProfile,
+  getPublicUserProfile: state => userId => state.publicUserProfiles[userId] // 新增：获取单个用户公开资料
 }
 
 export default {
