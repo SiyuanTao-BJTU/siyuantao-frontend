@@ -13,7 +13,12 @@ const router = createRouter({
       redirect: to => {
         const isAuthenticated = localStorage.getItem("token");
         const userRole = store.getters['user/userRole']; // Get role from store
+
         if (isAuthenticated) {
+          const lastVisitedPath = localStorage.getItem('lastVisitedPath');
+          if (lastVisitedPath && lastVisitedPath !== '/login' && !lastVisitedPath.startsWith('/login')) {
+            return lastVisitedPath;
+          }
           if (userRole === 'admin' || userRole === 'super_admin') {
             return '/admin/dashboard'; // If authenticated and admin, go to admin dashboard
           }
@@ -185,7 +190,7 @@ router.beforeEach(async (to, from, next) => {
   // 如果 token 存在但 store 中没有用户信息，则尝试获取
   if (token && !userInfo) {
     try {
-      userInfo = await store.dispatch('user/fetchUserInfo');
+      userInfo = await store.dispatch('user/fetchCurrentUserProfile');
       currentIsAuthenticated = store.getters['user/isAuthenticated'];
     } catch (error) {
       console.warn('路由守卫: fetchUserInfo 失败', error);
@@ -199,14 +204,6 @@ router.beforeEach(async (to, from, next) => {
          return next('/login');
       }
     }
-  }
-
-  // Admin path tracking
-  if (to.path.startsWith('/admin') && currentIsAuthenticated && userInfo && (userInfo.是否管理员 || userInfo.是否超级管理员)) {
-    localStorage.setItem('wasInAdmin', 'true');
-  } else if (!to.path.startsWith('/admin') && localStorage.getItem('wasInAdmin') === 'true') {
-    // If navigating out of admin, clear the flag
-    localStorage.removeItem('wasInAdmin');
   }
 
   // Requires authentication
@@ -247,8 +244,13 @@ router.beforeEach(async (to, from, next) => {
 router.afterEach(() => {
   NProgress.done(); // 关闭顶部进度条
   // Clear 'wasInAdmin' if token is no longer present (e.g., after explicit logout)
-  if (!localStorage.getItem('token')) {
-    localStorage.removeItem('wasInAdmin');
+  localStorage.removeItem('wasInAdmin'); // Ensure this is always removed if not explicitly handled elsewhere
+
+  // Save last visited path if authenticated and not on a login page
+  const token = localStorage.getItem('token');
+  const currentPath = router.currentRoute.value.fullPath;
+  if (token && currentPath !== '/login' && !currentPath.startsWith('/login')) {
+    localStorage.setItem('lastVisitedPath', currentPath);
   }
 });
 

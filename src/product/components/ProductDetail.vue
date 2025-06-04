@@ -221,9 +221,14 @@ const handleContactSeller = () => {
       ElMessage.error('无法获取卖家信息');
       return;
   }
-  // 跳转到聊天页面，并带上卖家ID
-  // router.push({ name: 'ChatRoom', params: { userId: productDetail.value.user.id } });
-  ElMessage.info('联系卖家功能开发中，目标用户ID: ' + productDetail.value.user?.id);
+  // 跳转到聊天页面，并带上卖家ID和商品ID
+  router.push({
+    name: 'messages',
+    query: {
+      otherUserId: productDetail.value.user.id,
+      productId: productDetail.value.id,
+    },
+  });
 };
 
 const closeDialog = () => {

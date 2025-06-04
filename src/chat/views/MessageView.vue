@@ -1,492 +1,566 @@
-<script setup>
-import { onMounted, ref, computed, onUnmounted } from "vue";
-import { RefreshRight } from "@element-plus/icons-vue";
-import WebSocketService from "@/socket_client/socket.js";
-import FormatObject from "@/utils/format.js";
-import api from '@/API_PRO.js';
-import ChatMessage from "@/chat/components/ChatMessage.vue";
-import InputBlock from "@/chat/components/InputBlock.vue";
-import ItemInfoBar from "@/chat/components/ItemInfoBar.vue";
-import router from "@/router/index.js";
-
-// 组件全局变量定义
-let avatar_char = computed(() => localStorage.getItem("username").slice(0, 2).toUpperCase());
-let username = ref(localStorage.getItem("username"));
-let isRoomSelected = ref(false);
-let roomList = ref([]);
-let top_title_contact_name = ref("");
-let selected_room_item_id = ref("");
-let selected_room_id = ref("");
-let componentKey = ref(0); // 用于强制刷新子组件
-let item_info = ref({
-  name: "",
-  img: [],
-  id: "",
-  price: Number,
-});
-
-// 组件全局函数定义
-const handleChatroomList = (data) => {
-  if (data.chatroomlist) {
-    roomList.value = FormatObject.formattedChatroomList(data.chatroomlist);
-  }
-};
-
-onMounted(() => {
-  WebSocketService.fetchAllChatrooms();
-  WebSocketService.on("FetchChatroomlist", handleChatroomList);
-});
-
-onUnmounted(() => {
-  WebSocketService.off("FetchChatroomlist", handleChatroomList);
-});
-
-const fetch_room_list = () => {
-  WebSocketService.fetchAllChatrooms();
-};
-
-const select_contact = (room) => {
-  isRoomSelected.value = true;
-  top_title_contact_name.value = room.contact;
-  selected_room_item_id.value = room.item_id;
-  selected_room_id.value = room.room_id;
-  api.getProductDetail(room.item_id)
-    .then(data => {
-      item_info.value.id = data.id;
-      item_info.value.name = data.name;
-      item_info.value.price = data.price;
-      item_info.value.img = data.images;
-    })
-    .catch(error => {
-      console.warn('获取商品详情失败', error);
-      item_info.value = { name: "", img: [], id: "", price: 0 };
-    });
-  componentKey.value += 1;
-};
-
-const handleGoSell = () => {
-  router.push('/sell')
-}
-
-const handleGoBuy = () => {
-  router.push('/home')
-}
-
-const handleOtherAvatarClick = (username) => {
-  router.push(`/profile/${username}`)
-}
-</script>
-
 <template>
-  <div class="basic-container">
-    <div class="center-container">
-      <div class="whole-chatroom-container">
-        <div class="left-container">
-          <div class="info-block">
-            <div class="avatar-info">
-              <el-avatar :size="80" shape="square" class="avatar" @click="handleOtherAvatarClick(username)">{{avatar_char}}</el-avatar>
-              <h3>{{username}}</h3>
+  <div class="chat-container">
+    <div class="chat-layout-wrapper">
+      <!-- Left Column: Conversation List -->
+      <div class="conversation-list-col">
+        <el-card class="conversation-card">
+          <template #header>
+            <div class="card-header">
+              <span>我的消息</span>
+              <el-icon><ChatDotRound /></el-icon>
+            </div>
+          </template>
+          <div class="conversation-list-content">
+            <div v-if="conversations.length === 0" class="no-conversation-placeholder">
+              <p class="text-center text--disabled">暂无聊天会话</p>
+            </div>
+            <div v-else class="conversation-list-group">
+              <div
+                v-for="(session, index) in conversations"
+                :key="session.session_id"
+                class="conversation-list-item"
+                :class="{ 'selected-conversation': selectedConversation && selectedConversation.session_id === session.session_id }"
+                @click="selectConversation(session)"
+              >
+                <div class="conversation-list-item-avatar">
+                  <el-avatar :size="48" :src="session.other_avatar_url || 'https://via.placeholder.com/48'"></el-avatar>
+                </div>
+                <div class="conversation-list-item-content">
+                  <div class="conversation-list-item-title">
+                      <el-link type="primary" @click.stop="viewUserProfile(session.other_user_id)">{{ session.other_username }}</el-link>
+                  </div>
+                  <div class="conversation-list-item-subtitle text-truncate">
+                      <img v-if="session.product_image_url" :src="session.product_image_url" class="product-thumbnail" alt="商品图片">
+                      {{ session.product_name }}
+                  </div>
+                  <div class="conversation-list-item-subtitle text-truncate">{{ session.last_message_content || '暂无消息' }}</div>
+                </div>
+                <div class="conversation-list-item-action">
+                  <el-badge
+                    v-if="session.unread_count > 0"
+                    :value="session.unread_count > 99 ? '99+' : session.unread_count"
+                    type="danger"
+                  ></el-badge>
+                  <el-button link :icon="DeleteIcon" @click.stop="confirmHideConversation(session)"></el-button>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="chat-room-list-block">
-            <div class="room-list-top-bar">
-              <p>聊天室列表</p>
-              <div class="gap" />
-              <el-icon @click="fetch_room_list"><RefreshRight /></el-icon>
+        </el-card>
+      </div>
+
+      <!-- Right Column: Chat Messages -->
+      <div class="chat-messages-col">
+        <el-card class="chat-card d-flex flex-column">
+          <template #header>
+            <div v-if="selectedConversation" class="card-header chat-header">
+              <el-avatar :size="36" :src="selectedConversation.other_avatar_url || 'https://via.placeholder.com/36'" class="mr-3"></el-avatar>
+              <span class="font-weight-medium">
+                  <el-link type="primary" @click="viewUserProfile(selectedConversation.other_user_id)">{{ selectedConversation.other_username }}</el-link>
+              </span>
+              <el-tag
+                size="small"
+                type="primary"
+                class="ml-3"
+                @click="goToProductDetail(selectedConversation.product_id)"
+                v-if="selectedConversation.product_name"
+              >
+                {{ selectedConversation.product_name }}
+                <el-icon><Link /></el-icon>
+              </el-tag>
+              <div style="flex-grow: 1;"></div>
+              <el-button link :icon="UserIcon" @click="viewUserProfile(selectedConversation.other_user_id)"></el-button>
             </div>
-            <div class="room-list">
-              <el-scrollbar height="600px" class="room-list-scrollbar">
-                <div v-if="roomList.length === 0" class="select-notice">
-                  <el-empty description="暂无聊天室"></el-empty>
-                  <div class="empty-navigator">
-                    <el-button type="primary" @click="handleGoSell">去出售</el-button>
-                    <el-button type="primary" @click="handleGoBuy">去购买</el-button>
+            <div v-else class="card-header chat-header">
+              请选择一个会话开始聊天
+            </div>
+          </template>
+
+          <div class="chat-messages-content" ref="chatMessagesContainer">
+            <div v-if="selectedConversation" class="d-flex flex-column">
+              <div
+                v-for="message in currentChatMessages"
+                :key="message.消息ID"
+                :class="['d-flex mb-4', message.发送者ID === currentUser.用户ID ? 'justify-end' : 'justify-start']"
+              >
+                <div v-if="message.发送者ID !== currentUser.用户ID" class="message-avatar mr-3">
+                  <el-avatar style="width: 36px; height: 36px;" :src="selectedConversation.other_avatar_url || 'https://via.placeholder.com/36'"></el-avatar>
+                </div>
+                <div
+                  :class="['message-bubble', message.发送者ID === currentUser.用户ID ? 'sent' : 'received']"
+                >
+                  <div class="message-content pa-3">
+                    <div class="message-text">{{ message.消息内容 }}</div>
+                    <div class="message-time text-right text-caption text--disabled mt-1">
+                      {{ formatDateTime(message.发送时间) }}
+                    </div>
                   </div>
                 </div>
-                <div v-else>
-                  <div v-for="room in roomList" :key="room.room_id">
-                    <el-card @click="select_contact(room)" shadow="hover" class="room-card">
-                      <div class="card-info-person">
-                        <el-avatar :size="40" shape="square" class="small_avatar" @click="handleOtherAvatarClick(room.contact)">{{room.contact.slice(0, 2).toUpperCase()}}</el-avatar>
-                        <p>{{room.contact}}</p>
-                      </div>
-                      <p class="room-id-text"><b>RoomID: </b>{{FormatObject.formattedUUID(room.room_id)}}</p>
-                    </el-card>
-                  </div>
-                </div>
-              </el-scrollbar>
-              <div class="room-list-end" v-if="roomList.length !== 0">
-                <div>已经是最后一个聊天室了</div>
-                <div>去其他地方逛逛吧</div>
-                <div class="empty-navigator">
-                  <el-button type="primary" @click="handleGoSell">去出售</el-button>
-                  <el-button type="primary" @click="handleGoBuy">去购买</el-button>
+                <div v-if="message.发送者ID === currentUser.用户ID" class="message-avatar ml-3">
+                  <el-avatar style="width: 36px; height: 36px;" :src="currentUser.avatar_url || 'https://via.placeholder.com/36'"></el-avatar>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-        <div class="gap-block"></div>
-        <div class="right-container-selected" v-if="isRoomSelected">
-          <div class="communicator-info-block">
-            <div class="top-info-contact">
-              <el-avatar :size="80" shape="square" class="top_contact_avatar" @click=handleOtherAvatarClick(top_title_contact_name)>{{top_title_contact_name.slice(0, 2).toUpperCase()}}</el-avatar>
-              <p>{{top_title_contact_name}}</p>
+            <div v-else class="d-flex align-center justify-center fill-height text--disabled">
+              <p>从左侧选择一个会话或通过商品详情页的"联系卖家"按钮发起新会话。</p>
             </div>
           </div>
-          <div class="detail-container">
-            <div class="chat-container">
-              <div class="chat-message-block">
-                <ChatMessage
-                    :key="componentKey"
-                    :item_id="selected_room_item_id"
-                    :room_id="selected_room_id"
-                    :username="username"
-                />
-              </div>
-              <div class="input-container">
-                <InputBlock
-                    :key="componentKey"
-                    :isChatroom="true"
-                    :item_id="selected_room_item_id"
-                    :room_id="selected_room_id"
-                />
-              </div>
-            </div>
-            <div class="item-picture-container">
-              <ItemInfoBar
-                  :key="componentKey"
-                  :item_info="item_info"
-              />
-            </div>
+
+          <div v-if="selectedConversation" class="chat-input-area">
+            <el-input
+              v-model="newMessageContent"
+              placeholder="输入消息..."
+              clearable
+              class="message-input"
+              @keypress.enter="sendMessage"
+            ></el-input>
+            <el-dropdown trigger="click" class="ml-2">
+              <el-button type="info" :icon="ChatDotRoundIcon" circle></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="(phrase, index) in commonPhrases" :key="index" @click="selectCommonPhrase(phrase)">
+                    {{ phrase }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button type="primary" class="ml-2" @click="sendMessage" :disabled="!newMessageContent.trim()">
+              发送
+              <el-icon class="el-icon--right"><Promotion /></el-icon>
+            </el-button>
           </div>
-        </div>
-        <div class="right-container-unselected" v-else>
-          <div v-if="roomList.length === 0" class="select-notice">
-            <el-empty description="暂无可用聊天室"/>
-            <div class="empty-navigator">
-              <el-button type="primary" @click="handleGoSell">去出售</el-button>
-              <el-button type="primary" @click="handleGoBuy">去购买</el-button>
-            </div>
-          </div>
-          <div v-else class="select-notice">
-            <el-empty description="请选择一个聊天室"/>
-            <div class="empty-navigator">
-              <el-button type="primary" @click="handleGoSell">去出售</el-button>
-              <el-button type="primary" @click="handleGoBuy">去购买</el-button>
-            </div>
-          </div>
-        </div>
+        </el-card>
       </div>
     </div>
+
+    <!-- User Detail Dialog -->
+    <user-detail-dialog v-model:visible="userDetailDialog" :user-id="selectedUserId" @close="userDetailDialog = false"></user-detail-dialog>
+
+    <!-- Confirm Hide Conversation Dialog -->
+    <el-dialog v-model="confirmHideDialog" title="隐藏聊天会话" width="500px">
+      <span>您确定要隐藏此聊天会话吗？隐藏后，此会话将不再显示在您的会话列表中，但消息记录不会被删除。</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="confirmHideDialog = false">取消</el-button>
+          <el-button type="danger" @click="hideConversation">隐藏</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
+<script>
+import { mapState, mapActions, mapGetters } from 'vuex';
+import UserDetailDialog from '@/user/components/UserDetailDialog.vue';
+import { ChatDotRound, Link, Promotion, Delete, User } from '@element-plus/icons-vue'; // Import Element Plus icons
+import { markRaw } from 'vue'; // Import markRaw
+
+export default {
+  name: 'MessageView',
+  components: {
+    UserDetailDialog,
+    ChatDotRound, // Register Element Plus icons
+    Link,
+    Promotion,
+  },
+  data() {
+    return {
+      selectedConversation: null,
+      selectedConversationIndex: -1,
+      newMessageContent: '',
+      userDetailDialog: false,
+      selectedUserId: null,
+      confirmHideDialog: false,
+      conversationToHide: null,
+      DeleteIcon: markRaw(Delete), // Expose imported Delete icon to template, marked as raw
+      UserIcon: markRaw(User),     // Expose imported User icon to template, marked as raw
+      ChatDotRoundIcon: markRaw(ChatDotRound), // Mark ChatDotRound for raw usage
+      LinkIcon: markRaw(Link), // Mark Link for raw usage
+      PromotionIcon: markRaw(Promotion), // Mark Promotion for raw usage
+    };
+  },
+  computed: {
+    ...mapState('chat', ['conversations', 'currentChatMessages', 'commonPhrases']),
+    ...mapGetters('user', ['currentUser']),
+  },
+  watch: {
+    '$route.query': {
+      immediate: true,
+      async handler(newQuery) {
+        const { otherUserId, productId } = newQuery;
+        if (otherUserId && productId) {
+          await this.loadConversations();
+          const existingSession = this.conversations.find(
+            (s) => s.other_user_id === otherUserId && s.product_id === productId
+          );
+          if (existingSession) {
+            this.selectConversation(existingSession);
+          } else {
+            const otherUserProfile = await this.fetchUserPublicProfile(otherUserId);
+            const productDetails = await this.$store.dispatch('product/fetchProductDetail', productId);
+
+            const tempSession = {
+              session_id: productId,
+              other_user_id: otherUserId,
+              product_id: productId,
+              other_username: otherUserProfile?.username || '未知用户',
+              other_avatar_url: otherUserProfile?.avatar_url || null,
+              product_name: productDetails?.商品名称 || '未知商品',
+              product_image_url: productDetails?.主图URL || null,
+              last_message_content: '',
+              last_message_time: new Date().toISOString(),
+              unread_count: 0,
+            };
+            this.conversations.unshift(tempSession);
+            this.selectedConversation = tempSession;
+            this.selectedConversationIndex = 0;
+
+            this.$nextTick(() => {
+              this.scrollToBottom();
+            });
+          }
+        } else {
+          await this.loadConversations();
+          if (this.conversations.length > 0) {
+            this.selectConversation(this.conversations[0]);
+          }
+        }
+      },
+    },
+  },
+  async created() {
+    // initial load is handled by watch on $route.query
+  },
+  methods: {
+    ...mapActions('chat', ['fetchConversations', 'fetchChatMessages', 'sendMessage', 'hideConversation']),
+    ...mapActions('user', ['fetchCurrentUserProfile', 'fetchUserPublicProfile']),
+
+    async loadConversations() {
+      try {
+        await this.fetchConversations();
+        this.conversations.forEach(async (session) => {
+            if (session.product_id && !session.product_image_url) {
+                const productDetails = await this.$store.dispatch('product/fetchProductDetail', session.product_id);
+                if (productDetails && productDetails.主图URL) {
+                    session.product_image_url = productDetails.主图URL;
+                }
+            }
+        });
+      } catch (error) {
+        console.error('加载聊天会话失败:', error);
+        this.$message.error('加载聊天会话失败!');
+      }
+    },
+
+    async selectConversation(session) {
+      this.selectedConversation = session;
+      this.selectedConversationIndex = this.conversations.findIndex(
+        (s) => s.session_id === session.session_id
+      );
+
+      try {
+        await this.fetchChatMessages({
+          otherUserId: session.other_user_id,
+          productId: session.product_id,
+        });
+        await this.loadConversations();
+
+        this.$nextTick(() => {
+          this.scrollToBottom();
+        });
+      } catch (error) {
+        console.error('获取消息记录失败:', error);
+        this.$message.error('获取消息记录失败!');
+      }
+    },
+    async sendMessage() {
+      if (!this.newMessageContent.trim() || !this.selectedConversation) return;
+
+      const messageData = {
+        receiver_id: this.selectedConversation.other_user_id,
+        product_id: this.selectedConversation.product_id,
+        content: this.newMessageContent.trim(),
+      };
+
+      try {
+        await this.$store.dispatch('chat/sendMessage', messageData);
+        this.newMessageContent = '';
+        await this.fetchChatMessages({
+          otherUserId: this.selectedConversation.other_user_id,
+          productId: this.selectedConversation.product_id,
+        });
+        await this.loadConversations();
+
+        this.$nextTick(() => {
+          this.scrollToBottom();
+        });
+      } catch (error) {
+        console.error('发送消息失败:', error);
+        this.$message.error('发送消息失败!');
+      }
+    },
+    formatDateTime(dateTimeString) {
+      if (!dateTimeString) return '';
+      const date = new Date(dateTimeString);
+      return date.toLocaleString();
+    },
+    scrollToBottom() {
+      const container = this.$refs.chatMessagesContainer;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    },
+    goToProductDetail(productId) {
+      this.$router.push({ name: 'ProductDetail', params: { id: productId } });
+    },
+    viewUserProfile(userId) {
+      this.selectedUserId = userId;
+      this.userDetailDialog = true;
+    },
+    confirmHideConversation(session) {
+      this.conversationToHide = session;
+      this.confirmHideDialog = true;
+    },
+    async hideConversation() {
+      if (this.conversationToHide) {
+        try {
+          await this.hideConversation({
+            otherUserId: this.conversationToHide.other_user_id,
+            productId: this.conversationToHide.product_id,
+          });
+          this.$message.success('会话已隐藏!');
+          this.confirmHideDialog = false;
+          this.conversationToHide = null;
+          if (this.selectedConversation &&
+              this.selectedConversation.other_user_id === this.conversationToHide.other_user_id &&
+              this.selectedConversation.product_id === this.conversationToHide.product_id) {
+            this.selectedConversation = null;
+            this.selectedConversationIndex = -1;
+          }
+          await this.loadConversations();
+        } catch (error) {
+          console.error('隐藏会话失败:', error);
+          this.$message.error('隐藏会话失败!');
+        }
+      }
+    },
+    selectCommonPhrase(phrase) {
+      this.newMessageContent = phrase;
+    },
+  },
+  mounted() {
+    this.scrollToBottom();
+    this.fetchCurrentUserProfile();
+  },
+};
+</script>
+
 <style scoped>
-.basic-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #CAD9F1;
-  padding-top: 50px;
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding-bottom: 20px;
-}
-
-.center-container{
+.chat-container {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
+  height: 100vh;
+  padding: 20px;
+  background-color: #f0f2f5;
+  box-sizing: border-box;
+}
+
+.chat-layout-wrapper {
+  display: flex;
+  flex-grow: 1;
+  gap: 20px;
+}
+
+.conversation-list-col {
+  flex-basis: 280px;
+  flex-grow: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages-col {
+  flex-basis: 0;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-card,
+.chat-card {
   height: 100%;
-  max-width: 1200px;
-  min-width: 1000px;
-  margin-top: 20px;
-  width: 100%;
-  padding: 0 20px;
-  box-sizing: border-box;
-}
-
-.whole-chatroom-container {
-  width: 100%;
-  height: 800px;
-  display: grid;
-  grid-template-columns: 30% 1fr 69%;
+  display: flex;
+  flex-direction: column;
   border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.gap-block {
-  background-color: transparent;
-}
-
-.left-container {
+.card-header {
   display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  box-shadow: none;
-}
-
-.right-container-selected {
-  display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  box-shadow: none;
-}
-
-.el-card {
-  margin-top: 10px;
-  margin-left: 10px;
-  margin-right: 10px;
-  border: none;
-  box-shadow: none;
-}
-
-.room-card {
-  margin: 0 10px 10px 10px;
-  border-radius: 8px;
-  background-color: #f8f8f8;
-  transition: background-color 0.3s ease;
-}
-
-.room-card:hover {
-  background-color: #eeeeee;
-}
-
-.room-card :deep(.el-card__body) {
-  padding: 15px;
-}
-
-.right-container-unselected {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background-color: #ffffff;
-  box-shadow: none;
-}
-
-.select-notice {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  text-align: center;
-  align-items: center;
-}
-
-.select-notice h1{
-  font-size: 30px;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 18px;
   font-weight: bold;
+  color: #303133;
 }
 
-.empty-navigator {
+.card-header .el-icon {
+  font-size: 24px;
+  color: #409eff;
+}
+
+.chat-header .el-avatar {
+  margin-right: 12px;
+}
+
+.chat-header .el-tag {
+  margin-left: 12px;
+  cursor: pointer;
+}
+
+.chat-header .el-tag .el-icon {
+  font-size: 14px;
+  margin-left: 5px;
+}
+
+.conversation-list-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.conversation-list-item {
   display: flex;
-  flex-direction: row;
-  justify-content: center;
   align-items: center;
-  margin-top: 20px;
-  gap: 15px;
+  padding: 12px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+  transition: background-color 0.2s ease;
 }
 
-.info-block {
-  display: flex;
-  background-color: #a1c9ee;
-  border-radius: 5px;
-  flex-direction: column;
-  width: 100%;
-  padding: 15px;
-  box-sizing: border-box;
+.conversation-list-item:hover {
+  background-color: #f5f7fa;
 }
 
-.avatar-info {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
-  margin: 0;
+.conversation-list-item.selected-conversation {
+  background-color: #e6f7ff;
+  border-left: 4px solid #409eff;
 }
 
-.avatar {
-  font-size: 40px;
-  background-color: #9c9ea1;
-  color: #ffffff;
-  margin-right: 10px;
-}
-
-.small_avatar {
-  font-size: 20px;
-  background-color: #79b7f8;
-  color: #ffffff;
-  margin-right: 10px;
-}
-
-.top_contact_avatar {
-  font-size: 40px;
-  background-color: #79b7f8;
-  color: #ffffff;
+.conversation-list-item-avatar {
   margin-right: 15px;
 }
 
-h3 {
-  font-size: 20px;
-  font-weight: bold;
-  margin: 0;
+.conversation-list-item-content {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.conversation-list-item-title {
+  font-weight: 500;
   color: #303133;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
 }
 
-.room-list-top-bar {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #e8e8e8;
-  border-radius: 5px;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-.room-list-top-bar p {
-  font-size: 16px;
-  font-weight: bold;
-  margin: 0;
-  color: #303133;
-}
-
-.room-list-top-bar .gap {
-}
-
-.room-list-top-bar .el-icon {
-  margin-right: 0;
-  cursor: pointer;
-  color: #606266;
-}
-
-.room-list {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  margin-top: 0;
-}
-
-.room-list-scrollbar {
-  margin-left: 0;
-  margin-right: 0;
-  height: 600px;
-  width: 100%;
-}
-
-.card-info-person {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-.card-info-person p {
-  font-size: 15px;
-  margin-left: 10px;
-  color: #303133;
-  font-weight: bold;
-}
-
-.room-id-text {
+.conversation-list-item-subtitle {
   font-size: 13px;
   color: #909399;
-  margin-top: 0;
-}
-
-.communicator-info-block {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
   align-items: center;
-  background-color: #e8e8e8;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  width: 100%;
-  border-bottom: 1px solid #d0d0d0;
-  padding: 15px;
-  box-sizing: border-box;
+  gap: 5px;
 }
 
-.top-info-contact {
+.product-thumbnail {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.conversation-list-item-action {
   display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
   align-items: center;
-  margin: 0;
+  gap: 8px;
+  margin-left: 15px;
 }
 
-.top-info-contact p {
-  font-size: 20px;
-  font-weight: bold;
-  margin-left: 10px;
+.el-badge {
+  margin-right: 8px;
+}
+
+.chat-messages-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: #fbfbfb;
+}
+
+.message-bubble {
+  max-width: 70%;
+  border-radius: 10px;
+  padding: 10px 15px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.message-bubble.sent {
+  background-color: #e1f5fe;
+  align-self: flex-end;
+}
+
+.message-bubble.received {
+  background-color: #ffffff;
+  align-self: flex-start;
+}
+
+.message-text {
   color: #303133;
 }
 
-.detail-container {
-  display: grid;
-  grid-template-columns: 70% 30%;
-  height: calc(100% - 70px);
+.message-time {
+  font-size: 11px;
+  color: #909399;
+  margin-top: 5px;
 }
 
-.chat-container {
-  border-right: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.chat-message-block {
-  height: calc(100% - 180px);
-  width: 100%;
-  overflow-y: auto;
-  padding: 15px;
-  box-sizing: border-box;
-}
-
-.input-container {
-  height: 180px;
-  width: 100%;
+.message-avatar {
   flex-shrink: 0;
-  padding: 0 15px 15px 15px;
-  box-sizing: border-box;
 }
 
-.item-picture-container {
-  height: 100%;
-  width: 100%;
-  padding: 15px;
-  box-sizing: border-box;
-  overflow-y: auto;
-}
-
-.room-list-end::before {
-  content: "";
-  display: block;
-  width: 100%;
-  height: 1px;
-  background-color: #969494;
-  margin-top: 20px;
-}
-
-.room-list-end {
-  margin-top: 20px;
+.chat-input-area {
   display: flex;
-  text-align: center;
-  flex-direction: column;
+  padding: 15px 20px;
+  border-top: 1px solid #ebeef5;
+  background-color: #ffffff;
+}
+
+.message-input {
+  flex-grow: 1;
+  margin-right: 10px;
+}
+
+.no-conversation-placeholder {
+  display: flex;
   justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #909399;
+  font-size: 16px;
 }
 
-p b {
-  font-weight: bold;
-}
-
-.right-container-unselected .select-notice .el-empty {
-  padding: 0;
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

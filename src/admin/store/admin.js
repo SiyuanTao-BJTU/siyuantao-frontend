@@ -44,6 +44,36 @@ const actions = {
   async fetchAdminReports({ commit }, params) { /* 获取举报列表 */ },
   async handleReport({ commit }, { reportId, result }) { /* 管理员处理举报 */ },
   async sendSystemNotification({ commit }, notificationData) { /* 发送系统通知 */ },
+  async fetchAdminChatMessages({ commit }, params) {
+    try {
+      const messages = await API_PRO.getAdminChatMessages(params);
+      // 根据需要，可以添加一个 mutation 来存储这些消息，例如 SET_ADMIN_CHAT_MESSAGES
+      // commit('SET_ADMIN_CHAT_MESSAGES', messages);
+      return messages;
+    } catch (error) {
+      console.error('获取管理员聊天消息失败:', error);
+      throw error;
+    }
+  },
+  async updateAdminMessageVisibility({ commit }, { messageId, senderVisible, receiverVisible }) {
+    try {
+      await API_PRO.adminUpdateSingleMessageVisibility(messageId, senderVisible, receiverVisible);
+      // Optionally, you might want to re-fetch the messages or update the specific message in the state
+      // For now, we'll let the AdminChatView component handle the re-fetch after successful update.
+    } catch (error) {
+      console.error('更新管理员消息可见性失败:', error);
+      throw error;
+    }
+  },
+  async deleteAdminChatMessage({ commit }, messageId) {
+    try {
+      await API_PRO.adminDeleteChatMessage(messageId);
+      // 不直接在 store 中移除消息，而是让组件重新加载列表以反映变化
+    } catch (error) {
+      console.error('物理删除消息失败:', error);
+      throw error;
+    }
+  },
 }
 
 const getters = {

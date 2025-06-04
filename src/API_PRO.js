@@ -306,6 +306,51 @@ const deleteAdminEvaluation = (evaluationId) => { // 新增：管理员删除评
 
 
 // ========================================================================
+// Reports Module (Tag: Reports)
+// ========================================================================
+
+const createReport = (reportData) => { // create_report_route_api_v1_reports_post
+  return apiRequest('POST', '/api/v1/reports/', reportData);
+};
+
+const getReportStatistics = () => { // get_report_statistics_route_api_v1_reports_admin_statistics_get
+  return apiRequest('GET', '/api/v1/reports/admin/statistics');
+};
+
+const getAdminReports = (params) => { // get_all_reports_for_admin_route_api_v1_reports_admin_get
+  return apiRequest('GET', '/api/v1/reports/admin', null, params);
+};
+
+const getReportById = (reportId) => { // get_report_by_id_route_api_v1_reports_admin__report_id__get
+  return apiRequest('GET', `/api/v1/reports/admin/${reportId}`);
+};
+
+const updateReportStatus = (reportId, updateData) => { // update_report_status_route_api_v1_reports_admin__report_id__status_put
+  return apiRequest('PUT', `/api/v1/reports/admin/${reportId}/status`, updateData);
+};
+
+const deleteReport = (reportId) => { // delete_report_route_api_v1_reports_admin__report_id__delete
+  return apiRequest('DELETE', `/api/v1/reports/admin/${reportId}`);
+};
+
+// ========================================================================
+// Chat Module (Tag: Chat)
+// ========================================================================
+
+const createChatMessage = (messageData) => apiRequest('POST', '/api/v1/chat/messages', messageData);
+const getUserChatSessions = () => apiRequest('GET', '/api/v1/chat/sessions');
+const getMessagesForSession = (otherUserId, productId) => apiRequest('GET', `/api/v1/chat/messages/${otherUserId}/${productId}`);
+// const updateMessageVisibility = (messageId, isSender, visible) => apiRequest('PUT', `/api/v1/chat/messages/${messageId}/visibility?is_sender=${isSender}&visible=${visible}`); // Temporarily removed as per plan
+
+const hideChatSession = (otherUserId, productId) => apiRequest('PUT', `/api/v1/chat/sessions/hide/${otherUserId}/${productId}?visible=false`);
+const getAdminChatMessages = (params) => apiRequest('GET', '/api/v1/chat/admin/messages', null, params);
+
+const adminUpdateSingleMessageVisibility = (messageId, senderVisible, receiverVisible) => 
+  apiRequest('PUT', `/api/v1/chat/admin/messages/${messageId}/visibility`, null, { sender_visible: senderVisible, receiver_visible: receiverVisible });
+
+const adminDeleteChatMessage = (messageId) => apiRequest('DELETE', `/api/v1/chat/admin/messages/${messageId}`);
+
+// ========================================================================
 // Upload Module (Tag: Upload - based on path /api/v1/upload/image)
 // ========================================================================
 
@@ -407,15 +452,38 @@ export default {
   getAdminEvaluations,
   deleteAdminEvaluation, 
 
+  // Reports
+  createReport,
+  getReportStatistics,
+  getAdminReports,
+  getReportById,
+  updateReportStatus,
+  deleteReport,
+
   // Upload
   uploadImage, 
 
   // Chat (WebSocket helper)
   getChatWebSocketUrl,
 
+  // Chat APIs
+  createChatMessage,
+  getUserChatSessions,
+  getMessagesForSession,
+  // updateMessageVisibility,
+  hideChatSession,
+  getAdminChatMessages,
+  adminUpdateSingleMessageVisibility,
+  adminDeleteChatMessage,
+
   // Admin Dashboard Mock APIs（TODO: Remove if not needed）
   getNewUsersToday,
   getProductsPendingReviewCount,
   getPendingReturnsCount,
   getLatestReportsCount,
+
+  // Notifications
+  getUserNotifications: (params) => apiRequest('GET', '/api/v1/notifications/mine', null, params),
+  markNotificationAsRead: (notificationId) => apiRequest('PUT', `/api/v1/notifications/${notificationId}/read`),
+  deleteNotification: (notificationId) => apiRequest('DELETE', `/api/v1/notifications/${notificationId}`),
 }; 

@@ -153,7 +153,7 @@ const handleVerifyLoginOtp = async () => {
           localStorage.setItem("token", token);
 
           // Dispatch login action to fetch user info and set login status
-          await store.dispatch('user/fetchUserInfo');
+          await store.dispatch('user/fetchCurrentUserProfile');
           
           const userId = localStorage.getItem('userId');
           if (userId) {

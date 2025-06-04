@@ -86,7 +86,9 @@ const verifyOtp = async () => {
           ElMessage.success('邮箱验证成功！');
           verificationStep.value = 'success';
           // Re-fetch user info to update is_verified status in store
-          await store.dispatch('user/fetchUserInfo');
+          await store.dispatch('user/fetchCurrentUserProfile');
+          // 重定向到用户主页或之前尝试访问的页面
+          router.push(router.currentRoute.value.query.redirect || '/');
         } else {
           errorMessage.value = response.message || '邮箱验证失败：未知错误。';
           verificationStep.value = 'error';

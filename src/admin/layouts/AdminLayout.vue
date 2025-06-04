@@ -63,12 +63,12 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 
 // 导入 Element Plus 图标组件
-import { Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold, ArrowLeftBold, Document, Star } from '@element-plus/icons-vue';
+import { Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold, ArrowLeftBold, Document, Star, ChatDotRound } from '@element-plus/icons-vue';
 
 export default defineComponent({
   name: 'AdminLayout',
   components: { // 注册图标组件
-     Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold, ArrowLeftBold, Document, Star
+     Odometer, User, Box, RefreshLeft, Warning, Bell, Setting, ArrowDown, Expand, Fold, ArrowLeftBold, Document, Star, ChatDotRound
   },
   setup() {
     const store = useStore();
@@ -93,6 +93,7 @@ export default defineComponent({
       { path: '/admin/products-audit', title: '商品审核', iconComponent: Box, roles: ['admin', 'super_admin'] },
       { path: '/admin/orders', title: '订单管理', iconComponent: Document, roles: ['admin', 'super_admin'] },  
       { path: '/admin/evaluations', title: '评价管理', iconComponent: Star, roles: ['admin', 'super_admin'] }, 
+      { path: '/admin/chat', title: '聊天管理', iconComponent: ChatDotRound, roles: ['admin', 'super_admin'] },
       { path: '/admin/returns', title: '退货申请管理', iconComponent: RefreshLeft, roles: ['admin', 'super_admin'] },
       { path: '/admin/reports', title: '举报管理', iconComponent: Warning, roles: ['admin', 'super_admin'] },
       { path: '/admin/notifications', title: '系统通知发送', iconComponent: Bell, roles: ['admin', 'super_admin'] },

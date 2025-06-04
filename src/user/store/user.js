@@ -39,23 +39,6 @@ const mutations = {
   // SET_USER_PROFILE(state, userProfile) { state.userProfile = userProfile; },
   // ADD_NOTIFICATION(state, notification) { state.notifications.unshift(notification); },
   // REMOVE_NOTIFICATION(state, notificationId) { state.notifications = state.notifications.filter(n => n.id !== notificationId); },
-  async fetchUserPublicProfile({ commit, state }, userId) { // 新增：获取用户公开资料的action
-    // 尝试从缓存中获取，如果存在则直接返回
-    if (state.publicUserProfiles[userId]) {
-      console.log(`从缓存中获取用户 ${userId} 的公开资料。`);
-      return state.publicUserProfiles[userId];
-    }
-    try {
-      const publicProfile = await api.getUserPublicProfile(userId); // 调用后端新接口
-      commit('SET_PUBLIC_USER_PROFILE', { userId, profile: publicProfile });
-      console.log(`成功获取用户 ${userId} 的公开资料。`);
-      return publicProfile;
-    } catch (error) {
-      console.error(`获取用户 ${userId} 的公开资料失败:`, error);
-      ElMessage.error(`获取用户 ${userId} 的公开资料失败: ` + (error.response?.data?.detail || error.message));
-      throw error;
-    }
-  },
 }
 
 const actions = {
@@ -77,10 +60,10 @@ const actions = {
         // 如果登录接口直接返回了用户信息，可以在这里先更新 state
         // 例如：if (loginData.user) { commit("SET_USER_INFO", loginData.user); }
 
-        // 调用 fetchUserInfo 获取完整的用户资料并等待其完成
-        await dispatch("fetchUserInfo");
+        // 调用 fetchCurrentUserProfile 获取完整的用户资料并等待其完成
+        await dispatch("fetchCurrentUserProfile");
 
-        // 在 fetchUserInfo 成功后，用户信息应该已经被设置到 state 中了
+        // 在 fetchCurrentUserProfile 成功后，用户信息应该已经被设置到 state 中了
         // 从 state.userInfo 中获取 userId 并存储到 localStorage
         const userInfo = this.state.user.userInfo;
         const userId = userInfo ? userInfo.用户ID : null; // 直接使用中文键名 用户ID
@@ -88,7 +71,7 @@ const actions = {
         if (userId) {
           localStorage.setItem("userId", userId);
         } else {
-          console.warn("Login action: fetchUserInfo did not return valid user info with id or user_id.");
+          console.warn("Login action: fetchCurrentUserProfile did not return valid user info with id or user_id.");
         }
 
         // 更新登录状态 (确保在获取用户信息后更新状态)
@@ -141,14 +124,14 @@ const actions = {
     commit("SET_LOGIN_STATUS", false);
     commit("SET_USER_INFO", null);
     localStorage.removeItem("token");
-    // localStorage.removeItem("refresh_token");
+    localStorage.removeItem("lastVisitedPath"); // Clear last visited path on logout
     if (inStoreLogout) {
       ElMessage.success("已退出登录");
     }
     router.push("/login"); // 现在 router 已定义
   },
 
-  async fetchUserInfo({ commit, state }) {
+  async fetchCurrentUserProfile({ commit, state }) {
     // 如果已经有用户信息或者 authLoading 为 true，避免重复请求
     if (state.userInfo && state.isLoggedIn) return state.userInfo;
     // if (state.authLoading) return;
@@ -191,17 +174,32 @@ const actions = {
   async fetchNotifications({ commit }) { /* ... */ }, // 获取系统通知列表
   async markNotificationAsRead({ commit }, notificationId) { /* ... */ }, // 标记通知为已读
   async deleteNotification({ commit }, notificationId) { /* ... */ }, // 删除通知
-  // async fetchUserProfile({ commit }, userId) { /* 获取其他用户资料 */ },
+  async fetchUserPublicProfile({ commit, state }, userId) { // 新增：获取用户公开资料的action
+    // 尝试从缓存中获取，如果存在则直接返回
+    if (state.publicUserProfiles[userId]) {
+      console.log(`从缓存中获取用户 ${userId} 的公开资料。`);
+      return state.publicUserProfiles[userId];
+    }
+    try {
+      const publicProfile = await api.getUserPublicProfile(userId); // 调用后端新接口
+      commit('SET_PUBLIC_USER_PROFILE', { userId, profile: publicProfile });
+      console.log(`成功获取用户 ${userId} 的公开资料。`);
+      return publicProfile;
+    } catch (error) {
+      console.error(`获取用户 ${userId} 的公开资料失败:`, error);
+      ElMessage.error(`获取用户 ${userId} 的公开资料失败: ` + (error.response?.data?.detail || error.message));
+      throw error;
+    }
+  },
 }
 
 const getters = {
   // 用户模块的 getters (从 state 计算派生数据)
   isAuthenticated: state => !!state.isLoggedIn, // 根据 isLoggedIn 状态判断是否认证
+  currentUser: state => state.userInfo, // Add this getter
   // New getter to check if the user is a regular admin (based on 是否管理员)
-  isAdmin: state => state.userInfo && state.userInfo.是否管理员 === true,
-  // New getter to check if the user is a super admin (based on 是否超级管理员)
-  isSuperAdmin: state => state.userInfo && state.userInfo.是否超级管理员 === true,
-
+  isAdmin: state => state.userInfo && state.userInfo['是否管理员'], // 假设用户信息中有此字段
+  isSuperAdmin: state => state.userInfo && state.userInfo['是否超级管理员'], // 假设用户信息中有此字段
   userRole: (state, getters) => {
     if (!state.isLoggedIn || !state.userInfo) {
       return 'guest';
@@ -216,10 +214,12 @@ const getters = {
       return 'user'; // 未认证但已登录的用户
     }
   },
+  getUserPublicProfile: (state) => (userId) => { // 新增：获取其他用户公开资料的getter
+    return state.publicUserProfiles[userId];
+  },
   getUserInfo: state => state.userInfo,
   getNotifications: state => state.notifications,
   getUnreadNotificationCount: state => state.unreadNotificationCount,
-  getPublicUserProfile: state => userId => state.publicUserProfiles[userId] // 新增：获取单个用户公开资料
 }
 
 export default {

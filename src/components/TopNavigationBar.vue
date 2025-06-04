@@ -143,7 +143,7 @@ const handleCommand = (command) => {
 watch(
   () => route.path,
   (newPath) => {
-    const publicPaths = ['/login', '/register', '/verify-email', '/admin/login']; // 包含管理员登录页
+    const publicPaths = ['/login', '/register', '/verify-email']; // 包含管理员登录页
     if (!publicPaths.includes(newPath)) {
       // console.log("TopNav: Route changed to non-public path, fetching user info.");
       fetchUserInfo();
