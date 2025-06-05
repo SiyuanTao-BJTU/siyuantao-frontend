@@ -595,7 +595,6 @@ export default {
 
 .message-item.sent {
   align-self: flex-end;
-  flex-direction: row-reverse;
 }
 
 .message-item.received {

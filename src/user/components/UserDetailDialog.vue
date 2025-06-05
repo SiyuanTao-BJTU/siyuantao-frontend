@@ -51,6 +51,7 @@ import { ref, onMounted, watch, defineProps, defineEmits, computed } from 'vue';
 import { useStore } from 'vuex';
 import api from '@/API_PRO.js';
 import { ElMessage } from 'element-plus';
+import FormatObject from '@/utils/format.js';
 
 const props = defineProps({
   visible: {
@@ -95,7 +96,7 @@ watch(() => props.visible, async (newVal) => {
           isSuperAdmin: profileData['是否超级管理员'],
           isVerified: profileData['是否已认证'],
           major: profileData['专业'],
-          avatar: profileData['头像URL'],
+          avatar: FormatObject.formattedImgUrl(profileData['头像URL']),
           bio: profileData['个人简介'],
           joinTime: profileData['注册时间'],
           lastLoginTime: profileData['最后登录时间'],
@@ -108,7 +109,7 @@ watch(() => props.visible, async (newVal) => {
           id: props.userId, // 公开资料API可能不返回ID，这里沿用传入的userId
           username: profileData['用户名'],
           credit: profileData['信用分'],
-          avatar: profileData['头像URL'],
+          avatar: FormatObject.formattedImgUrl(profileData['头像URL']),
           bio: profileData['个人简介'],
           phoneNumber: profileData['手机号码'],
         };
