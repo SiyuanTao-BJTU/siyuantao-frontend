@@ -70,16 +70,14 @@ const FormatObject = {
     }
 
     // Use the base URL from backend.config.js
-    // Ensure backend.config.js is imported if not already
-    // import BackendConfig from '../../backend.config'; // Add this import if needed
-    const baseUrl = BackendConfig.BASIC_URL; // Use BASIC_URL from config
+    const baseUrl = BackendConfig.BASIC_URL; // Revert to BASIC_URL
 
     // Ensure baseUrl does not end with / and the image path does not start with / for correct joining
     const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    const imgPath = res_img_url.startsWith('/') ? res_img_url.slice(1) : res_img_url;
+    // The image path from the backend is already expected to be like '/uploads/...', so we don't need to add '/uploads/' again.
+    const imgPath = res_img_url.startsWith('/') ? res_img_url : '/' + res_img_url; // Ensure imgPath starts with /
 
-    // Assuming the media path relative to the base URL is /media/
-    return `${base}/media/${imgPath}`;
+    return `${base}${imgPath}`;
   },
 
   formattedImgUrlList: (res_img_url_list) => {

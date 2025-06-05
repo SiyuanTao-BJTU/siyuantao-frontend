@@ -194,14 +194,11 @@ const confirmTradeDetails = async () => {
         
         const quantity = quantityToBuy.value;
 
-        // 将 tradeDateTime.value（字符串）转换为 Date 对象
-        const tradeTimeDateObject = new Date(tradeDateTime.value); 
-
         // 调用创建订单 API
         const response = await api.createOrder({
             product_id: productDetail.value.id, // 这里 productDetail.value.id 应该是一个有效的 UUID 字符串
             quantity: quantity,
-            trade_time: tradeTimeDateObject.toISOString(), // 对 Date 对象调用 toISOString()
+            trade_time: formatLocalDateTime(tradeDateTime.value), // 使用格式化函数
             trade_location: tradeLocation.value,
         });
 
@@ -214,6 +211,12 @@ const confirmTradeDetails = async () => {
     } finally {
         showTradeInfoDialog.value = false; // 无论成功失败，关闭对话框
     }
+};
+
+const onTradeDialogClose = () => {
+    // 重置 tradeDateTime 和 tradeLocation 的值
+    tradeDateTime.value = new Date();
+    tradeLocation.value = '';
 };
 
 const cancelTradeDetails = () => {
@@ -338,6 +341,18 @@ const disabledTradeDate = (time) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return time.getTime() < today.getTime();
+};
+
+const formatLocalDateTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const seconds = d.getSeconds().toString().padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
 const onTradeDateTimeChange = (val) => {
@@ -479,7 +494,7 @@ const onTradeDateTimeChange = (val) => {
     width="40%"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
-    @close="cancelTradeDetails"
+    @close="onTradeDialogClose"
   >
     <el-form label-width="80px">
       <el-form-item label="交易时间">

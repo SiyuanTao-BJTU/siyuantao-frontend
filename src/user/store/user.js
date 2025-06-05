@@ -1,6 +1,9 @@
 import api from "@/API_PRO.js"; // 导入 API
 import { ElMessage } from "element-plus"; // 导入 ElMessage 用于提示
 import router from '@/router/index.js'; // 导入 router 实例
+import FormatObject from '@/utils/format.js'; // 导入格式化工具
+
+let profilePromise = null;
 
 const state = () => ({
   // 用户模块的状态
@@ -23,6 +26,9 @@ const mutations = {
       state.userInfo = null;
       return;
     }
+    // 使用格式化工具确保头像URL是完整的
+    const avatarUrl = rawUserInfo['头像URL'] ? FormatObject.formattedImgUrl(rawUserInfo['头像URL']) : null;
+
     state.userInfo = {
       user_id: rawUserInfo['用户ID'],
       username: rawUserInfo['用户名'],
@@ -33,7 +39,7 @@ const mutations = {
       is_super_admin: rawUserInfo['是否超级管理员'],
       is_verified: rawUserInfo['是否已认证'],
       major: rawUserInfo['专业'],
-      avatar_url: rawUserInfo['头像URL'],
+      avatar_url: avatarUrl, // 使用格式化后的URL
       bio: rawUserInfo['个人简介'],
       phone_number: rawUserInfo['手机号码'],
       registration_time: rawUserInfo['注册时间'],
@@ -157,40 +163,43 @@ const actions = {
   },
 
   async fetchCurrentUserProfile({ commit, state }) {
-    // 如果已经有用户信息或者 authLoading 为 true，避免重复请求
-    // if (state.userInfo && state.isLoggedIn) return state.userInfo; // Removed to allow re-fetch if needed
-    // if (state.authLoading) return;
-
     const token = localStorage.getItem("token");
     if (!token) {
-      commit("SET_LOGIN_STATUS", false);
-      commit("SET_USER_INFO", null);
-      return null;
+        commit("SET_LOGIN_STATUS", false);
+        commit("SET_USER_INFO", null);
+        return null;
     }
 
-    try {
-      // commit("SET_ADMIN_LOADING", true); // 如果有 loading 状态
-      // 调用获取用户信息 API
-      // openapi 中获取当前用户信息接口是 /api/v1/users/me GET
-      const rawUserInfo = await api.getUserProfile(); // 假设 api.getUserProfile 对应此接口
-
-      commit("SET_USER_INFO", rawUserInfo); // Mutation will normalize
-      commit("SET_LOGIN_STATUS", true); // 确认登录状态
-      return state.userInfo; // Return the normalized user info from state
-
-    } catch (error) {
-      console.error("获取用户信息失败:", error);
-      // Token 可能无效或过期，清除登录状态
-      commit("SET_LOGIN_STATUS", false);
-      commit("SET_USER_INFO", null);
-      localStorage.removeItem("token");
-      localStorage.removeItem("userId"); // Clear userId on error
-      // localStorage.removeItem("refresh_token");
-      // ElMessage.error("用户信息获取失败或登录已过期，请重新登录");
-      throw error; // 抛出错误
-    } finally {
-      // commit("SET_ADMIN_LOADING", false); // 如果有 loading 状态
+    // If user info is already in state, just return it. This is the fastest path.
+    if (state.userInfo) {
+        return Promise.resolve(state.userInfo);
     }
+
+    // If a request is already in flight, return its promise to avoid duplicate requests.
+    if (profilePromise) {
+        return profilePromise;
+    }
+
+    // Create and store the promise *before* making the API call.
+    profilePromise = api.getUserProfile()
+        .then(rawUserInfo => {
+            commit("SET_USER_INFO", rawUserInfo);
+            commit("SET_LOGIN_STATUS", true);
+            // After success, subsequent calls will be handled by the `if (state.userInfo)` check.
+            return state.userInfo; // Return the processed user info
+        })
+        .catch(error => {
+            console.error("获取用户信息失败:", error);
+            commit("SET_LOGIN_STATUS", false);
+            commit("SET_USER_INFO", null);
+            localStorage.removeItem("token");
+            localStorage.removeItem("userId");
+            // Reset promise only on failure to allow retries.
+            profilePromise = null; 
+            throw error; // Re-throw to allow calling components to handle it.
+        });
+
+    return profilePromise;
   },
 
   async updateProfile({ commit }, profileData) { /* ... */ }, // 更新用户个人资料

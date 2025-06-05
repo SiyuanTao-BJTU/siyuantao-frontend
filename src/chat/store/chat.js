@@ -1,5 +1,6 @@
 import API_PRO from '@/API_PRO';
 import { ElMessage } from 'element-plus'; // Import ElMessage
+import FormatObject from '@/utils/format.js'; // 导入格式化工具
 
 const state = () => ({
   // 聊天模块的状态
@@ -29,10 +30,10 @@ const mutations = {
       session_id: conv['会话ID'],
       other_user_id: conv['对方用户ID'],
       other_username: conv['对方用户名'],
-      other_avatar_url: conv['对方头像URL'], // Directly from backend
+      other_avatar_url: conv['对方头像URL'] ? FormatObject.formattedImgUrl(conv['对方头像URL']) : null, // 格式化
       product_id: conv['相关商品ID'],
       product_name: conv['相关商品名称'],
-      product_image_url: conv['相关商品图片URL'], // Directly from backend
+      product_image_url: conv['相关商品图片URL'] ? FormatObject.formattedImgUrl(conv['相关商品图片URL']) : null, // 格式化
       last_message_content: conv['最近一条消息'],
       last_message_time: conv['最近消息时间'],
       unread_count: conv['未读消息数'],

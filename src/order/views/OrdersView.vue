@@ -102,13 +102,15 @@ const closeEvaluationDialog = () => {
 };
 
 const handleCancelOrder = async (order) => {
-    ElMessageBox.confirm('确定要取消该订单吗?', '取消订单', {
+    ElMessageBox.prompt('请输入取消订单的原因', '取消订单', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
+        inputPattern: /.+/,
+        inputErrorMessage: '取消原因不能为空',
         type: 'warning',
-    }).then(async () => {
+    }).then(async ({ value }) => {
         try {
-            await api.cancelOrder(order.订单ID, { cancel_reason: '用户取消' }); // 更新为中文键名，并添加取消原因
+            await api.cancelOrder(order.订单ID, { cancel_reason: value });
             ElMessage.success('订单已取消');
             fetchOrders();
         } catch (err) {
@@ -159,15 +161,14 @@ const handleCompleteOrder = async (order) => {
 };
 
 const handleRejectOrder = async (order) => {
-    ElMessageBox.prompt('请输入拒绝原因', '拒绝订单', {
+    ElMessageBox.confirm('确定要拒绝该订单吗?', '拒绝订单', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        inputPattern: /.+/,
-        inputErrorMessage: '拒绝原因不能为空',
         type: 'warning',
-    }).then(async ({ value }) => {
+    }).then(async () => {
         try {
-            await api.rejectOrder(order.订单ID, { rejection_reason: value }); // 修改为 rejection_reason
+            // 卖家拒绝不再需要理由，因此不传递第二个参数
+            await api.rejectOrder(order.订单ID); 
             ElMessage.success('订单已拒绝');
             fetchOrders();
         } catch (err) {
@@ -227,11 +228,9 @@ onMounted(() => {
                 @view-detail="openOrderDetail(order)"
             >
                 <template #actions="{ order: cardOrder }">
-                    <el-button v-if="activeTab === 'buyer'">
-                        <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation' || cardOrder.订单状态 === 'ConfirmedBySeller'" type="warning" size="small" @click.stop="handleCancelOrder(cardOrder)">取消订单</el-button>
-                        <el-button v-if="cardOrder.订单状态 === 'Completed' && !cardOrder.是否已评价" type="success" size="small" @click.stop="openEvaluationDialog(cardOrder)">评价</el-button>
-                        <el-button v-if="cardOrder.订单状态 === 'ConfirmedBySeller'" type="primary" size="small" @click.stop="handleCompleteOrder(cardOrder)">确认收货</el-button>
-                    </el-button>
+                    <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation' || cardOrder.订单状态 === 'ConfirmedBySeller'" type="warning" size="small" @click.stop="handleCancelOrder(cardOrder)">取消订单</el-button>
+                    <el-button v-if="cardOrder.订单状态 === 'Completed' && !cardOrder.是否已评价" type="success" size="small" @click.stop="openEvaluationDialog(cardOrder)">评价</el-button>
+                    <el-button v-if="cardOrder.订单状态 === 'ConfirmedBySeller'" type="primary" size="small" @click.stop="handleCompleteOrder(cardOrder)">确认收货</el-button>
                     <el-button v-if="isAdmin" type="danger" size="small" @click.stop="handleDeleteOrder(cardOrder)">删除</el-button>
                 </template>
             </OrderCard>
@@ -252,10 +251,8 @@ onMounted(() => {
                         @view-detail="openOrderDetail(order)"
                     >
                         <template #actions="{ order: cardOrder }">
-                            <el-button v-if="activeTab === 'seller'">
-                                <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="success" size="small" @click.stop="handleConfirmOrder(cardOrder)">确认订单</el-button>
-                                <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="danger" size="small" @click.stop="handleRejectOrder(cardOrder)">拒绝订单</el-button>
-                            </el-button>
+                            <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="success" size="small" @click.stop="handleConfirmOrder(cardOrder)">确认订单</el-button>
+                            <el-button v-if="cardOrder.订单状态 === 'PendingSellerConfirmation'" type="danger" size="small" @click.stop="handleRejectOrder(cardOrder)">拒绝订单</el-button>
                             <el-button v-if="isAdmin" type="danger" size="small" @click.stop="handleDeleteOrder(cardOrder)">删除</el-button>
                         </template>
                     </OrderCard>

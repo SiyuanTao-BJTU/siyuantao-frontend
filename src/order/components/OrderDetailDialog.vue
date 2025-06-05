@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/API_PRO.js'; // 确保路径正确
 import { useStore } from 'vuex'; // 导入 useStore
+import { useRouter } from 'vue-router'; // 导入 useRouter
 import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 
 const props = defineProps({
@@ -19,6 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 
 const store = useStore(); // 获取 Vuex store 实例
+const router = useRouter(); // 获取 router 实例
 const currentUser = computed(() => store.getters['user/getUserInfo']);
 const currentUserId = computed(() => currentUser.value?.用户ID);
 
@@ -48,16 +50,17 @@ const closeDialog = () => {
 };
 
 const handleCancelOrder = async () => {
-    ElMessageBox.confirm('确定要取消该订单吗?', '取消订单', {
+    ElMessageBox.prompt('请输入取消订单的原因', '取消订单', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
+        inputPattern: /.+/,
+        inputErrorMessage: '取消原因不能为空',
         type: 'warning',
-    }).then(async () => {
+    }).then(async ({ value }) => {
         try {
-            await api.cancelOrder(props.order.订单ID, {}); // 可以传递取消原因
+            await api.cancelOrder(props.order.订单ID, { cancel_reason: value });
             ElMessage.success('订单已取消');
             emit('close');
-            // 可以通知父组件刷新订单列表
         } catch (err) {
             console.error('取消订单失败:', err);
             ElMessage.error('取消订单失败，请稍后重试。');
@@ -108,18 +111,15 @@ const handleCompleteOrder = async () => {
 };
 
 const handleRejectOrder = async () => {
-    ElMessageBox.prompt('请输入拒绝原因', '拒绝订单', {
+    ElMessageBox.confirm('确定要拒绝该订单吗?', '拒绝订单', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        inputPattern: /.+/,
-        inputErrorMessage: '拒绝原因不能为空',
         type: 'warning',
-    }).then(async ({ value }) => {
+    }).then(async () => {
         try {
-            await api.rejectOrder(props.order.订单ID, { rejection_reason_data: { reason: value } }); // 根据API调整rejection_reason_data结构
+            await api.rejectOrder(props.order.订单ID);
             ElMessage.success('订单已拒绝');
             emit('close');
-            // 可以通知父组件刷新订单列表
         } catch (err) {
             console.error('拒绝订单失败:', err);
             ElMessage.error('拒绝订单失败，请稍后重试。' + (err.response?.data?.detail || err.message));
@@ -131,11 +131,31 @@ const handleRejectOrder = async () => {
 
 // 联系买家/卖家逻辑需要根据你的具体实现来确定
 const handleContactBuyer = () => {
-    ElMessage.info('联系买家功能开发中...');
+    if (!props.order?.买家ID || !props.order?.商品ID) {
+        ElMessage.error('无法获取买家或商品信息');
+        return;
+    }
+    router.push({
+        name: 'messages',
+        query: {
+            otherUserId: props.order.买家ID,
+            productId: props.order.商品ID,
+        },
+    });
 };
 
 const handleContactSeller = () => {
-    ElMessage.info('联系卖家功能开发中...');
+    if (!props.order?.卖家ID || !props.order?.商品ID) {
+        ElMessage.error('无法获取卖家或商品信息');
+        return;
+    }
+    router.push({
+        name: 'messages',
+        query: {
+            otherUserId: props.order.卖家ID,
+            productId: props.order.商品ID,
+        },
+    });
 };
 
 // 新增：处理查看用户详情逻辑

@@ -1,13 +1,16 @@
 <template>
   <div class="chat-container">
-    <div class="chat-layout-wrapper">
+    <div class="chat-layout-wrapper" :class="{ 'collapsed': isConversationListCollapsed }">
       <!-- Left Column: Conversation List -->
       <div class="conversation-list-col">
         <el-card class="conversation-card">
           <template #header>
             <div class="card-header">
               <span>我的消息</span>
-              <el-icon><ChatDotRound /></el-icon>
+              <div>
+                <el-button link :icon="isConversationListCollapsed ? ExpandIcon : FoldIcon" @click="toggleConversationList" style="margin-right: 8px;"></el-button>
+                <el-icon><ChatDotRound /></el-icon>
+              </div>
             </div>
           </template>
           <div class="conversation-list-content">
@@ -31,7 +34,7 @@
                   </div>
                   <div class="conversation-list-item-subtitle text-truncate">
                       <img v-if="session.product_image_url" :src="session.product_image_url" class="product-thumbnail" alt="商品图片">
-                      {{ session.product_name }}
+                      <span>{{ session.product_name }}</span>
                   </div>
                   <div class="conversation-list-item-subtitle text-truncate">{{ session.last_message_content || '暂无消息' }}</div>
                 </div>
@@ -62,8 +65,9 @@
                 size="small"
                 type="primary"
                 class="ml-3"
-                @click="goToProductDetail(selectedConversation.product_id)"
+                @click="openProductDetail(selectedConversation.product_id)"
                 v-if="selectedConversation.product_name"
+                style="cursor: pointer;"
               >
                 {{ selectedConversation.product_name }}
                 <el-icon><LinkIcon /></el-icon>
@@ -77,18 +81,19 @@
           </template>
 
           <div class="chat-messages-content" ref="chatMessagesContainer">
-            <div v-if="selectedConversation" class="d-flex flex-column">
+            <div v-if="selectedConversation" class="messages-wrapper">
               <div
                 v-for="message in currentChatMessages"
                 :key="message.message_id" 
-                :class="['d-flex mb-4', message.sender_id === currentUser.user_id ? 'justify-end' : 'justify-start']"
+                :class="['message-item', message.sender_id === currentUser.user_id ? 'sent' : 'received']"
               >
-                <div v-if="message.sender_id !== currentUser.user_id" class="message-avatar mr-3">
+                <!-- Avatar for received messages (other user on the left) -->
+                <div v-if="message.sender_id !== currentUser.user_id" class="message-avatar">
                   <el-avatar style="width: 36px; height: 36px;" :src="selectedConversation.other_avatar_url || 'https://via.placeholder.com/36'"></el-avatar>
                 </div>
-                <div
-                  :class="['message-bubble', message.sender_id === currentUser.user_id ? 'sent' : 'received']"
-                >
+
+                <!-- Message Bubble -->
+                <div class="message-bubble">
                   <div class="message-content pa-3">
                     <div class="message-text">{{ message.content }}</div>
                     <div class="message-time text-right text-caption text--disabled mt-1">
@@ -96,12 +101,14 @@
                     </div>
                   </div>
                 </div>
-                <div v-if="message.sender_id === currentUser.user_id" class="message-avatar ml-3">
+
+                <!-- Avatar for sent messages (own user on the right) -->
+                <div v-if="message.sender_id === currentUser.user_id" class="message-avatar">
                   <el-avatar style="width: 36px; height: 36px;" :src="currentUser.avatar_url || 'https://via.placeholder.com/36'"></el-avatar>
                 </div>
               </div>
             </div>
-            <div v-else class="d-flex align-center justify-center fill-height text--disabled">
+            <div v-else class="no-messages-placeholder">
               <p>从左侧选择一个会话或通过商品详情页的"联系卖家"按钮发起新会话。</p>
             </div>
           </div>
@@ -135,6 +142,14 @@
 
     <!-- User Detail Dialog -->
     <user-detail-dialog v-model:visible="userDetailDialog" :user-id="selectedUserId" @close="userDetailDialog = false"></user-detail-dialog>
+    
+    <!-- Product Detail Dialog -->
+    <ProductDetail
+      v-if="productDetailVisible"
+      :product-id="selectedProductId"
+      v-model:dialog-visible="productDetailVisible"
+      @close="productDetailVisible = false"
+    />
 
     <!-- Confirm Hide Conversation Dialog -->
     <el-dialog v-model="confirmHideDialog" title="隐藏聊天会话" width="500px">
@@ -152,7 +167,8 @@
 <script>
 import { mapState, mapActions, mapGetters } from 'vuex';
 import UserDetailDialog from '@/user/components/UserDetailDialog.vue';
-import { ChatDotRound, Link, Promotion, Delete, User } from '@element-plus/icons-vue';
+import ProductDetail from '@/product/components/ProductDetail.vue';
+import { ChatDotRound, Link, Promotion, Delete, User, Fold, Expand } from '@element-plus/icons-vue';
 import { markRaw } from 'vue';
 import { ElMessage } from 'element-plus';
 
@@ -160,6 +176,7 @@ export default {
   name: 'MessageView',
   components: {
     UserDetailDialog,
+    ProductDetail,
   },
   data() {
     return {
@@ -169,11 +186,16 @@ export default {
       selectedUserId: null,
       confirmHideDialog: false,
       conversationToHide: null,
+      productDetailVisible: false,
+      selectedProductId: null,
+      isConversationListCollapsed: false,
       DeleteIcon: markRaw(Delete),
       UserIcon: markRaw(User),
       ChatDotRoundIcon: markRaw(ChatDotRound),
       LinkIcon: markRaw(Link),
       PromotionIcon: markRaw(Promotion),
+      FoldIcon: markRaw(Fold),
+      ExpandIcon: markRaw(Expand),
     };
   },
   computed: {
@@ -274,9 +296,6 @@ export default {
       if (!this.isChatViewActive) return;
       try {
         await this.fetchConversations(); 
-        // The loop below to fetch product_image_url might be redundant 
-        // if the backend /sessions endpoint now provides it reliably.
-        // Kept for now, but ideally removed if backend data is complete.
         for (const session of this.conversations) {
             if (session.product_id && !session.product_image_url) {
                 try {
@@ -289,7 +308,6 @@ export default {
         }
       } catch (error) {
         console.error('加载聊天会话失败:', error);
-        // ElMessage is likely handled in the store action now
       }
     },
 
@@ -314,7 +332,6 @@ export default {
         });
       } catch (error) {
         console.error('获取消息记录失败:', error);
-        // ElMessage is likely handled in the store action now
       }
     },
     async sendMessage() {
@@ -329,27 +346,19 @@ export default {
       try {
         await this.$store.dispatch('chat/sendMessage', messageData);
         this.newMessageContent = '';
-        // After sending a message, reload conversations to get the latest state (e.g., last message time)
-        // and potentially re-select the current conversation if its details changed.
         const currentSessionId = this.selectedConversation.session_id;
         await this.loadConversations(); 
         const updatedSession = this.conversations.find(c => c.session_id === currentSessionId || 
                                                       (c.other_user_id === messageData.receiver_id && c.product_id === messageData.product_id));
         if (updatedSession) {
-            this.selectedConversation = updatedSession; // Reselect to update view if needed
-             // Fetch messages again for the current conversation to include the new message
+            this.selectedConversation = updatedSession;
             await this.fetchChatMessages({ 
                 otherUserId: updatedSession.other_user_id, 
                 productId: updatedSession.product_id 
             });
-        } else {
-            // If the session is new and was temporary, it might not be in the list yet after loadConversations
-            // This case needs careful handling or ensure new sessions are immediately part of `this.conversations` after send
         }
-
       } catch (error) {
         console.error('发送消息失败:', error);
-        // ElMessage is likely handled in the store action now
       }
     },
     formatDateTime(dateTimeString) {
@@ -363,8 +372,9 @@ export default {
         container.scrollTop = container.scrollHeight;
       }
     },
-    goToProductDetail(productId) {
-      this.$router.push({ name: 'ProductDetail', params: { id: productId } });
+    openProductDetail(productId) {
+      this.selectedProductId = productId;
+      this.productDetailVisible = true;
     },
     viewUserProfile(userId) {
       this.selectedUserId = userId;
@@ -389,26 +399,26 @@ export default {
             this.selectedConversation = null;
             this.$store.commit('chat/SET_CURRENT_CHAT_MESSAGES', []);
           }
-          // Refresh conversations list after hiding one
           await this.loadConversations(); 
           if (this.conversations.length > 0 && !this.selectedConversation) {
              this.selectConversation(this.conversations[0]);
           } else if (this.conversations.length === 0) {
-             this.selectedConversation = null; // No conversations left
+             this.selectedConversation = null;
              this.$store.commit('chat/SET_CURRENT_CHAT_MESSAGES', []);
           }
           this.conversationToHide = null;
         } catch (error) {
           console.error('隐藏会话失败:', error);
-          // ElMessage is likely handled in the store action now
         }
       }
     },
     selectCommonPhrase(phrase) {
       this.newMessageContent = phrase;
     },
+    toggleConversationList() {
+      this.isConversationListCollapsed = !this.isConversationListCollapsed;
+    },
   },
-
 }; 
 </script>
 
@@ -426,14 +436,23 @@ export default {
   display: flex;
   flex-grow: 1;
   gap: 20px;
+  transition: all 0.3s ease;
 }
 
 .conversation-list-col {
-  flex-basis: 280px; /* Reduced width slightly */
+  flex-basis: 320px;
   flex-grow: 0;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.chat-layout-wrapper.collapsed .conversation-list-col {
+  flex-basis: 0;
+  margin-right: -20px; /* To cover the gap */
+  opacity: 0;
 }
 
 .chat-messages-col {
@@ -456,9 +475,9 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px; /* Adjusted padding */
+  padding: 18px 20px;
   border-bottom: 1px solid #ebeef5;
-  font-size: 18px; /* Adjusted font size */
+  font-size: 18px;
   font-weight: bold;
   color: #303133;
 }
@@ -485,7 +504,7 @@ export default {
 .conversation-list-content {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 10px 0; /* Adjusted padding */
+  padding: 10px 0;
 }
 
 .conversation-list-item {
@@ -559,38 +578,66 @@ export default {
   flex-grow: 1;
   overflow-y: auto;
   padding: 20px;
-  background-color: #fbfbfb; /* Slightly lighter background */
+  background-color: #fbfbfb;
+}
+
+.messages-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.message-item {
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  max-width: 80%;
+}
+
+.message-item.sent {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-item.received {
+  align-self: flex-start;
+}
+
+.message-avatar {
+    flex-shrink: 0;
+    margin: 0 10px;
 }
 
 .message-bubble {
-  max-width: 70%;
-  border-radius: 10px; /* Softer radius */
+  max-width: 100%; /* max-width is on parent now */
+  border-radius: 10px;
   padding: 10px 15px;
   line-height: 1.5;
   word-wrap: break-word;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); /* Softer shadow */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.message-bubble.sent {
-  background-color: #e1f5fe; /* Light blue for sent messages */
+.message-item.sent .message-bubble {
+  background-color: #409eff; /* Primary color for sent messages */
+  color: white;
 }
 
-.message-bubble.received {
-  background-color: #ffffff; /* White for received messages */
+.message-item.received .message-bubble {
+  background-color: #f0f2f5; /* Lighter grey for received messages */
 }
 
 .message-text {
-  color: #303133;
+  color: inherit;
 }
 
 .message-time {
   font-size: 11px;
   color: #909399;
   margin-top: 5px;
+  text-align: right;
 }
 
-.message-avatar {
-  flex-shrink: 0;
+.message-item.sent .message-time {
+    color: #e0e0e0;
 }
 
 .chat-input-area {
@@ -612,6 +659,14 @@ export default {
   height: 100%;
   color: #909399;
   font-size: 16px;
+}
+
+.no-messages-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #909399;
 }
 
 .dialog-footer {
