@@ -139,6 +139,12 @@ const router = createRouter({
           meta: { title: '评价管理', requiresAuth: true, requiresAdmin: true }
         },
         {
+          path: 'chat',
+          name: 'AdminChatManagement',
+          component: () => import('@/admin/views/AdminChatView.vue'),
+          meta: { title: '聊天管理', requiresAuth: true, requiresAdmin: true }
+        },
+        {
           path: 'returns',
           name: 'AdminReturnManagement',
           component: () => import ('@/admin/views/ReturnsManagementView.vue' ),

@@ -123,6 +123,16 @@ const beforeAvatarUpload = (rawFile) => {
 };
 
 const saveProfile = async () => {
+  if (profileForm.username && profileForm.username.length < 3) {
+    // 使用你的通知系统提示错误，例如：
+    // this.$store.dispatch('showSnackbar', { message: '用户名长度不能少于3个字符', color: 'error' });
+    alert('用户名长度不能少于3个字符'); // 简单示例
+    return;
+  }
+  if (profileForm.username && profileForm.username.length > 128) {
+    alert('用户名长度不能超过128个字符');
+    return;
+  }
   await nextTick(); // Wait for DOM updates
   if (!profileFormRef.value) {
     console.error('ProfileEdit.vue: profileFormRef is NOT defined after nextTick!');
