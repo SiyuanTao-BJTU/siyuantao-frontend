@@ -176,12 +176,6 @@ const router = createRouter({
       name: 'NotFound',
       component: { template: '<div>404 页面未找到 (占位符)</div>' }
     },
-    {
-      path: '/request-student-auth',
-      name: 'RequestStudentAuth',
-      component: () => import('../user/views/profile/StudentAuthRequestView.vue'),
-      meta: { requiresAuth: true }
-    }
   ]
 })
 

@@ -6,6 +6,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import FormatObject from '@/utils/format.js'; // 假设有这个工具类处理图片URL
 import { useStore } from 'vuex'; // 从 vuex 导入 useStore
 import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
+import StudentAuthDialog from '@/user/components/StudentAuthDialog.vue'; // 导入学生身份认证对话框
 
 const props = defineProps({
   productId: {
@@ -32,11 +33,13 @@ const quantityToBuy = ref(1); // 新增：购买数量的状态
 const showTradeInfoDialog = ref(false); // 控制交易信息对话框显示
 const tradeDateTime = ref(new Date()); // 交易时间，默认当前时间
 const tradeLocation = ref(''); // 交易地点
+const studentAuthDialogVisible = ref(false); // 控制学生身份认证对话框显示
 
 const store = useStore(); // 获取 Vuex store 实例
 
-// 新增计算属性，安全地获取 user_id
+// 新增计算属性，安全地获取 user_id 和 isVerified
 const currentUserId = computed(() => store.getters['user/getUserInfo']?.用户ID);
+const isUserVerified = computed(() => store.getters['user/getUserInfo']?.是否已认证);
 
 const fetchProductDetail = async (id) => {
   if (!id) return;
@@ -116,9 +119,14 @@ const fetchProductDetail = async (id) => {
 };
 
 const toggleFavorite = async () => {
-  if (!currentUserId.value) { // 使用 currentUserId.value
+  if (!currentUserId.value) {
     ElMessage.warning('请先登录后再操作');
-    router.push('/login');
+    studentAuthDialogVisible.value = true; // 显示学生身份认证对话框
+    return;
+  }
+  if (!isUserVerified.value) {
+    ElMessage.warning('请先完成学生身份认证后再进行收藏操作。如果你已经完成认证，请刷新页面。');
+    studentAuthDialogVisible.value = true; // 显示学生身份认证对话框
     return;
   }
   if (!productDetail.value || isTogglingFavorite.value) return;
@@ -143,7 +151,12 @@ const toggleFavorite = async () => {
 const handleBuy = async () => {
   if (!currentUserId.value) {
     ElMessage.warning('请先登录后再操作');
-    router.push('/login');
+    studentAuthDialogVisible.value = true; // 显示学生身份认证对话框
+    return;
+  }
+  if (!isUserVerified.value) {
+    ElMessage.warning('请先完成学生身份认证后再进行购买操作。如果你已经完成认证，请刷新页面。');
+    studentAuthDialogVisible.value = true; // 显示学生身份认证对话框
     return;
   }
   if (!productDetail.value) return;
@@ -212,9 +225,14 @@ const cancelTradeDetails = () => {
 };
 
 const handleContactSeller = () => {
-  if (!currentUserId.value) { // 使用 currentUserId.value
+  if (!currentUserId.value) {
     ElMessage.warning('请先登录后再操作');
-    router.push('/login');
+    studentAuthDialogVisible.value = true; // 显示学生身份认证对话框
+    return;
+  }
+  if (!isUserVerified.value) {
+    ElMessage.warning('请先完成学生身份认证后再联系卖家。如果你已经完成认证，请刷新页面。');
+    studentAuthDialogVisible.value = true; // 显示学生身份认证对话框
     return;
   }
   if (!productDetail.value || !productDetail.value?.user || !productDetail.value.user?.id) { // 使用可选链操作符安全访问 user 和 user.id
@@ -492,6 +510,13 @@ const onTradeDateTimeChange = (val) => {
   <UserDetailDialog
     v-model:visible="showUserDetailDialog"
     :user-id="selectedUserId"
+  />
+
+  <!-- 学生身份认证对话框 -->
+  <StudentAuthDialog
+    v-model:visible="studentAuthDialogVisible"
+    @success="fetchProductDetail(props.productId);" 
+    @close="studentAuthDialogVisible = false;"
   />
 </template>
 

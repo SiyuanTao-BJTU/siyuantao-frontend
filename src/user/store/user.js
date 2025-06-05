@@ -10,6 +10,7 @@ const state = () => ({
   notifications: [], // 系统通知列表
   unreadNotificationCount: 0, // 未读通知数量
   publicUserProfiles: {}, // 新增：缓存其他用户的公开资料，以用户ID为键
+  allowedUniversityDomains: ['bjtu.edu.cn', 'tsinghua.edu.cn', 'pku.edu.cn', 'fudan.edu.cn'], // 允许的大学邮箱后缀
 })
 
 const mutations = {
@@ -194,7 +195,19 @@ const actions = {
 
   async updateProfile({ commit }, profileData) { /* ... */ }, // 更新用户个人资料
   async changePassword({ commit }, passwordData) { /* ... */ }, // 修改用户密码
-  async requestVerificationEmail({ commit }, email) { /* ... */ }, // 请求发送邮箱验证邮件
+  async requestVerificationEmail({ commit }, { studentId, domain }) {
+    try {
+      const fullEmail = `${studentId}@${domain}`;
+      console.log("Requesting verification email for:", fullEmail);
+      const response = await api.requestStudentVerificationOtp({ email: fullEmail });
+      ElMessage.success("验证邮件已发送，请检查您的收件箱。");
+      return response;
+    } catch (error) {
+      console.error("请求验证邮件失败:", error);
+      ElMessage.error("请求验证邮件失败: " + (error.response?.data?.detail || error.message));
+      throw error;
+    }
+  },
   async verifyEmail({ commit }, token) { /* ... */ }, // 验证邮箱
   async fetchNotifications({ commit }) { /* ... */ }, // 获取系统通知列表
   async markNotificationAsRead({ commit }, notificationId) { /* ... */ }, // 标记通知为已读

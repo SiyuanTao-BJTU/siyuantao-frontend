@@ -11,7 +11,7 @@ const store = useStore();
 
 const formRef = ref(null); // Reference to the form component
 const form = reactive({
-  email: '',
+  studentId: '', // Changed from email to studentId
   otp: '',
 });
 
@@ -25,11 +25,14 @@ const countdown = ref(60); // OTP countdown in seconds
 const isCounting = ref(false);
 let countdownTimer = null;
 
+// Get allowedUniversityDomains from Vuex store
+const allowedUniversityDomains = computed(() => store.state.user.allowedUniversityDomains);
+const selectedDomain = ref(allowedUniversityDomains.value.length > 0 ? allowedUniversityDomains.value[0] : ''); // Default to the first domain
+
 const rules = reactive({
-  email: [
-    { required: true, message: '请输入校园邮箱地址', trigger: 'blur' },
-    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' },
-    { pattern: /[^@]+@bjtu\.edu\.cn$/, message: '只允许使用北京交通大学邮箱地址 (@bjtu.edu.cn)', trigger: 'blur' },
+  studentId: [
+    { required: true, message: '请输入您的学号', trigger: 'blur' },
+    { pattern: /^[0-9]+$/, message: '学号必须是数字', trigger: 'blur' },
   ],
   otp: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
@@ -54,12 +57,19 @@ const startCountdown = () => {
 const requestOtp = async () => {
   if (!formRef.value) return;
 
-  await formRef.value.validateField('email', async (valid) => {
+  await formRef.value.validateField('studentId', async (valid) => {
     if (valid) {
+      if (!selectedDomain.value) {
+        ElMessage.error('请选择一个大学域名。');
+        return;
+      }
+
       isSendingOtp.value = true;
       try {
-        await api.requestStudentVerificationOtp({ email: form.email + '@bjtu.edu.cn' });
-        ElMessage.success('验证码已发送到您的邮箱，请查收！');
+        // Construct full email address
+        const fullEmail = `${form.studentId}@${selectedDomain.value}`;
+        await store.dispatch('user/requestVerificationEmail', { studentId: form.studentId, domain: selectedDomain.value });
+        ElMessage.success(`验证码已发送到您的邮箱 ${fullEmail}，请查收！`);
         verificationStep.value = 'verify_otp';
         startCountdown();
       } catch (error) {
@@ -81,7 +91,8 @@ const verifyOtp = async () => {
     if (valid) {
       isVerifyingOtp.value = true;
       try {
-        const response = await api.verifyStudentVerificationOtp({ email: form.email + '@bjtu.edu.cn', otp: form.otp });
+        const fullEmail = `${form.studentId}@${selectedDomain.value}`;
+        const response = await api.verifyStudentVerificationOtp({ email: fullEmail, otp: form.otp });
         if (response.is_verified) {
           ElMessage.success('邮箱验证成功！');
           verificationStep.value = 'success';
@@ -138,11 +149,20 @@ const goToProfile = () => {
       <h2>学生邮箱验证</h2>
       
       <div v-if="verificationStep === 'request_otp'">
-        <p>请输入您的校园邮箱，我们将发送验证码。</p>
+        <p>请输入您的学号并选择学校域名，我们将发送验证码。</p>
         <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="requestOtp">
-          <el-form-item prop="email">
-            <el-input v-model="form.email" placeholder="请输入校园邮箱">
-              <template #append>@bjtu.edu.cn</template>
+          <el-form-item prop="studentId">
+            <el-input v-model="form.studentId" placeholder="请输入学号">
+              <template #append>
+                <el-select v-model="selectedDomain" placeholder="选择学校域名" style="width: 150px;">
+                  <el-option
+                    v-for="domain in allowedUniversityDomains"
+                    :key="domain"
+                    :label="`@${domain}`"
+                    :value="domain"
+                  ></el-option>
+                </el-select>
+              </template>
             </el-input>
           </el-form-item>
           <el-form-item>
@@ -154,7 +174,7 @@ const goToProfile = () => {
       </div>
 
       <div v-else-if="verificationStep === 'verify_otp'">
-        <p style="margin-bottom: 20px;">验证码已发送至 <strong>{{ form.email }}</strong>。请检查您的邮箱。</p>
+        <p style="margin-bottom: 20px;">验证码已发送至 <strong>{{ form.studentId }}@{{ selectedDomain }}</strong>。请检查您的邮箱。</p>
         <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="verifyOtp">
           <el-form-item prop="otp">
             <el-input v-model="form.otp" placeholder="请输入6位验证码"></el-input>

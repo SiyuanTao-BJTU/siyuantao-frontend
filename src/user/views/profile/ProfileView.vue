@@ -18,6 +18,7 @@
   } from "@element-plus/icons-vue";
   import ChangePassword from "@/user/components/ChangePassword.vue";
   import ProfileEdit from "@/user/components/ProfileEdit.vue"; // 导入 ProfileEdit 组件
+  import StudentAuthDialog from "@/user/components/StudentAuthDialog.vue"; // 导入 StudentAuthDialog 组件
   import WebSocketService from "@/socket_client/socket.js";
   import router from "@/router/index.js";
   import {ElMessage} from "element-plus";
@@ -42,6 +43,7 @@
   let componentKey = ref(0); // 用于强制刷新子组件
   let passwordDialogVisible = ref(false); // 控制修改密码对话框的显示
   let profileEditDialogVisible = ref(false); // 控制编辑个人信息对话框的显示
+  let studentAuthDialogVisible = ref(false); // 控制学生身份认证对话框的显示
 
   // 计算属性
   const isEditingProfile = ref(false);
@@ -167,11 +169,11 @@
   };
 
   const handleStudentAuthCardClick = () => {
-    router.push('/profile/student-auth'); // TODO: Add this route
+    studentAuthDialogVisible.value = true; // 直接显示对话框
   };
 
   const handleAdminCardClick = () => {
-    router.push('/admin'); // TODO: Add this route and AdminLayout
+    router.push('/admin');
   };
 </script>
 
@@ -226,7 +228,7 @@
              v-if="userProfileResponseData && !userProfileResponseData.是否已认证" 
              class="functional-card" 
              shadow="hover" 
-             @click="handleCardClick('/request-student-auth')"
+             @click="handleStudentAuthCardClick"
            >
              <el-icon><School /></el-icon>
              <span>学生身份认证</span>
@@ -249,7 +251,13 @@
       :isProfileEditDialogVisible="profileEditDialogVisible"
       :userInfo="userProfileResponseData"
       @updateCancel="profileEditDialogVisible = false"
-      @updateSuccess="() => { profileEditDialogVisible = false; fetchUserProfile(); }"
+      @updateSuccess="fetchUserProfile(); profileEditDialogVisible = false;"
+  />
+  <!-- 学生身份认证对话框 -->
+  <StudentAuthDialog
+    v-model:visible="studentAuthDialogVisible"
+    @success="fetchUserProfile();" 
+    @close="studentAuthDialogVisible = false;"
   />
 </template>
 

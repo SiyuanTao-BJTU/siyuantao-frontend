@@ -223,7 +223,7 @@
                     <el-dropdown-item
                       command="delete"
                       divided
-                      :disabled="!isSuperAdminUser || row['用户ID'] === currentUserId"
+                      :disabled="!isSuperAdmin || row['用户ID'] === currentUser?.['用户ID']"
                     >
                       删除用户
                     </el-dropdown-item>
@@ -350,7 +350,7 @@
       width="30%"
       center
     >
-      <span>确认要删除用户 <strong>{{ selectedUser ? selectedUser['用户名'] : '' }}</strong> 吗？删除后数据不可恢复。</span>
+      <span>确认要软删除用户 <strong>{{ selectedUser ? selectedUser['用户名'] : '' }}</strong> 吗？该操作将修改用户的邮箱为占位符，并禁用账户，但保留其历史记录。原邮箱可以重新注册。</span>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="isConfirmDeleteDialogVisible = false">取消</el-button>
@@ -395,6 +395,9 @@ const selectedUserDetail = ref(null)
 const isConfirmChangeStatusDialogVisible = ref(false)
 const currentChangeStatusAction = ref('')
 const isConfirmDeleteDialogVisible = ref(false)
+
+const currentUser = computed(() => store.getters['user/currentUser'] || {})
+const isSuperAdmin = computed(() => store.getters['user/isSuperAdmin'])
 
 const creditAdjustmentForm = reactive({
   credit_adjustment: 0,
@@ -606,11 +609,11 @@ const handleUserAction = (command, row) => {
       isConfirmChangeStatusDialogVisible.value = true
       break
     case 'delete':
-      if (!isSuperAdminUser.value) {
+      if (!isSuperAdmin.value) {
         ElMessage.error('您没有权限删除用户。')
         return
       }
-      if (row['用户ID'] === currentUserId.value) {
+      if (row['用户ID'] === currentUser.value?.['用户ID']) {
         ElMessage.warning('您不能删除您自己的账户。')
         return
       }
@@ -661,7 +664,7 @@ const getStatusType = (status) => {
 }
 
 const getStatusText = (status) => {
-  return status === 'Active' ? '活跃' : '禁用'
+  return status === 'Active' ? '活跃' : '禁用/已删除'
 }
 
 const getCreditColor = (credit) => {
@@ -694,8 +697,6 @@ const getTimeAgo = (dateString) => {
   const years = Math.floor(months / 12)
   return `${years} 年前`
 }
-
-const isSuperAdminUser = computed(() => store.getters['user/isSuperAdmin'])
 
 onMounted(() => {
   refreshUsers()
