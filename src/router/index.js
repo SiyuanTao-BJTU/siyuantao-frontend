@@ -70,25 +70,6 @@ const router = createRouter({
       component: () => import('@/user/views/profile/ProfileView.vue'),
       meta: { requiresAuth: true }
     },
-    { // 其他用户信息界面 (通过搜索等方式查看，路径不变)
-      path: '/profile/:username',
-      name: 'profileSearch',
-      component: { template: '<div>用户资料搜索页面 (占位符)</div>' },
-      meta: { requiresAuth: true }
-    },
-    { // 学生认证请求页面 (通过个人中心进入)
-      path: '/profile/student-auth',
-      name: 'StudentAuthRequest',
-      component: () => import('@/user/views/profile/StudentAuthRequestView.vue'),
-      meta: { requiresAuth: true, title: '学生认证请求' }
-    },
-    // { // 偏好设置页面 (保留原路径)
-    //   path: '/settings',
-    //   name: 'settings',
-    //   component: () => import('@/user/views/profile/SettingsView.vue'),
-    //   meta: { requiresAuth: true }
-    // },
-    // 独立页面，不显示导航栏 (hideNavbar: true)
     {
       path: '/login',
       name: 'login',
