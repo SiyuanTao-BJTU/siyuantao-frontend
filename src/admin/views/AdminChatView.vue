@@ -181,20 +181,13 @@ export default {
         const params = {
           page_number: this.pagination.currentPage,
           page_size: this.pagination.pageSize,
-          // 可以在这里添加搜索查询参数到后端请求
-          // search_query: this.searchQuery, 
+          search_query: this.searchQuery,
         };
         const response = await this.fetchAdminChatMessages(params);
-        // TODO: 后端 API 返回的总数应该在这里赋值给 pagination.total
+        
         // 假设 response 包含 messages 和 total_count 两个字段
-        this.chatMessages = response.messages; // 假设 response.messages 是消息数组
-        this.pagination.total = response.total_count; // 假设 response.total_count 是总数
-
-        // 后端可能直接返回 ChatMessageResponseSchema 列表，不需要额外的处理
-        // 但是需要确保返回格式与前端期望的字段名称一致
-        this.chatMessages = response;
-        // 目前后端没有返回 total_count，所以暂时写死一个总数
-        // this.pagination.total = 50; // 根据实际情况调整或等待后端返回
+        this.chatMessages = response.messages; // 将消息数组赋值给 chatMessages
+        this.pagination.total = response.total_count; // 将总数赋值给 pagination.total
 
       } catch (error) {
         console.error('获取聊天消息失败:', error);

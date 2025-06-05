@@ -1,3 +1,5 @@
+import API_PRO from '@/API_PRO';
+
 const state = () => ({
   // 管理员模块的状态
   users: [], // 用户列表
@@ -46,10 +48,9 @@ const actions = {
   async sendSystemNotification({ commit }, notificationData) { /* 发送系统通知 */ },
   async fetchAdminChatMessages({ commit }, params) {
     try {
-      const messages = await API_PRO.getAdminChatMessages(params);
-      // 根据需要，可以添加一个 mutation 来存储这些消息，例如 SET_ADMIN_CHAT_MESSAGES
-      // commit('SET_ADMIN_CHAT_MESSAGES', messages);
-      return messages;
+      const { page_number, page_size, search_query } = params; // 解构参数
+      const responseData = await API_PRO.getAdminChatMessages({ page_number, page_size, search_query });
+      return responseData;
     } catch (error) {
       console.error('获取管理员聊天消息失败:', error);
       throw error;
