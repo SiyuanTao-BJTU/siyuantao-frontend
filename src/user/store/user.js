@@ -17,8 +17,29 @@ const mutations = {
   SET_LOGIN_STATUS(state, status) {
     state.isLoggedIn = status;
   },
-  SET_USER_INFO(state, userInfo) {
-    state.userInfo = userInfo;
+  SET_USER_INFO(state, rawUserInfo) {
+    if (!rawUserInfo) {
+      state.userInfo = null;
+      return;
+    }
+    state.userInfo = {
+      user_id: rawUserInfo['用户ID'],
+      username: rawUserInfo['用户名'],
+      email: rawUserInfo['邮箱'],
+      account_status: rawUserInfo['账户状态'],
+      credit_score: rawUserInfo['信用分'],
+      is_admin: rawUserInfo['是否管理员'],
+      is_super_admin: rawUserInfo['是否超级管理员'],
+      is_verified: rawUserInfo['是否已认证'],
+      major: rawUserInfo['专业'],
+      avatar_url: rawUserInfo['头像URL'],
+      bio: rawUserInfo['个人简介'],
+      phone_number: rawUserInfo['手机号码'],
+      registration_time: rawUserInfo['注册时间'],
+      last_login_time: rawUserInfo['最后登录时间'],
+      //保留其他可能存在的字段，如果后端添加了新字段
+      ...rawUserInfo 
+    };
   },
   SET_NOTIFICATIONS(state, notifications) {
     state.notifications = notifications;
@@ -33,6 +54,8 @@ const mutations = {
     state.unreadNotificationCount = count;
   },
   SET_PUBLIC_USER_PROFILE(state, { userId, profile }) { // 新增：设置单个用户公开资料的mutation
+    // Assuming profile might also come with Chinese keys, normalize it if needed
+    // For now, assuming profile is already in the desired format or doesn't need normalization here
     state.publicUserProfiles[userId] = profile;
   },
   // 可能需要的其他 mutations：
@@ -65,13 +88,13 @@ const actions = {
 
         // 在 fetchCurrentUserProfile 成功后，用户信息应该已经被设置到 state 中了
         // 从 state.userInfo 中获取 userId 并存储到 localStorage
-        const userInfo = this.state.user.userInfo;
-        const userId = userInfo ? userInfo.用户ID : null; // 直接使用中文键名 用户ID
+        const userInfo = state.userInfo; // Access normalized userInfo from state
+        const userId = userInfo ? userInfo.user_id : null; // Use normalized key 'user_id'
 
         if (userId) {
           localStorage.setItem("userId", userId);
         } else {
-          console.warn("Login action: fetchCurrentUserProfile did not return valid user info with id or user_id.");
+          console.warn("Login action: fetchCurrentUserProfile did not return valid user info with user_id.");
         }
 
         // 更新登录状态 (确保在获取用户信息后更新状态)
@@ -124,6 +147,7 @@ const actions = {
     commit("SET_LOGIN_STATUS", false);
     commit("SET_USER_INFO", null);
     localStorage.removeItem("token");
+    localStorage.removeItem("userId"); // Clear userId on logout
     localStorage.removeItem("lastVisitedPath"); // Clear last visited path on logout
     if (inStoreLogout) {
       ElMessage.success("已退出登录");
@@ -133,7 +157,7 @@ const actions = {
 
   async fetchCurrentUserProfile({ commit, state }) {
     // 如果已经有用户信息或者 authLoading 为 true，避免重复请求
-    if (state.userInfo && state.isLoggedIn) return state.userInfo;
+    // if (state.userInfo && state.isLoggedIn) return state.userInfo; // Removed to allow re-fetch if needed
     // if (state.authLoading) return;
 
     const token = localStorage.getItem("token");
@@ -147,11 +171,11 @@ const actions = {
       // commit("SET_ADMIN_LOADING", true); // 如果有 loading 状态
       // 调用获取用户信息 API
       // openapi 中获取当前用户信息接口是 /api/v1/users/me GET
-      const userInfo = await api.getUserProfile(); // 假设 api.getUserProfile 对应此接口
+      const rawUserInfo = await api.getUserProfile(); // 假设 api.getUserProfile 对应此接口
 
-      commit("SET_USER_INFO", userInfo);
+      commit("SET_USER_INFO", rawUserInfo); // Mutation will normalize
       commit("SET_LOGIN_STATUS", true); // 确认登录状态
-      return userInfo;
+      return state.userInfo; // Return the normalized user info from state
 
     } catch (error) {
       console.error("获取用户信息失败:", error);
@@ -159,6 +183,7 @@ const actions = {
       commit("SET_LOGIN_STATUS", false);
       commit("SET_USER_INFO", null);
       localStorage.removeItem("token");
+      localStorage.removeItem("userId"); // Clear userId on error
       // localStorage.removeItem("refresh_token");
       // ElMessage.error("用户信息获取失败或登录已过期，请重新登录");
       throw error; // 抛出错误
@@ -182,6 +207,9 @@ const actions = {
     }
     try {
       const publicProfile = await api.getUserPublicProfile(userId); // 调用后端新接口
+      // Assuming publicProfile might also have Chinese keys, if it's from a similar backend schema
+      // For consistency, we should normalize it here if that's the case, or ensure the API returns normalized keys.
+      // For now, let's assume it's okay or will be normalized by SET_PUBLIC_USER_PROFILE if needed.
       commit('SET_PUBLIC_USER_PROFILE', { userId, profile: publicProfile });
       console.log(`成功获取用户 ${userId} 的公开资料。`);
       return publicProfile;
@@ -196,10 +224,10 @@ const actions = {
 const getters = {
   // 用户模块的 getters (从 state 计算派生数据)
   isAuthenticated: state => !!state.isLoggedIn, // 根据 isLoggedIn 状态判断是否认证
-  currentUser: state => state.userInfo, // Add this getter
+  currentUser: state => state.userInfo, // Add this getter, returns normalized userInfo
   // New getter to check if the user is a regular admin (based on 是否管理员)
-  isAdmin: state => state.userInfo && state.userInfo['是否管理员'], // 假设用户信息中有此字段
-  isSuperAdmin: state => state.userInfo && state.userInfo['是否超级管理员'], // 假设用户信息中有此字段
+  isAdmin: state => state.userInfo && state.userInfo.is_admin, // Use normalized key
+  isSuperAdmin: state => state.userInfo && state.userInfo.is_super_admin, // Use normalized key
   userRole: (state, getters) => {
     if (!state.isLoggedIn || !state.userInfo) {
       return 'guest';
@@ -208,7 +236,7 @@ const getters = {
       return 'super_admin';
     } else if (getters.isAdmin) {
       return 'admin';
-    } else if (state.userInfo.是否已认证) {
+    } else if (state.userInfo.is_verified) { // Use normalized key
       return 'verified_user'; // 假设认证用户是普通用户
     } else {
       return 'user'; // 未认证但已登录的用户
@@ -217,7 +245,7 @@ const getters = {
   getUserPublicProfile: (state) => (userId) => { // 新增：获取其他用户公开资料的getter
     return state.publicUserProfiles[userId];
   },
-  getUserInfo: state => state.userInfo,
+  getUserInfo: state => state.userInfo, // Returns normalized userInfo
   getNotifications: state => state.notifications,
   getUnreadNotificationCount: state => state.unreadNotificationCount,
 }

@@ -1,4 +1,5 @@
 import API_PRO from '@/API_PRO';
+import { ElMessage } from 'element-plus'; // Import ElMessage
 
 const state = () => ({
   // 聊天模块的状态
@@ -23,14 +24,69 @@ const state = () => ({
 
 const mutations = {
   // 聊天模块的 mutations
-  SET_CONVERSATIONS(state, conversations) {
-    state.conversations = conversations;
+  SET_CONVERSATIONS(state, rawConversations) {
+    state.conversations = rawConversations.map(conv => ({
+      session_id: conv['会话ID'],
+      other_user_id: conv['对方用户ID'],
+      other_username: conv['对方用户名'],
+      other_avatar_url: conv['对方头像URL'], // Directly from backend
+      product_id: conv['相关商品ID'],
+      product_name: conv['相关商品名称'],
+      product_image_url: conv['相关商品图片URL'], // Directly from backend
+      last_message_content: conv['最近一条消息'],
+      last_message_time: conv['最近消息时间'],
+      unread_count: conv['未读消息数'],
+    }));
   },
-  SET_CURRENT_CHAT_MESSAGES(state, messages) {
-    state.currentChatMessages = messages;
+  SET_CURRENT_CHAT_MESSAGES(state, rawMessages) {
+    state.currentChatMessages = rawMessages.map(msg => ({
+      message_id: msg['消息ID'],
+      conversation_identifier: msg['会话标识符'],
+      sender_id: msg['发送者ID'],
+      sender_username: msg['发送者用户名'],
+      receiver_id: msg['接收者ID'],
+      receiver_username: msg['接收者用户名'],
+      product_id: msg['商品ID'],
+      product_name: msg['商品名称'],
+      content: msg['消息内容'],
+      send_time: msg['发送时间'],
+      is_read: msg['是否已读'],
+      sender_visible: msg['发送者可见'],
+      receiver_visible: msg['接收者可见'],
+    }));
   },
-  ADD_CHAT_MESSAGE(state, message) {
+  ADD_CHAT_MESSAGE(state, rawMessage) {
+    const message = {
+      message_id: rawMessage['消息ID'],
+      conversation_identifier: rawMessage['会话标识符'],
+      sender_id: rawMessage['发送者ID'],
+      sender_username: rawMessage['发送者用户名'],
+      receiver_id: rawMessage['接收者ID'],
+      receiver_username: rawMessage['接收者用户名'],
+      product_id: rawMessage['商品ID'],
+      product_name: rawMessage['商品名称'],
+      content: rawMessage['消息内容'],
+      send_time: rawMessage['发送时间'],
+      is_read: rawMessage['是否已读'],
+      sender_visible: rawMessage['发送者可见'],
+      receiver_visible: rawMessage['接收者可见'],
+    };
     state.currentChatMessages.push(message);
+    // Optionally, update the corresponding conversation's last message details
+    const conversationIndex = state.conversations.findIndex(
+      c => c.session_id === message.conversation_identifier || (c.other_user_id === (message.sender_id === state.currentUser?.user_id ? message.receiver_id : message.sender_id) && c.product_id === message.product_id)
+    );
+    if (conversationIndex > -1) {
+      const updatedConversation = {
+        ...state.conversations[conversationIndex],
+        last_message_content: message.content,
+        last_message_time: message.send_time,
+        // unread_count logic would be more complex, usually handled by backend or WebSocket push
+      };
+      state.conversations.splice(conversationIndex, 1, updatedConversation);
+      // Sort conversations to bring the updated one to the top
+      state.conversations.sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time));
+    }
   },
   // 可能需要的其他 mutations：
   // SET_CHAT_LOADING(state, loading) { state.chatLoading = loading; },
@@ -43,11 +99,12 @@ const actions = {
   // 对应 TODO: 5. 消息与退货模块 - 站内信聊天 (开发者 D)
   async fetchConversations({ commit }) {
     try {
-      const conversations = await API_PRO.getUserChatSessions();
-      commit('SET_CONVERSATIONS', conversations);
-      return conversations;
+      const conversationsFromAPI = await API_PRO.getUserChatSessions();
+      commit('SET_CONVERSATIONS', conversationsFromAPI);
+      return conversationsFromAPI; //原始数据，组件内通过getter获取规范化数据
     } catch (error) {
       console.error('获取会话列表失败:', error);
+      ElMessage.error('获取会话列表失败!'); // Added ElMessage for user feedback
       throw error;
     }
   },
@@ -57,31 +114,33 @@ const actions = {
       commit('SET_CURRENT_CHAT_MESSAGES', messages);
       // 标记消息为已读 (如果需要)
       // 后端应该在获取消息时自动标记为已读
-      return messages;
+      return messages; //原始数据，组件内通过getter获取规范化数据
     } catch (error) {
       console.error('获取聊天记录失败:', error);
+      ElMessage.error('获取聊天记录失败!'); // Added ElMessage for user feedback
       throw error;
     }
   },
   async sendMessage({ commit }, messageData) {
     try {
       const newMessage = await API_PRO.createChatMessage(messageData);
-      commit('ADD_CHAT_MESSAGE', newMessage); // 添加新消息到当前会话
-      return newMessage;
+      commit('ADD_CHAT_MESSAGE', newMessage); // 添加新消息到当前会话 (mutation will normalize)
+      return newMessage; // 返回原始的后端响应 (带中文键)
     } catch (error) {
       console.error('发送消息失败:', error);
+      ElMessage.error('发送消息失败!'); // Added ElMessage for user feedback
       throw error;
     }
   },
-  async hideConversation({ commit }, { otherUserId, productId }) {
+  async hideConversation({ commit, dispatch }, { otherUserId, productId }) {
     try {
       await API_PRO.hideChatSession(otherUserId, productId);
       // 可以在这里更新前端会话列表，例如从列表中移除该会话
       // 或者重新获取会话列表
-      const conversations = await API_PRO.getUserChatSessions();
-      commit('SET_CONVERSATIONS', conversations);
+      await dispatch('fetchConversations'); // Re-fetch and normalize
     } catch (error) {
       console.error('隐藏会话失败:', error);
+      ElMessage.error('隐藏会话失败!'); // Added ElMessage for user feedback
       throw error;
     }
   },

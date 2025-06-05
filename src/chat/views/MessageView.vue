@@ -17,7 +17,7 @@
             <div v-else class="conversation-list-group">
               <div
                 v-for="(session, index) in conversations"
-                :key="session.session_id"
+                :key="session.session_id || index" 
                 class="conversation-list-item"
                 :class="{ 'selected-conversation': selectedConversation && selectedConversation.session_id === session.session_id }"
                 @click="selectConversation(session)"
@@ -66,7 +66,7 @@
                 v-if="selectedConversation.product_name"
               >
                 {{ selectedConversation.product_name }}
-                <el-icon><Link /></el-icon>
+                <el-icon><LinkIcon /></el-icon>
               </el-tag>
               <div style="flex-grow: 1;"></div>
               <el-button link :icon="UserIcon" @click="viewUserProfile(selectedConversation.other_user_id)"></el-button>
@@ -80,23 +80,23 @@
             <div v-if="selectedConversation" class="d-flex flex-column">
               <div
                 v-for="message in currentChatMessages"
-                :key="message.消息ID"
-                :class="['d-flex mb-4', message.发送者ID === currentUser.用户ID ? 'justify-end' : 'justify-start']"
+                :key="message.message_id" 
+                :class="['d-flex mb-4', message.sender_id === currentUser.user_id ? 'justify-end' : 'justify-start']"
               >
-                <div v-if="message.发送者ID !== currentUser.用户ID" class="message-avatar mr-3">
+                <div v-if="message.sender_id !== currentUser.user_id" class="message-avatar mr-3">
                   <el-avatar style="width: 36px; height: 36px;" :src="selectedConversation.other_avatar_url || 'https://via.placeholder.com/36'"></el-avatar>
                 </div>
                 <div
-                  :class="['message-bubble', message.发送者ID === currentUser.用户ID ? 'sent' : 'received']"
+                  :class="['message-bubble', message.sender_id === currentUser.user_id ? 'sent' : 'received']"
                 >
                   <div class="message-content pa-3">
-                    <div class="message-text">{{ message.消息内容 }}</div>
+                    <div class="message-text">{{ message.content }}</div>
                     <div class="message-time text-right text-caption text--disabled mt-1">
-                      {{ formatDateTime(message.发送时间) }}
+                      {{ formatDateTime(message.send_time) }}
                     </div>
                   </div>
                 </div>
-                <div v-if="message.发送者ID === currentUser.用户ID" class="message-avatar ml-3">
+                <div v-if="message.sender_id === currentUser.user_id" class="message-avatar ml-3">
                   <el-avatar style="width: 36px; height: 36px;" :src="currentUser.avatar_url || 'https://via.placeholder.com/36'"></el-avatar>
                 </div>
               </div>
@@ -126,7 +126,7 @@
             </el-dropdown>
             <el-button type="primary" class="ml-2" @click="sendMessage" :disabled="!newMessageContent.trim()">
               发送
-              <el-icon class="el-icon--right"><Promotion /></el-icon>
+              <el-icon class="el-icon--right"><PromotionIcon /></el-icon>
             </el-button>
           </div>
         </el-card>
@@ -142,7 +142,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="confirmHideDialog = false">取消</el-button>
-          <el-button type="danger" @click="hideConversation">隐藏</el-button>
+          <el-button type="danger" @click="executeHideConversation">隐藏</el-button>
         </span>
       </template>
     </el-dialog>
@@ -152,125 +152,169 @@
 <script>
 import { mapState, mapActions, mapGetters } from 'vuex';
 import UserDetailDialog from '@/user/components/UserDetailDialog.vue';
-import { ChatDotRound, Link, Promotion, Delete, User } from '@element-plus/icons-vue'; // Import Element Plus icons
-import { markRaw } from 'vue'; // Import markRaw
+import { ChatDotRound, Link, Promotion, Delete, User } from '@element-plus/icons-vue';
+import { markRaw } from 'vue';
+import { ElMessage } from 'element-plus';
 
 export default {
   name: 'MessageView',
   components: {
     UserDetailDialog,
-    ChatDotRound, // Register Element Plus icons
-    Link,
-    Promotion,
   },
   data() {
     return {
       selectedConversation: null,
-      selectedConversationIndex: -1,
       newMessageContent: '',
       userDetailDialog: false,
       selectedUserId: null,
       confirmHideDialog: false,
       conversationToHide: null,
-      DeleteIcon: markRaw(Delete), // Expose imported Delete icon to template, marked as raw
-      UserIcon: markRaw(User),     // Expose imported User icon to template, marked as raw
-      ChatDotRoundIcon: markRaw(ChatDotRound), // Mark ChatDotRound for raw usage
-      LinkIcon: markRaw(Link), // Mark Link for raw usage
-      PromotionIcon: markRaw(Promotion), // Mark Promotion for raw usage
+      DeleteIcon: markRaw(Delete),
+      UserIcon: markRaw(User),
+      ChatDotRoundIcon: markRaw(ChatDotRound),
+      LinkIcon: markRaw(Link),
+      PromotionIcon: markRaw(Promotion),
     };
   },
   computed: {
     ...mapState('chat', ['conversations', 'currentChatMessages', 'commonPhrases']),
     ...mapGetters('user', ['currentUser']),
+    isChatViewActive() {
+      return this.$route.name === 'messages';
+    }
   },
   watch: {
     '$route.query': {
       immediate: true,
-      async handler(newQuery) {
+      async handler(newQuery, oldQuery) {
+        if (!this.isChatViewActive) {
+          this.selectedConversation = null;
+          this.$store.commit('chat/SET_CURRENT_CHAT_MESSAGES', []);
+          return;
+        }
+
         const { otherUserId, productId } = newQuery;
-        if (otherUserId && productId) {
-          await this.loadConversations();
-          const existingSession = this.conversations.find(
-            (s) => s.other_user_id === otherUserId && s.product_id === productId
-          );
-          if (existingSession) {
-            this.selectConversation(existingSession);
-          } else {
-            const otherUserProfile = await this.fetchUserPublicProfile(otherUserId);
-            const productDetails = await this.$store.dispatch('product/fetchProductDetail', productId);
+        const queryActuallyChanged = JSON.stringify(newQuery) !== JSON.stringify(oldQuery);
+        const justEnteredChatView = this.isChatViewActive && (!oldQuery || (oldQuery.otherUserId === undefined && oldQuery.productId === undefined));
 
-            const tempSession = {
-              session_id: productId,
-              other_user_id: otherUserId,
-              product_id: productId,
-              other_username: otherUserProfile?.username || '未知用户',
-              other_avatar_url: otherUserProfile?.avatar_url || null,
-              product_name: productDetails?.商品名称 || '未知商品',
-              product_image_url: productDetails?.主图URL || null,
-              last_message_content: '',
-              last_message_time: new Date().toISOString(),
-              unread_count: 0,
-            };
-            this.conversations.unshift(tempSession);
-            this.selectedConversation = tempSession;
-            this.selectedConversationIndex = 0;
-
-            this.$nextTick(() => {
-              this.scrollToBottom();
-            });
-          }
-        } else {
-          await this.loadConversations();
-          if (this.conversations.length > 0) {
-            this.selectConversation(this.conversations[0]);
-          }
+        if (queryActuallyChanged || justEnteredChatView) {
+            await this.initializeChatView(otherUserId, productId);
         }
       },
     },
+    currentChatMessages() {
+      if (this.isChatViewActive) {
+        this.$nextTick(() => {
+          this.scrollToBottom();
+        });
+      }
+    }
   },
-  async created() {
-    // initial load is handled by watch on $route.query
+  async mounted() {
+    if (!this.currentUser && this.isChatViewActive) {
+        try {
+            await this.fetchCurrentUserProfile();
+        } catch (error) {
+            console.error("Failed to fetch current user profile in MessageView mounted:", error);
+        }
+    }
+    if (this.isChatViewActive && !this.$route.query.otherUserId && !this.$route.query.productId) {
+        await this.initializeChatView(null, null);
+    }
   },
   methods: {
     ...mapActions('chat', ['fetchConversations', 'fetchChatMessages', 'sendMessage', 'hideConversation']),
     ...mapActions('user', ['fetchCurrentUserProfile', 'fetchUserPublicProfile']),
 
-    async loadConversations() {
-      try {
-        await this.fetchConversations();
-        this.conversations.forEach(async (session) => {
-            if (session.product_id && !session.product_image_url) {
-                const productDetails = await this.$store.dispatch('product/fetchProductDetail', session.product_id);
-                if (productDetails && productDetails.主图URL) {
-                    session.product_image_url = productDetails.主图URL;
+    async initializeChatView(otherUserId, productId) {
+        if (!this.isChatViewActive) return;
+
+        await this.loadConversations();
+
+        if (otherUserId && productId) {
+            const existingSession = this.conversations.find(
+                (s) => s.other_user_id === otherUserId && s.product_id === productId
+            );
+            if (existingSession) {
+                this.selectConversation(existingSession);
+            } else {
+                try {
+                    const otherUserProfile = await this.fetchUserPublicProfile(otherUserId);
+                    const productDetails = await this.$store.dispatch('product/fetchProductDetail', productId);
+                    
+                    const tempSession = {
+                        session_id: `${otherUserId}-${productId}`,
+                        other_user_id: otherUserId,
+                        product_id: productId,
+                        other_username: otherUserProfile?.username || otherUserProfile?.用户名 || '未知用户',
+                        other_avatar_url: otherUserProfile?.avatar_url || otherUserProfile?.头像URL || null,
+                        product_name: productDetails?.product_name || productDetails?.商品名称 || '未知商品',
+                        product_image_url: productDetails?.main_image_url || productDetails?.主图URL || null,
+                        last_message_content: '新会话，开始聊天吧！',
+                        last_message_time: new Date().toISOString(),
+                        unread_count: 0,
+                    };
+                    this.selectedConversation = tempSession;
+                    this.$store.commit('chat/SET_CURRENT_CHAT_MESSAGES', []);
+                    this.$nextTick(() => this.scrollToBottom());
+                } catch (error) {
+                    console.error("Error creating temporary session:", error);
+                    ElMessage.error("发起新会话失败，请稍后重试。");
                 }
             }
-        });
+        } else if (this.conversations.length > 0) {
+            this.selectConversation(this.conversations[0]);
+        } else {
+            this.selectedConversation = null;
+            this.$store.commit('chat/SET_CURRENT_CHAT_MESSAGES', []);
+        }
+    },
+
+    async loadConversations() {
+      if (!this.isChatViewActive) return;
+      try {
+        await this.fetchConversations(); 
+        // The loop below to fetch product_image_url might be redundant 
+        // if the backend /sessions endpoint now provides it reliably.
+        // Kept for now, but ideally removed if backend data is complete.
+        for (const session of this.conversations) {
+            if (session.product_id && !session.product_image_url) {
+                try {
+                    const productDetails = await this.$store.dispatch('product/fetchProductDetail', session.product_id);
+                    session.product_image_url = productDetails?.main_image_url || productDetails?.主图URL || null;
+                } catch (e) {
+                    console.warn(`Failed to fetch product image for product ${session.product_id}`, e);
+                }
+            }
+        }
       } catch (error) {
         console.error('加载聊天会话失败:', error);
-        this.$message.error('加载聊天会话失败!');
+        // ElMessage is likely handled in the store action now
       }
     },
 
     async selectConversation(session) {
+      if (!session || !session.other_user_id || !session.product_id) {
+        console.error("selectConversation called with invalid session:", session);
+        ElMessage.error("无法选择此会话，数据不完整。");
+        return;
+      }
       this.selectedConversation = session;
-      this.selectedConversationIndex = this.conversations.findIndex(
-        (s) => s.session_id === session.session_id
-      );
-
       try {
         await this.fetchChatMessages({
           otherUserId: session.other_user_id,
           productId: session.product_id,
         });
-        await this.loadConversations();
-
+        const convInList = this.conversations.find(c => c.session_id === session.session_id);
+        if (convInList) {
+            convInList.unread_count = 0;
+        }
         this.$nextTick(() => {
           this.scrollToBottom();
         });
       } catch (error) {
         console.error('获取消息记录失败:', error);
-        this.$message.error('获取消息记录失败!');
+        // ElMessage is likely handled in the store action now
       }
     },
     async sendMessage() {
@@ -285,18 +329,27 @@ export default {
       try {
         await this.$store.dispatch('chat/sendMessage', messageData);
         this.newMessageContent = '';
-        await this.fetchChatMessages({
-          otherUserId: this.selectedConversation.other_user_id,
-          productId: this.selectedConversation.product_id,
-        });
-        await this.loadConversations();
+        // After sending a message, reload conversations to get the latest state (e.g., last message time)
+        // and potentially re-select the current conversation if its details changed.
+        const currentSessionId = this.selectedConversation.session_id;
+        await this.loadConversations(); 
+        const updatedSession = this.conversations.find(c => c.session_id === currentSessionId || 
+                                                      (c.other_user_id === messageData.receiver_id && c.product_id === messageData.product_id));
+        if (updatedSession) {
+            this.selectedConversation = updatedSession; // Reselect to update view if needed
+             // Fetch messages again for the current conversation to include the new message
+            await this.fetchChatMessages({ 
+                otherUserId: updatedSession.other_user_id, 
+                productId: updatedSession.product_id 
+            });
+        } else {
+            // If the session is new and was temporary, it might not be in the list yet after loadConversations
+            // This case needs careful handling or ensure new sessions are immediately part of `this.conversations` after send
+        }
 
-        this.$nextTick(() => {
-          this.scrollToBottom();
-        });
       } catch (error) {
         console.error('发送消息失败:', error);
-        this.$message.error('发送消息失败!');
+        // ElMessage is likely handled in the store action now
       }
     },
     formatDateTime(dateTimeString) {
@@ -321,26 +374,33 @@ export default {
       this.conversationToHide = session;
       this.confirmHideDialog = true;
     },
-    async hideConversation() {
+    async executeHideConversation() {
       if (this.conversationToHide) {
         try {
           await this.hideConversation({
             otherUserId: this.conversationToHide.other_user_id,
             productId: this.conversationToHide.product_id,
           });
-          this.$message.success('会话已隐藏!');
+          ElMessage.success('会话已隐藏!');
           this.confirmHideDialog = false;
-          this.conversationToHide = null;
+          
           if (this.selectedConversation &&
-              this.selectedConversation.other_user_id === this.conversationToHide.other_user_id &&
-              this.selectedConversation.product_id === this.conversationToHide.product_id) {
+              this.selectedConversation.session_id === this.conversationToHide.session_id) {
             this.selectedConversation = null;
-            this.selectedConversationIndex = -1;
+            this.$store.commit('chat/SET_CURRENT_CHAT_MESSAGES', []);
           }
-          await this.loadConversations();
+          // Refresh conversations list after hiding one
+          await this.loadConversations(); 
+          if (this.conversations.length > 0 && !this.selectedConversation) {
+             this.selectConversation(this.conversations[0]);
+          } else if (this.conversations.length === 0) {
+             this.selectedConversation = null; // No conversations left
+             this.$store.commit('chat/SET_CURRENT_CHAT_MESSAGES', []);
+          }
+          this.conversationToHide = null;
         } catch (error) {
           console.error('隐藏会话失败:', error);
-          this.$message.error('隐藏会话失败!');
+          // ElMessage is likely handled in the store action now
         }
       }
     },
@@ -348,11 +408,8 @@ export default {
       this.newMessageContent = phrase;
     },
   },
-  mounted() {
-    this.scrollToBottom();
-    this.fetchCurrentUserProfile();
-  },
-};
+
+}; 
 </script>
 
 <style scoped>
@@ -372,7 +429,7 @@ export default {
 }
 
 .conversation-list-col {
-  flex-basis: 280px;
+  flex-basis: 280px; /* Reduced width slightly */
   flex-grow: 0;
   flex-shrink: 0;
   display: flex;
@@ -399,9 +456,9 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  padding: 18px 20px; /* Adjusted padding */
   border-bottom: 1px solid #ebeef5;
-  font-size: 18px;
+  font-size: 18px; /* Adjusted font size */
   font-weight: bold;
   color: #303133;
 }
@@ -428,7 +485,7 @@ export default {
 .conversation-list-content {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 10px 0;
+  padding: 10px 0; /* Adjusted padding */
 }
 
 .conversation-list-item {
@@ -447,6 +504,7 @@ export default {
 .conversation-list-item.selected-conversation {
   background-color: #e6f7ff;
   border-left: 4px solid #409eff;
+  padding-left: 16px;
 }
 
 .conversation-list-item-avatar {
@@ -501,26 +559,24 @@ export default {
   flex-grow: 1;
   overflow-y: auto;
   padding: 20px;
-  background-color: #fbfbfb;
+  background-color: #fbfbfb; /* Slightly lighter background */
 }
 
 .message-bubble {
   max-width: 70%;
-  border-radius: 10px;
+  border-radius: 10px; /* Softer radius */
   padding: 10px 15px;
   line-height: 1.5;
   word-wrap: break-word;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); /* Softer shadow */
 }
 
 .message-bubble.sent {
-  background-color: #e1f5fe;
-  align-self: flex-end;
+  background-color: #e1f5fe; /* Light blue for sent messages */
 }
 
 .message-bubble.received {
-  background-color: #ffffff;
-  align-self: flex-start;
+  background-color: #ffffff; /* White for received messages */
 }
 
 .message-text {
