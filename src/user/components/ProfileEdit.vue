@@ -3,7 +3,7 @@ import { reactive, ref, onMounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElForm, ElDialog } from 'element-plus'; // Import ElForm and ElDialog
 import { Plus } from '@element-plus/icons-vue'; // Import Plus icon
-import BackendConfig from "../../../backend.config"; // Import BackendConfig
+import FormatObject from '@/utils/format.js'; // Import FormatObject
 
 // Assuming api.js exists and has an updateProfile method
 import api from '@/API_PRO.js'; // Import api
@@ -63,8 +63,7 @@ watch(() => props.isProfileEditDialogVisible, (newValue) => {
     profileForm.bio = props.userInfo.个人简介 || ''; // 使用中文键名
     profileForm.phoneNumber = props.userInfo.手机号码 || ''; // 使用中文键名
     // Construct full avatar URL if avatarUrl is a relative path
-    profileForm.avatarUrl = props.userInfo.头像URL ? 
-      BackendConfig.RESTFUL_API_URL.replace(/\/api\/?$/, '') + (props.userInfo.头像URL.startsWith('/') ? props.userInfo.头像URL : '/' + props.userInfo.头像URL) : null;
+    profileForm.avatarUrl = props.userInfo.头像URL ? FormatObject.formattedImgUrl(props.userInfo.头像URL) : null;
   } else if (!newValue && profileFormRef.value) {
       // Optionally reset form when dialog closes
       profileFormRef.value.resetFields();
@@ -91,21 +90,21 @@ const handleAvatarHttpRequest = async (options) => {
   }
   try {
     const response = await api.uploadUserAvatar(formData);
-    options.onSuccess(response); // Call onSuccess with the response data
+    if (response && response.头像URL) {
+      console.log('Avatar upload successful:', response);
+      profileForm.avatarUrl = FormatObject.formattedImgUrl(response.头像URL); // 使用 formattedImgUrl 工具
+      ElMessage.success('头像上传成功');
+      options.onSuccess(response); // 重新添加：告诉 Element-Plus 上传成功，response 是后端返回的数据
+    } else {
+      console.error('Avatar upload successful but response was incomplete:', response);
+      ElMessage.error('头像更新失败：服务器响应异常或格式不正确');
+      options.onError(new Error('Invalid response from server')); // 重新添加：告诉 Element-Plus 上传失败
+    }
   } catch (error) {
     console.error('Avatar upload failed:', error);
-    options.onError(error); // Call onError with the error
+    ElMessage.error('头像上传失败，详情请查看控制台');
+    options.onError(error); // 重新添加：Call onError with the error
   }
-};
-
-// Handle avatar upload success
-const handleAvatarUploadSuccess = (response) => {
-  console.log('Avatar upload success:', response);
-  // Update avatar preview with the URL from backend response, ensuring full path
-  profileForm.avatarUrl = response.头像URL ? 
-    BackendConfig.RESTFUL_API_URL.replace(/\/api$/, '') + response.头像URL : null; 
-  ElMessage.success('头像上传成功');
-  emits('updateSuccess'); // Trigger profile update in parent to refresh user info
 };
 
 // Before avatar upload check
@@ -196,7 +195,6 @@ const cancelEdit = () => {
           action=""
           :show-file-list="false"
           :http-request="handleAvatarHttpRequest" 
-          :on-success="handleAvatarUploadSuccess"
           :before-upload="beforeAvatarUpload"
         >
           <!-- Display current avatar or placeholder -->
