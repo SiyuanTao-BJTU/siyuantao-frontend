@@ -6,6 +6,7 @@ import { Search, Download, Refresh, Bell, Picture, Clock, Check, Close, Shopping
 import api from '@/API_PRO.js';
 import UserDetailDialog from '@/user/components/UserDetailDialog.vue'; // 导入用户详情对话框组件
 import ProductDetailDialog from '@/product/components/ProductDetail.vue'; // 导入商品详情对话框组件
+import FormatObject from '@/utils/format.js'; // 导入格式化工具
 
 const store = useStore();
 const isAdmin = computed(() => store.getters['user/userRole'] === 'admin' || store.getters['user/userRole'] === 'super_admin');
@@ -87,7 +88,7 @@ const fetchProducts = async () => {
         quantity: product.数量,
         category: product.分类名称,
         condition: product.成色 === null ? '未提供' : product.成色,
-        images: product.图片URL列表 ? product.图片URL列表.split(',').map(url => url.trim()) : [],
+        images: product.主图URL ? [FormatObject.formattedImgUrl(product.主图URL)] : [],
         auditStatus: product.商品状态,
         auditReason: product.审核拒绝原因 || '',
         createdAt: product.发布时间,
