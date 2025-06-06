@@ -90,13 +90,13 @@ export default defineComponent({
     const adminMenus = [
       { path: '/admin/dashboard', title: '仪表盘概览', iconComponent: Odometer, roles: ['admin', 'super_admin'] },
       { path: '/admin/users', title: '用户管理', iconComponent: User, roles: ['admin', 'super_admin'] },
-      { path: '/admin/products-audit', title: '商品审核', iconComponent: Box, roles: ['admin', 'super_admin'] },
+      { path: '/admin/products-audit', title: '商品管理', iconComponent: Box, roles: ['admin', 'super_admin'] },
       { path: '/admin/orders', title: '订单管理', iconComponent: Document, roles: ['admin', 'super_admin'] },  
       { path: '/admin/evaluations', title: '评价管理', iconComponent: Star, roles: ['admin', 'super_admin'] }, 
       { path: '/admin/chat', title: '聊天管理', iconComponent: ChatDotRound, roles: ['admin', 'super_admin'] },
       { path: '/admin/returns', title: '退货申请管理', iconComponent: RefreshLeft, roles: ['admin', 'super_admin'] },
       { path: '/admin/reports', title: '举报管理', iconComponent: Warning, roles: ['admin', 'super_admin'] },
-      { path: '/admin/notifications', title: '系统通知发送', iconComponent: Bell, roles: ['admin', 'super_admin'] },
+      { path: '/admin/notifications', title: '通知管理', iconComponent: Bell, roles: ['admin', 'super_admin'] },
       { path: '/admin/permissions', title: '权限管理', iconComponent: Setting, roles: ['super_admin'] }, // 仅超级管理员可见
       { path: 'back-to-user', title: '前往平台', iconComponent: ArrowLeftBold, roles: ['admin', 'super_admin'] },
     ];
