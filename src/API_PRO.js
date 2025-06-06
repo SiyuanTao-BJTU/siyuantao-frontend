@@ -33,40 +33,8 @@ const apiRequest = async (method, path, data = null, params = null, contentType 
   // ---- Vue 项目中使用 axios ----
   try { // UNCOMMENTED
     const response = await axiosClient(config); // MODIFIED: use axiosClient
-
-    // 特殊处理 204和201 No Content 响应，这种情况下后端不返回任何数据
-    if (response.status === 204) {
-        console.info(`API Request: Received 204 No Content for path ${path}. Returning undefined.`);
-        return undefined; // 明确返回 undefined，表示成功但无数据
-    }
-    if (response.status === 201) {
-        console.info(`API Request: Received 201 Created for path ${path}. Returning undefined.`);
-        return undefined; // 明确返回 undefined，表示成功但无数据
-    }
-
-    // 明确检查 response.data 是否为 null 或非对象
-    if (response.data === null) {
-        console.warn(`API Request: Received null data for path ${path}. Returning default for admin chat if applicable.`);
-        if (path === '/api/v1/chat/admin/messages') {
-            // For this specific endpoint, if data is null, return a fallback empty object
-            return { messages: [], total_count: 0 };
-        }
-        // 对于其他端点，如果数据为 null，则视为错误
-        throw new Error(`Unexpected API response: data is null for path ${path}.`);
-    }
-
-    if (typeof response.data !== 'object') {
-        console.error(`API Request: Received non-object data (type: ${typeof response.data}) for path ${path}. Data:`, response.data);
-        // 对于管理员聊天端点，如果数据是非对象（例如，空字符串），返回一个默认的空对象
-        if (path === '/api/v1/chat/admin/messages') {
-            return { messages: [], total_count: 0 };
-        }
-        throw new Error(`Unexpected API response: data is not an object for path ${path}. Received: ${response.data}`);
-    }
-
     return response.data; // 通常返回 response.data
   } catch (error) { // UNCOMMENTED
-    console.error(`API Request Error for path ${path}:`, error); // 添加更具体的日志
     throw error; // 重新抛出错误，让调用组件或 axiosClient 拦截器处理
   }
 };
