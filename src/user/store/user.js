@@ -119,9 +119,9 @@ const actions = {
         throw new Error("获取 token 失败或登录未成功");
       }
     } catch (error) {
-      console.error("登录失败:", error);
-      // 假设 API 错误处理层已经处理了 ElMessage 提示，如果没有，可以在这里添加
-      // ElMessage.error(error.message || "登录失败，请稍后重试");
+      console.error("登录失败:", error); // 添加更具体的日志
+      const errorMessage = error.response?.data?.detail || "登录失败，请先检查您的邮箱和密码是否正确。未解决请联系管理员：23301132@bjtu.edu.cn";
+      ElMessage.error(errorMessage);
       commit("SET_LOGIN_STATUS", false);
       commit("SET_USER_INFO", null); // 清除用户信息
       localStorage.removeItem("token");
