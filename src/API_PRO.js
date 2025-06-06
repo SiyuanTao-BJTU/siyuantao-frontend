@@ -34,6 +34,12 @@ const apiRequest = async (method, path, data = null, params = null, contentType 
   try { // UNCOMMENTED
     const response = await axiosClient(config); // MODIFIED: use axiosClient
 
+    // 特殊处理 204 No Content 响应，这种情况下后端不返回任何数据
+    if (response.status === 204) {
+        console.info(`API Request: Received 204 No Content for path ${path}. Returning undefined.`);
+        return undefined; // 明确返回 undefined，表示成功但无数据
+    }
+
     // 明确检查 response.data 是否为 null 或非对象
     if (response.data === null) {
         console.warn(`API Request: Received null data for path ${path}. Returning default for admin chat if applicable.`);
